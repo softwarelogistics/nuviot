@@ -196,15 +196,15 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
 
     if (!m_isCommissioned)
     {
-        m_display->begin();
-        m_display->drawString(0, 0, "Welcome");
+        m_display->clearBuffer();
+        m_display->println("Welcome");
         if (m_DeviceId != "?")
         {
-            m_display->drawString(50, 0, m_DeviceId.c_str());            
+            m_display->println(m_DeviceId.c_str());            
         }
-        m_display->drawString(0, 16, "Please configure");
-        m_display->drawString(0, 32, "Bluetooth Address:");
-        m_display->drawString(0, 48, m_btAddress);
+        m_display->println( "Please configure");
+        m_display->println("Bluetooth Address:");
+        m_display->println(m_btAddress);
         m_display->sendBuffer();
     }
 
@@ -365,9 +365,9 @@ void NuvIoTState::loop()
 
             if (msg == "HELLO")
             {
-                m_display->begin();
-                m_display->drawString(0, 0, "Welcome");
-                m_display->drawString(0, 16, "Configuration Mode");
+                m_display->clearBuffer();
+                m_display->println("Welcome");
+                m_display->println("Configuration Mode");
                 m_display->sendBuffer();
             }
             else if (msg == "REBOOT")

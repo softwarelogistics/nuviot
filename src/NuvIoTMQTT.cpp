@@ -88,7 +88,7 @@ void NuvIoTMQTT::connect()
         }
         else
         {
-            Serial.println("looks like we are not connected..");
+            Serial.println("looks like we are not connected.");
         }
 
         if (connectResult)

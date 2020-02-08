@@ -14,6 +14,9 @@ class Display
 private:
     byte m_displayType;
 
+    int m_top;
+    int m_textSize; 
+
     U8G2_SSD1306_128X64_NONAME_F_SW_I2C *u8g2;
 
 public:
@@ -21,7 +24,10 @@ public:
     {
         m_displayType = displayType;
 
-        u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/15, /* data=*/4, /* reset=*/16);
+        if(m_displayType == DISPLAY_U8G)
+        {
+            u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/15, /* data=*/4, /* reset=*/16);
+        }
     }
 
     void begin()
@@ -57,6 +63,7 @@ public:
 
     void setTextSize(int textSize)
     {
+        m_textSize = textSize;
         if (m_displayType == DISPLAY_M5STACK)
         {
             M5.Lcd.setTextSize(textSize);
@@ -74,6 +81,8 @@ public:
         {
             M5.Lcd.fillScreen(color);
         }
+
+        m_top = 5;
     }
 
     void clearBuffer()
@@ -87,6 +96,8 @@ public:
         {
             M5.Lcd.fillScreen(WHITE);
         }
+
+        m_top = 5;
     }
 
     void sendBuffer()
@@ -94,6 +105,16 @@ public:
         if (m_displayType == DISPLAY_U8G)
         {
             u8g2->sendBuffer();
+        }
+    }
+
+    void println(String msg)
+    {
+        drawString(5, m_top, msg.c_str());
+        switch(m_textSize)
+        {
+            case 1: m_top += 15; break;
+            case 2: m_top += 25; break;
         }
     }
 
