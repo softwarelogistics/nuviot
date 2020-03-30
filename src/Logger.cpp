@@ -3,6 +3,7 @@
 void Logger::setup() 
 {
     Serial.begin(115200);  
+    Serial.println("Application started!");
 }
 
 void Logger::loop() 

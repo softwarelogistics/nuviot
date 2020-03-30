@@ -1,44 +1,99 @@
 #include "PowerSensor.h"
-#include "Millian_Aire.h"
 
-PowerSensor::PowerSensor(MessagePayload *payload, NuvIoTState *state)
+PowerSensor::PowerSensor(ADC *adc, Logger *logger, MessagePayload *payload, NuvIoTState *state)
 {
+    m_adc = adc;
+    m_logger = logger;
     m_payload = payload;
     m_state = state;
 }
 
-void PowerSensor::setup()
+void PowerSensor::setup(bool enable0, bool enable1, bool enable2)
 {
-    m_compressorCal = m_state->getFlt(PARAM_PWR_CAL_COMPRESSOR);
-    m_blowerCal = m_state->getFlt(PARAM_PWR_CAL_BLOWER);
+    m_channelEnabled[0] = enable0;
+    m_channelEnabled[1] = enable1;
+    m_channelEnabled[2] = enable2;
 
-    m_emonCompressor = new EnergyMonitor();
-    m_emonCompressor->current(38, m_compressorCal); 
+    m_voltage[0] = 120;
+    m_voltage[1] = 120;
+    m_voltage[2] = 120;
 
-    m_emonBlower = new EnergyMonitor();
-    m_emonBlower->current(39, m_blowerCal);
+    m_ctRatioFactor[0] = 100.0f;
+    m_ctRatioFactor[1] = 100.0f;
+    m_ctRatioFactor[2] = 100.0f;
 
-    Serial.println("Power calibration startup");
-    Serial.println(String(m_state->getFlt(PARAM_PWR_CAL_BLOWER)) + " " + String());
+    m_adcChannels[0] = 5; /* ADCMOD2 - 5 */
+    m_adcChannels[1] = 4; /* ADCMOD2 - 6 */
+    m_adcChannels[2] = 2; /* ADCMOD1 - 2 */
+}
+
+void PowerSensor::setChannelVoltage(uint8_t channel, uint16_t voltage)
+{
+    m_voltage[channel] = voltage;
 }
 
 void PowerSensor::loop()
 {
-    float calFactorBlower = m_state->getFlt(PARAM_PWR_CAL_BLOWER);
-    float calFactorCompressor = m_state->getFlt(PARAM_PWR_CAL_COMPRESSOR);
+    for (int idx = 0; idx < 3; ++idx)
+    {
+        if (m_channelEnabled[idx])
+        {
+            float total = 0;
+            int iterations = 50;
 
-    if(m_compressorCal != calFactorCompressor){
-        m_emonCompressor->current(38, calFactorCompressor);
-        m_compressorCal = calFactorCompressor;
+            // Assuming 60 hz
+            // sample once every 10ms or collect values over 30 samples
+            for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
+            {
+                float voltage = m_adc->getVoltage(m_adcChannels[idx]);
+                total += voltage;
+
+                delay(10);
+            }
+
+            // over the course of exactly 30 (or very close to it) since we are measuring
+            // an absolute voltage via a sine wave, the center should be right at zero
+            // this will establishe our baseline (which for our circuit should be very close
+            // to 2.5 volts).
+            float offset = total / iterations;
+
+            total = 0;
+
+            for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
+            {
+                float voltage = m_adc->getVoltage(m_adcChannels[idx]);
+                /* start collecting the sum of the voltages */
+                total += voltage > offset ? voltage - offset : -(voltage - offset);
+
+                delay(10);
+            }
+
+            // we are using a 100A : 0.050MA CT, with the burden resistor it's
+            // a factor of 100.  If the CT ratio changes, we may need to consider
+            // adjusting this as well.  This should probably be pulled from a setting.
+            m_channelAmps[idx] = (total / (float)iterations) * m_ctRatioFactor[idx];
+            m_logger->logVerbose(String(idx) + ". Voltage " + String(m_channelAmps[idx]));
+        }
     }
-    
-    if(m_blowerCal != calFactorBlower) {
-        m_emonBlower->current(39, calFactorBlower);
-        m_blowerCal = calFactorBlower;
-    }
-    
-    m_payload->compressorCurrent = (int)(m_emonCompressor->calcIrms(1480) * 10) / 10.0f;
-    m_payload->blowerCurrent = (int)(m_emonBlower->calcIrms(1480) * 10) / 10.0f;
-    m_payload->hasBlowerCurrent = true;
-    m_payload->hasCompressorCurrent = true;
+}
+
+void PowerSensor::enableChannel(uint8_t channel)
+{
+    m_channelEnabled[channel] = true;
+}
+
+void PowerSensor::disableChannel(uint8_t channel)
+{
+    m_channelEnabled[channel] = true;
+}
+
+float PowerSensor::readAmps(uint8_t channel)
+{
+    m_channelAmps[channel] = channel;
+}
+
+/* P = I * E */
+float PowerSensor::readWatts(uint8_t channel)
+{
+    return m_channelEnabled[channel] * m_voltage[channel];
 }

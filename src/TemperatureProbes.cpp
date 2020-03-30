@@ -1,82 +1,122 @@
 #include "TemperatureProbes.h"
 
-TemperatureProbes::TemperatureProbes(int oneWirePin, MessagePayload *payload, NuvIoTState *state)
+TemperatureProbes::TemperatureProbes(Logger *logger, MessagePayload *payload, NuvIoTState *state)
 {
     m_payload = payload;
-    m_pin = oneWirePin;
     m_state = state;
+    m_logger = logger;
 }
 
 void TemperatureProbes::setup()
 {
-    m_oneWire = new OneWire(m_pin);
-    m_probes = new DallasTemperature(m_oneWire);
-    m_probes->begin();
-    findAddresses();
-    /*int deviceCount = m_probes->getDeviceCount();
-   for(int idx = 0; idx < deviceCount; ++idx){
-       m_probes->getAddress(m_highThermometer, idx);
-   }*/
+    m_sensorConfigurations[0] = None;
+    m_sensorConfigurations[1] = None;
+    m_sensorConfigurations[2] = None;
 }
 
-void TemperatureProbes::findAddresses()
-{
-    byte i;
-    byte addr[8];
-
-    Serial.println("Getting the address...");
-    /* initiate a search for the OneWire object we created and read its value into
-    addr array we declared above*/
-    m_addressCount = 0;
-    while (m_oneWire->search(addr))
-    {
-        Serial.print("The address is:\t");
-        //read each byte in the address array
-        for (i = 0; i < 8; i++)
-        {
-            m_addressBank[m_addressCount][i] = addr[i];
-            Serial.print("0x");
-            if (addr[i] < 16)
-            {
-                Serial.print('0');
-            }
-            // print each byte in the address array in hex format
-            Serial.print(addr[i], HEX);
-            if (i < 7)
-            {
-                Serial.print(", ");
-            }
-        }
-        m_addressCount++;
-        // a check to make sure that what we read is correct.
-        if (OneWire::crc8(addr, 7) != addr[7])
-        {
-            Serial.print("CRC is not valid!\n");
-            return;
-        }
-
-        Serial.println(";");
-    }
-
-    Serial.println("Found temperature probe count " + String(m_addressCount));
-    m_oneWire->reset_search();
-}
+#define MIN_VALUE -999
 
 void TemperatureProbes::loop()
 {
-    if (m_addressCount == 2)
-    {
-        m_probes->requestTemperatures();
+    for(int idx = 0; idx < 3; ++idx) {
+        float temperature = MIN_VALUE;
+        float humidity = MIN_VALUE;
 
-        // update the device information
-        m_payload->lowTemperature = m_probes->getTempF(m_addressBank[0]);
-        m_payload->highTemperature = m_probes->getTempF(m_addressBank[1]);
-        m_payload->areProbesOnline = true;
-    }
-    else
-    {
-        m_payload->areProbesOnline = false;
-        m_payload->lowTemperature = 0;
-        m_payload->highTemperature = 0;
+        switch(m_sensorConfigurations[idx]) {
+            case None:
+                break;
+            case DS18B20:
+                temperature = m_probes[idx]->getTempFByIndex(0);
+                m_probes[idx]->requestTemperatures();
+                break;
+            case Dht11:
+            case Dht22:
+                humidity = m_dhts[idx]->readHumidity();
+                temperature = round((m_dhts[idx]->readTemperature() * 1.8f) + 32.0f);
+                break;
+        }
+
+        if(temperature != MIN_VALUE)
+            m_temperatures[idx] = temperature;
+
+        if(humidity != MIN_VALUE)
+            m_humidities[idx] = -20;
+
+        switch(idx) {
+            case 0:
+                m_payload->temperature1 = temperature == MIN_VALUE ? 0 : temperature;
+                m_payload->hasTemperature1 = temperature != MIN_VALUE;                
+                m_payload->humidity1 = humidity == MIN_VALUE ? 0 : humidity;
+                m_payload->hasHumidity1 = humidity != MIN_VALUE;          
+                
+                break;
+            case 1: 
+                m_payload->temperature2 = temperature == MIN_VALUE ? 0 : temperature;
+                m_payload->hasTemperature2 = temperature != MIN_VALUE;                
+                m_payload->humidity2 = humidity == MIN_VALUE ? 0 : humidity;
+                m_payload->hasHumidity2 = humidity != MIN_VALUE;
+                break;
+            case 2: 
+                m_payload->temperature3 = temperature == MIN_VALUE ? 0 : temperature;
+                m_payload->hasTemperature3 = temperature != MIN_VALUE;                
+                m_payload->humidity3 = humidity == MIN_VALUE  ? 0 : humidity;
+                m_payload->hasHumidity3 = humidity != MIN_VALUE;
+                break;
+        }
     }
 }
+
+byte TemperatureProbes::resolvePinIndex(int idx) {
+    if(idx == 0)  return 17;
+    if (idx == 1) return 13;
+    if (idx == 2) return 14;
+    
+    return -1;
+}
+
+void TemperatureProbes::configureProbe(int idx, SensorConfigs config)
+{
+    byte pin = resolvePinIndex(idx);
+    if(pin == -1) {
+        m_logger->logError("Invalid pin on configure probe.");
+        return;
+    }
+
+    switch(config) {
+        case None:  break;
+        case Dht11: m_dhts[idx] = new DHT(pin, DHT21); break;
+        case Dht22: m_dhts[idx] = new DHT(pin, DHT22); break;
+        case DS18B20:
+            m_oneWires[idx] = new OneWire(pin);
+            m_probes[idx] = new DallasTemperature(m_oneWires[idx]);
+            break;
+
+    }
+
+    m_sensorConfigurations[idx] = config;
+}
+
+float TemperatureProbes::getTemperature(int idx)
+{
+    switch(m_sensorConfigurations[idx]) {
+        case DS18B20:
+        case Dht11:
+        case Dht22:
+            return m_temperatures[idx];
+    }
+
+    return 0.0f;
+}
+
+float TemperatureProbes::getHumidity(int idx)
+{
+    switch(m_sensorConfigurations[idx]) {
+        case Dht11:
+        case Dht22:
+            return m_humidities[idx];
+            break;
+    }
+
+    return 0.0f;
+}
+

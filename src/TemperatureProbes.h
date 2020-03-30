@@ -2,29 +2,50 @@
 #define TemperatureProbes_h
 
 #include <OneWire.h>
+#include <DHT.h>
 #include <DallasTemperature.h>
 #include "MessagePayload.h"
 #include "NuvIoTState.h"
+#include "Logger.h"
+
+enum SensorConfigs {
+    None,
+    Dht11,
+    Dht22,
+    DS18B20    
+};
+
+#define SENSOR_CONFIG_DS18B20
+#define SENSOR_CONFIG_DHT11
+#define SENSOR_CONFIG_DHT22
 
 class TemperatureProbes{
     public:
-        TemperatureProbes(int pin, MessagePayload *payload, NuvIoTState *state);
+        TemperatureProbes(Logger *logger, MessagePayload *payload, NuvIoTState *state);
+
         void setup();
-        void findAddresses();
         void loop();
 
+        float getTemperature(int idx);
+        float getHumidity(int idx);
+
+        void configureProbe(int idx, SensorConfigs config);
+
     private:
-        DeviceAddress m_highThermometer;
-        DeviceAddress m_lowThermometer;
-        int m_addressCount = 0;
-        byte m_addressBank [4][8];
+        float m_temperatures[3];
+        float m_humidities[3];
 
-        OneWire *m_oneWire;
-        DallasTemperature *m_probes;
+        byte resolvePinIndex(int idx);
 
-        int m_pin;
+        SensorConfigs m_sensorConfigurations[3];
+
+        OneWire *m_oneWires[3];
+        DallasTemperature *m_probes[3];
+        DHT *m_dhts[3];
+        
         MessagePayload* m_payload;
+        Logger* m_logger;
 
-        NuvIoTState* m_state;
+        NuvIoTState* m_state;        
 };
 #endif
