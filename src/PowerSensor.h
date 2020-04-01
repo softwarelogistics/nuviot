@@ -4,15 +4,17 @@
 #include "MessagePayload.h"
 #include "NuvIoTState.h"
 #include "ADC.h"
-#include <Logger.h>
+#include "Logger.h"
+#include "AbstractSensor.h"
 
-class PowerSensor {
+class PowerSensor: public AbstractSensor {
     public:
         PowerSensor(ADC *adc, Logger *logger, MessagePayload *payload, NuvIoTState *state);
-        void setup(bool enable0, bool enable1, bool enable2);
+        void setup();
         void loop();
+        void debugPrint();
 
-        void enableChannel(uint8_t channel);
+        void enableChannel(uint8_t channel, bool isEnabled);
         void disableChannel(uint8_t channel);
         float readAmps(uint8_t channel);
         float readWatts(uint8_t channel);        

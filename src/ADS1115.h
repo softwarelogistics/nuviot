@@ -3,11 +3,7 @@
 #ifndef ADS1115_H
 #define ADS1115_H
 
-#if ARDUINO >= 100
- #include "Arduino.h"
-#else
- #include "WProgram.h"
-#endif
+#include "Arduino.h"
 
 #include <Wire.h>
 
@@ -109,13 +105,14 @@ protected:
    uint8_t   m_i2cAddress;
    uint8_t   m_conversionDelay;
    uint8_t   m_bitShift;
+   bool      m_isOnline;
    adsGain_t m_gain;
 
    TwoWire *m_wire;
 
  public:
   ADS1115(uint8_t i2cAddress = ADS1115_ADDRESS1);
-  ADS1115(TwoWire *wire, uint8_t i2cAddress = ADS1115_ADDRESS1);
+  ADS1115(TwoWire *twoWire, uint8_t i2cAddress = ADS1115_ADDRESS1);
 
   void begin(void);
   uint16_t  readADC_SingleEnded(uint8_t channel);
@@ -126,6 +123,7 @@ protected:
   int16_t   getLastConversionResults();
   void      setGain(adsGain_t gain);
   adsGain_t getGain(void);
+  bool isOnline();
 
  private:
 };

@@ -1,8 +1,4 @@
-#if ARDUINO >= 100
- #include "Arduino.h"
-#else
- #include "WProgram.h"
-#endif
+#include "Arduino.h"
 
 #include <Wire.h>
 
@@ -13,12 +9,9 @@
     @brief  Abstract away platform differences in Arduino wire library
 */
 /**************************************************************************/
-static uint8_t i2cread(TwoWire *wire) {
-  #if ARDUINO >= 100
+static uint8_t i2cread(TwoWire *wire)
+{
   return wire->read();
-  #else
-  return Wire.receive();
-  #endif
 }
 
 /**************************************************************************/
@@ -26,12 +19,9 @@ static uint8_t i2cread(TwoWire *wire) {
     @brief  Abstract away platform differences in Arduino wire library
 */
 /**************************************************************************/
-static void i2cwrite(TwoWire *wire, uint8_t x) {
-  #if ARDUINO >= 100
+static void i2cwrite(TwoWire *wire, uint8_t x)
+{
   wire->write((uint8_t)x);
-  #else
-  Wire.send(x);
-  #endif
 }
 
 /**************************************************************************/
@@ -39,10 +29,12 @@ static void i2cwrite(TwoWire *wire, uint8_t x) {
     @brief  Writes 16-bits to the specified destination register
 */
 /**************************************************************************/
-static void writeRegister(TwoWire *wire, uint8_t i2cAddress, uint8_t reg, uint16_t value) {
+static void writeRegister(TwoWire *wire, uint8_t i2cAddress, uint8_t reg, uint16_t value)
+{
+  wire->setClock(400000);
   wire->beginTransmission(i2cAddress);
   i2cwrite(wire, (uint8_t)reg);
-  i2cwrite(wire, (uint8_t)(value>>8));
+  i2cwrite(wire, (uint8_t)(value >> 8));
   i2cwrite(wire, (uint8_t)(value & 0xFF));
   wire->endTransmission();
 }
@@ -52,12 +44,14 @@ static void writeRegister(TwoWire *wire, uint8_t i2cAddress, uint8_t reg, uint16
     @brief  Writes 16-bits to the specified destination register
 */
 /**************************************************************************/
-static uint16_t readRegister(TwoWire *wire, uint8_t i2cAddress, uint8_t reg) {
+static uint16_t readRegister(TwoWire *wire, uint8_t i2cAddress, uint8_t reg)
+{
+  wire->setClock(400000);
   wire->beginTransmission(i2cAddress);
   i2cwrite(wire, ADS1115_REG_POINTER_CONVERT);
   wire->endTransmission();
   wire->requestFrom(i2cAddress, (uint8_t)2);
-  return ((i2cread(wire) << 8) | i2cread(wire));  
+  return ((i2cread(wire) << 8) | i2cread(wire));
 }
 
 /**************************************************************************/
@@ -67,11 +61,10 @@ static uint16_t readRegister(TwoWire *wire, uint8_t i2cAddress, uint8_t reg) {
 /**************************************************************************/
 ADS1115::ADS1115(uint8_t i2cAddress)
 {
-   m_wire = &Wire;
-   m_i2cAddress = i2cAddress;
-   m_conversionDelay = ADS1115_CONVERSIONDELAY;
-   m_bitShift = 0;
-   m_gain = GAIN_TWOTHIRDS; /* +/- 6.144V range (limited to VDD +0.3V max!) */
+  m_i2cAddress = i2cAddress;
+  m_conversionDelay = ADS1115_CONVERSIONDELAY;
+  m_bitShift = 0;
+  m_gain = GAIN_TWOTHIRDS; /* +/- 6.144V range (limited to VDD +0.3V max!) */
 }
 
 /**************************************************************************/
@@ -79,13 +72,13 @@ ADS1115::ADS1115(uint8_t i2cAddress)
     @brief  Instantiates a new ADS1115 class w/appropriate properties
 */
 /**************************************************************************/
-ADS1115::ADS1115(TwoWire *wire, uint8_t i2cAddress)
+ADS1115::ADS1115(TwoWire *twoWire, uint8_t i2cAddress)
 {
-   m_wire = wire;
-   m_i2cAddress = i2cAddress;
-   m_conversionDelay = ADS1115_CONVERSIONDELAY;
-   m_bitShift = 0;
-   m_gain = GAIN_TWOTHIRDS; /* +/- 6.144V range (limited to VDD +0.3V max!) */
+  m_wire = twoWire;
+  m_i2cAddress = i2cAddress;
+  m_conversionDelay = ADS1115_CONVERSIONDELAY;
+  m_bitShift = 0;
+  m_gain = GAIN_TWOTHIRDS; /* +/- 6.144V range (limited to VDD +0.3V max!) */
 }
 
 /**************************************************************************/
@@ -93,8 +86,9 @@ ADS1115::ADS1115(TwoWire *wire, uint8_t i2cAddress)
     @brief  Sets up the HW (reads coefficients values, etc.)
 */
 /**************************************************************************/
-void ADS1115::begin() {
-  m_wire->begin();
+void ADS1115::begin()
+{
+
 }
 
 /**************************************************************************/
@@ -122,18 +116,19 @@ adsGain_t ADS1115::getGain()
     @brief  Gets a single-ended ADC reading from the specified channel
 */
 /**************************************************************************/
-uint16_t ADS1115::readADC_SingleEnded(uint8_t channel) {
+uint16_t ADS1115::readADC_SingleEnded(uint8_t channel)
+{
   if (channel > 3)
   {
     return 0;
   }
-  
+
   // Start with default values
-  uint16_t config = ADS1115_REG_CONFIG_CQUE_NONE    | // Disable the comparator (default val)
-                    ADS1115_REG_CONFIG_CLAT_NONLAT  | // Non-latching (default val)
+  uint16_t config = ADS1115_REG_CONFIG_CQUE_NONE |    // Disable the comparator (default val)
+                    ADS1115_REG_CONFIG_CLAT_NONLAT |  // Non-latching (default val)
                     ADS1115_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
-                    ADS1115_REG_CONFIG_CMODE_TRAD   | // Traditional comparator (default val)
-                    ADS1115_REG_CONFIG_DR_1600SPS   | // 1600 samples per second (default)
+                    ADS1115_REG_CONFIG_CMODE_TRAD |   // Traditional comparator (default val)
+                    ADS1115_REG_CONFIG_DR_1600SPS |   // 1600 samples per second (default)
                     ADS1115_REG_CONFIG_MODE_SINGLE;   // Single-shot mode (default)
 
   // Set PGA/voltage range
@@ -142,18 +137,18 @@ uint16_t ADS1115::readADC_SingleEnded(uint8_t channel) {
   // Set single-ended input channel
   switch (channel)
   {
-    case (0):
-      config |= ADS1115_REG_CONFIG_MUX_SINGLE_0;
-      break;
-    case (1):
-      config |= ADS1115_REG_CONFIG_MUX_SINGLE_1;
-      break;
-    case (2):
-      config |= ADS1115_REG_CONFIG_MUX_SINGLE_2;
-      break;
-    case (3):
-      config |= ADS1115_REG_CONFIG_MUX_SINGLE_3;
-      break;
+  case (0):
+    config |= ADS1115_REG_CONFIG_MUX_SINGLE_0;
+    break;
+  case (1):
+    config |= ADS1115_REG_CONFIG_MUX_SINGLE_1;
+    break;
+  case (2):
+    config |= ADS1115_REG_CONFIG_MUX_SINGLE_2;
+    break;
+  case (3):
+    config |= ADS1115_REG_CONFIG_MUX_SINGLE_3;
+    break;
   }
 
   // Set 'start single-conversion' bit
@@ -167,7 +162,7 @@ uint16_t ADS1115::readADC_SingleEnded(uint8_t channel) {
 
   // Read the conversion results
   // Shift 12-bit results right 4 bits for the ADS1115
-  return readRegister(m_wire, m_i2cAddress, ADS1115_REG_POINTER_CONVERT) >> m_bitShift;  
+  return readRegister(m_wire, m_i2cAddress, ADS1115_REG_POINTER_CONVERT) >> m_bitShift;
 }
 
 /**************************************************************************/
@@ -178,20 +173,21 @@ uint16_t ADS1115::readADC_SingleEnded(uint8_t channel) {
             positive or negative.
 */
 /**************************************************************************/
-int16_t ADS1115::readADC_Differential_0_1() {
+int16_t ADS1115::readADC_Differential_0_1()
+{
   // Start with default values
-  uint16_t config = ADS1115_REG_CONFIG_CQUE_NONE    | // Disable the comparator (default val)
-                    ADS1115_REG_CONFIG_CLAT_NONLAT  | // Non-latching (default val)
+  uint16_t config = ADS1115_REG_CONFIG_CQUE_NONE |    // Disable the comparator (default val)
+                    ADS1115_REG_CONFIG_CLAT_NONLAT |  // Non-latching (default val)
                     ADS1115_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
-                    ADS1115_REG_CONFIG_CMODE_TRAD   | // Traditional comparator (default val)
-                    ADS1115_REG_CONFIG_DR_1600SPS   | // 1600 samples per second (default)
+                    ADS1115_REG_CONFIG_CMODE_TRAD |   // Traditional comparator (default val)
+                    ADS1115_REG_CONFIG_DR_1600SPS |   // 1600 samples per second (default)
                     ADS1115_REG_CONFIG_MODE_SINGLE;   // Single-shot mode (default)
 
   // Set PGA/voltage range
   config |= m_gain;
-                    
+
   // Set channels
-  config |= ADS1115_REG_CONFIG_MUX_DIFF_0_1;          // AIN0 = P, AIN1 = N
+  config |= ADS1115_REG_CONFIG_MUX_DIFF_0_1; // AIN0 = P, AIN1 = N
 
   // Set 'start single-conversion' bit
   config |= ADS1115_REG_CONFIG_OS_SINGLE;
@@ -229,20 +225,21 @@ int16_t ADS1115::readADC_Differential_0_1() {
             positive or negative.
 */
 /**************************************************************************/
-int16_t ADS1115::readADC_Differential_2_3() {
+int16_t ADS1115::readADC_Differential_2_3()
+{
   // Start with default values
-  uint16_t config = ADS1115_REG_CONFIG_CQUE_NONE    | // Disable the comparator (default val)
-                    ADS1115_REG_CONFIG_CLAT_NONLAT  | // Non-latching (default val)
+  uint16_t config = ADS1115_REG_CONFIG_CQUE_NONE |    // Disable the comparator (default val)
+                    ADS1115_REG_CONFIG_CLAT_NONLAT |  // Non-latching (default val)
                     ADS1115_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
-                    ADS1115_REG_CONFIG_CMODE_TRAD   | // Traditional comparator (default val)
-                    ADS1115_REG_CONFIG_DR_1600SPS   | // 1600 samples per second (default)
+                    ADS1115_REG_CONFIG_CMODE_TRAD |   // Traditional comparator (default val)
+                    ADS1115_REG_CONFIG_DR_1600SPS |   // 1600 samples per second (default)
                     ADS1115_REG_CONFIG_MODE_SINGLE;   // Single-shot mode (default)
 
   // Set PGA/voltage range
   config |= m_gain;
 
   // Set channels
-  config |= ADS1115_REG_CONFIG_MUX_DIFF_2_3;          // AIN2 = P, AIN3 = N
+  config |= ADS1115_REG_CONFIG_MUX_DIFF_2_3; // AIN2 = P, AIN3 = N
 
   // Set 'start single-conversion' bit
   config |= ADS1115_REG_CONFIG_OS_SINGLE;
@@ -284,32 +281,32 @@ int16_t ADS1115::readADC_Differential_2_3() {
 void ADS1115::startComparator_SingleEnded(uint8_t channel, int16_t threshold)
 {
   // Start with default values
-  uint16_t config = ADS1115_REG_CONFIG_CQUE_1CONV   | // Comparator enabled and asserts on 1 match
-                    ADS1115_REG_CONFIG_CLAT_LATCH   | // Latching mode
+  uint16_t config = ADS1115_REG_CONFIG_CQUE_1CONV |   // Comparator enabled and asserts on 1 match
+                    ADS1115_REG_CONFIG_CLAT_LATCH |   // Latching mode
                     ADS1115_REG_CONFIG_CPOL_ACTVLOW | // Alert/Rdy active low   (default val)
-                    ADS1115_REG_CONFIG_CMODE_TRAD   | // Traditional comparator (default val)
-                    ADS1115_REG_CONFIG_DR_1600SPS   | // 1600 samples per second (default)
-                    ADS1115_REG_CONFIG_MODE_CONTIN  | // Continuous conversion mode
+                    ADS1115_REG_CONFIG_CMODE_TRAD |   // Traditional comparator (default val)
+                    ADS1115_REG_CONFIG_DR_1600SPS |   // 1600 samples per second (default)
+                    ADS1115_REG_CONFIG_MODE_CONTIN |  // Continuous conversion mode
                     ADS1115_REG_CONFIG_MODE_CONTIN;   // Continuous conversion mode
 
   // Set PGA/voltage range
   config |= m_gain;
-                    
+
   // Set single-ended input channel
   switch (channel)
   {
-    case (0):
-      config |= ADS1115_REG_CONFIG_MUX_SINGLE_0;
-      break;
-    case (1):
-      config |= ADS1115_REG_CONFIG_MUX_SINGLE_1;
-      break;
-    case (2):
-      config |= ADS1115_REG_CONFIG_MUX_SINGLE_2;
-      break;
-    case (3):
-      config |= ADS1115_REG_CONFIG_MUX_SINGLE_3;
-      break;
+  case (0):
+    config |= ADS1115_REG_CONFIG_MUX_SINGLE_0;
+    break;
+  case (1):
+    config |= ADS1115_REG_CONFIG_MUX_SINGLE_1;
+    break;
+  case (2):
+    config |= ADS1115_REG_CONFIG_MUX_SINGLE_2;
+    break;
+  case (3):
+    config |= ADS1115_REG_CONFIG_MUX_SINGLE_3;
+    break;
   }
 
   // Set the high threshold register
@@ -351,7 +348,21 @@ int16_t ADS1115::getLastConversionResults()
   }
 }
 
-float ADS1115::readADC_Voltage(uint8_t channel){
-    return (readADC_SingleEnded(channel) / 26789.0f) * 5.0f;
+float ADS1115::readADC_Voltage(uint8_t channel)
+{
+  return (readADC_SingleEnded(channel) / 26789.0f) * 5.0f;
 }
 
+bool ADS1115::isOnline() {
+  m_wire->beginTransmission(m_i2cAddress);
+  switch(m_wire->endTransmission()){
+    case 0:
+      m_isOnline = true;
+      break;
+    default:
+      m_isOnline = false;
+      break;
+  }
+
+  return m_isOnline;
+}

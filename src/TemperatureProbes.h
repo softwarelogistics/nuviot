@@ -7,6 +7,7 @@
 #include "MessagePayload.h"
 #include "NuvIoTState.h"
 #include "Logger.h"
+#include "AbstractSensor.h"
 
 enum SensorConfigs {
     None,
@@ -19,11 +20,12 @@ enum SensorConfigs {
 #define SENSOR_CONFIG_DHT11
 #define SENSOR_CONFIG_DHT22
 
-class TemperatureProbes{
+class TemperatureProbes: public AbstractSensor{
     public:
         TemperatureProbes(Logger *logger, MessagePayload *payload, NuvIoTState *state);
 
         void setup();
+        void debugPrint();
         void loop();
 
         float getTemperature(int idx);

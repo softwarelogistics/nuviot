@@ -314,7 +314,7 @@ void SimMQTT::PrintByte(uint8_t ch)
 
 void SimMQTT::PrintByteArray(boolean trace, byte buffer[], int len)
 {
-    if (trace)
+    if (trace && false)
     {
         Serial.print("Byte Array: " + String(len) + " chars ");
 
@@ -331,7 +331,7 @@ void SimMQTT::PrintByteArray(boolean trace, byte buffer[], int len)
 
 void SimMQTT::PrintByteArray(boolean trace, String prefix, byte buffer[], int len)
 {
-    if (trace)
+    if (trace && false)
     {
         Serial.print(prefix);
         for (int idx = 0; idx < len; ++idx)

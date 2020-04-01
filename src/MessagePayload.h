@@ -6,12 +6,22 @@
 class MessagePayload
 {
 public:
+    MessagePayload()
+    {
+        status = "ok";
+        lastError = "none";
+    }
+
     String timeStamp;
+
+    String status;
+    String lastError;
 
     float current1;
     float current2;
     float current3;
 
+    float vbatt;
     float voltage1;
     float voltage2;
     float voltage3;
@@ -36,6 +46,7 @@ public:
     bool hasCurrent2;
     bool hasCurrent3;
 
+    bool hasVBatt;
     bool hasVoltage1;
     bool hasVoltage2;
     bool hasVoltage3;

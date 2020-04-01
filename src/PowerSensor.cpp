@@ -8,11 +8,11 @@ PowerSensor::PowerSensor(ADC *adc, Logger *logger, MessagePayload *payload, NuvI
     m_state = state;
 }
 
-void PowerSensor::setup(bool enable0, bool enable1, bool enable2)
+void PowerSensor::setup()
 {
-    m_channelEnabled[0] = enable0;
-    m_channelEnabled[1] = enable1;
-    m_channelEnabled[2] = enable2;
+    m_channelEnabled[0] = false;
+    m_channelEnabled[1] = false;
+    m_channelEnabled[2] = false;
 
     m_voltage[0] = 120;
     m_voltage[1] = 120;
@@ -22,14 +22,10 @@ void PowerSensor::setup(bool enable0, bool enable1, bool enable2)
     m_ctRatioFactor[1] = 100.0f;
     m_ctRatioFactor[2] = 100.0f;
 
-    m_adcChannels[0] = 5; /* ADCMOD2 - 5 */
-    m_adcChannels[1] = 4; /* ADCMOD2 - 6 */
-    m_adcChannels[2] = 2; /* ADCMOD1 - 2 */
-}
-
-void PowerSensor::setChannelVoltage(uint8_t channel, uint16_t voltage)
-{
-    m_voltage[channel] = voltage;
+    
+    m_adcChannels[0] = 2; /* ADCMOD1 - 2 */
+    m_adcChannels[1] = 4; /* ADCMOD2 - 6 */    
+    m_adcChannels[2] = 5; /* ADCMOD2 - 5 */
 }
 
 void PowerSensor::loop()
@@ -72,19 +68,31 @@ void PowerSensor::loop()
             // a factor of 100.  If the CT ratio changes, we may need to consider
             // adjusting this as well.  This should probably be pulled from a setting.
             m_channelAmps[idx] = (total / (float)iterations) * m_ctRatioFactor[idx];
-            m_logger->logVerbose(String(idx) + ". Voltage " + String(m_channelAmps[idx]));
         }
     }
+
+    m_payload->hasCurrent1 = m_channelEnabled[0];
+    m_payload->hasCurrent2 = m_channelEnabled[1];
+    m_payload->hasCurrent3 = m_channelEnabled[2];
+    m_payload->current1 = m_channelEnabled[0] ? m_channelAmps[0] : -1;
+    m_payload->current2 = m_channelEnabled[1] ? m_channelAmps[1] : -1;
+    m_payload->current3 = m_channelEnabled[2] ? m_channelAmps[2] : -1;
 }
 
-void PowerSensor::enableChannel(uint8_t channel)
+void PowerSensor::debugPrint() 
 {
-    m_channelEnabled[channel] = true;
+    for(int idx = 0; idx < 3; ++idx)
+        if(m_channelEnabled[idx]) m_logger->logVerbose("AMPS" + String(idx) + "  :" + String(m_channelAmps[idx]));
 }
 
-void PowerSensor::disableChannel(uint8_t channel)
+void PowerSensor::setChannelVoltage(uint8_t channel, uint16_t voltage)
 {
-    m_channelEnabled[channel] = true;
+    m_voltage[channel] = voltage;
+}
+
+void PowerSensor::enableChannel(uint8_t channel, bool isEnabled)
+{
+    m_channelEnabled[channel] = isEnabled;
 }
 
 float PowerSensor::readAmps(uint8_t channel)
