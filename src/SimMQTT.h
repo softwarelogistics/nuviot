@@ -19,6 +19,7 @@ private:
     String m_apn;
     String m_apnUid;
     String m_apnPwd;
+    String m_lastError;
     int m_cmdIdx;
     int m_subscriptionId = 1;
     int m_packetId = 1;
@@ -58,6 +59,8 @@ private:
     void EnableErrorMessages(boolean trace);
     boolean GetCREG(boolean trace);
     boolean GetCGREG(boolean trace);
+    boolean SetLTE();
+    boolean DisconnectIP();
     boolean ConnectGPRS(boolean trace);
 
     void EnqueueByte(uint8_t byte);
@@ -65,9 +68,11 @@ private:
     void Flush();
 
     void ResetModemBuffer();
-
-    void SetAPN(boolean trace);
-    void SetBand(boolean trace);
+    bool SetNBIoTMode(boolean trace);
+    bool SetLTE(boolean trace);
+    bool SetAPN(boolean trace);
+    bool SetBand(boolean trace);
+    bool DisconnectIP(boolean trace);
     bool IsString(byte buffer[], int len);
     boolean SendBuffer(boolean truce);
     void WriteRealLength(int realLeangth, boolean trace);
@@ -77,6 +82,9 @@ private:
 public:
     SimMQTT(HardwareSerial *serial, Display *display);
    
+
+    boolean Init(bool trace);
+
     boolean IsSIM800Online(boolean trace);
     String GetSIMId(boolean trace);
     String GetNetwork(boolean trace);
@@ -96,6 +104,9 @@ public:
     int Subscribe(String topic, boolean trace);
     boolean Connect(String apn, String apnId, String apnPwd, boolean trace);   
     boolean Loop(boolean trace);
+    boolean Reset(boolean trace);
+
+    String GetLastError();
 };
 
 #endif

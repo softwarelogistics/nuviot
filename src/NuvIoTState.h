@@ -50,6 +50,8 @@ private:
 
     bool m_isInitialized = false;
     bool m_isCommissioned = false;
+    bool m_debugMode = false;
+    bool m_verboseLogging = false;
 
     String readString(int add, int maxLength);
     String m_deviceAddress;
@@ -100,6 +102,9 @@ public:
     String getHostPassword();
     String getWiFiSSID();
     String getWiFiPassword();
+
+    bool getVerboseLogging();
+    bool getDebugMode();
 
     String queryState();
 

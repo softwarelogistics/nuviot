@@ -34,7 +34,7 @@ void PowerSensor::loop()
     {
         if (m_channelEnabled[idx])
         {
-            float total = 0;
+            float avereageTotal = 0;
             int iterations = 50;
 
             // Assuming 60 hz
@@ -42,8 +42,7 @@ void PowerSensor::loop()
             for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
             {
                 float voltage = m_adc->getVoltage(m_adcChannels[idx]);
-                total += voltage;
-
+                avereageTotal += voltage;
                 delay(10);
             }
 
@@ -51,23 +50,23 @@ void PowerSensor::loop()
             // an absolute voltage via a sine wave, the center should be right at zero
             // this will establishe our baseline (which for our circuit should be very close
             // to 2.5 volts).
-            float offset = total / iterations;
+            float offset = avereageTotal / iterations;
+            Serial.println("Found average total: " + String(offset));
 
-            total = 0;
+            float levelTotal = 0;
 
             for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
             {
                 float voltage = m_adc->getVoltage(m_adcChannels[idx]);
                 /* start collecting the sum of the voltages */
-                total += voltage > offset ? voltage - offset : -(voltage - offset);
-
+                levelTotal += voltage > offset ? voltage - offset : -(voltage - offset);
                 delay(10);
             }
 
             // we are using a 100A : 0.050MA CT, with the burden resistor it's
             // a factor of 100.  If the CT ratio changes, we may need to consider
             // adjusting this as well.  This should probably be pulled from a setting.
-            m_channelAmps[idx] = (total / (float)iterations) * m_ctRatioFactor[idx];
+            m_channelAmps[idx] = (levelTotal / (float)iterations) * m_ctRatioFactor[idx];
         }
     }
 

@@ -188,7 +188,8 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
 
     Serial.println("register ints");
     Param *pNode = m_pIntParamHead;
-    while(pNode != NULL){
+    while (pNode != NULL)
+    {
         Serial.println("Node " + String(pNode->getKey()) + "  " + String(pNode->getIndex()));
         pNode = pNode->pNext;
     }
@@ -200,9 +201,9 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
         m_display->println("Welcome");
         if (m_DeviceId != "?")
         {
-            m_display->println(m_DeviceId.c_str());            
+            m_display->println(m_DeviceId.c_str());
         }
-        m_display->println( "Please configure");
+        m_display->println("Please configure");
         m_display->println("Bluetooth Address:");
         m_display->println(m_btAddress);
         m_display->sendBuffer();
@@ -214,6 +215,16 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
 bool NuvIoTState::isValid()
 {
     return m_isCommissioned;
+}
+
+bool NuvIoTState::getVerboseLogging()
+{
+    return m_verboseLogging;
+}
+
+bool NuvIoTState::getDebugMode()
+{
+    return m_debugMode;
 }
 
 String NuvIoTState::getWiFiSSID()
@@ -253,12 +264,12 @@ bool NuvIoTState::getSecureTransport()
 
 String NuvIoTState::getHostUserName()
 {
-    return m_HostUserName;
+    return m_anonymous ? "" : m_HostUserName;
 }
 
 String NuvIoTState::getHostPassword()
 {
-    return m_HostPassword;
+    return m_anonymous ? "" : m_HostPassword;
 }
 
 void NuvIoTState::createDefaults()
@@ -273,8 +284,8 @@ void NuvIoTState::createDefaults()
         }
         else
         {
-            m_logger->logVerbose("Float value for [" + String(pNext->getKey()) + "] is not set, setting initial default to " + String(pNext->getFltDefault()) + " at position " + String(pNext->getIndex()) + " with mask: " + String((int)fieldMask));            
-            EEPROM.writeFloat(FLT_BLOCK_START + pNext->getIndex() * sizeof(float), pNext->getFltDefault());            
+            m_logger->logVerbose("Float value for [" + String(pNext->getKey()) + "] is not set, setting initial default to " + String(pNext->getFltDefault()) + " at position " + String(pNext->getIndex()) + " with mask: " + String((int)fieldMask));
+            EEPROM.writeFloat(FLT_BLOCK_START + pNext->getIndex() * sizeof(float), pNext->getFltDefault());
             m_fltSetValueMask = m_fltSetValueMask | fieldMask;
         }
         pNext = pNext->pNext;
@@ -603,7 +614,7 @@ Param *NuvIoTState::appendValue(Param *pHead, Param *pNode)
 
             m_logger->logVerbose("Appending node for [" + String(pNode->getKey()) + "] with index [" + String(pNode->getIndex()) + "]");
 
-            return pNode;            
+            return pNode;
         }
         else
         {
@@ -619,7 +630,7 @@ void NuvIoTState::registerInt(const char *key, int defaultValue)
 
     if (m_pIntParamHead == NULL)
     {
-        p->setIndex(0);        
+        p->setIndex(0);
         m_logger->logVerbose("Register bool to for [" + String(p->getKey()) + "] with value [" + String(p->getIntDefault()) + "] with index [" + String(p->getIndex()) + "]");
         m_pIntParamHead = p;
     }
@@ -635,7 +646,7 @@ void NuvIoTState::registerFloat(const char *key, float defaultValue)
 
     if (m_pFloatParamHead == NULL)
     {
-        p->setIndex(0);        
+        p->setIndex(0);
         m_logger->logVerbose("Register bool to for [" + String(p->getKey()) + "] with value [" + String(p->getFltDefault()) + "] with index [" + String(p->getIndex()) + "]");
         m_pFloatParamHead = p;
     }
@@ -651,7 +662,7 @@ void NuvIoTState::registerBool(const char *key, boolean defaultValue)
 
     if (m_pBoolParamHead == NULL)
     {
-        p->setIndex(0);        
+        p->setIndex(0);
         m_logger->logVerbose("Register bool to for [" + String(p->getKey()) + "] with value [" + String(p->getBoolDefault()) + "] with index [" + String(p->getIndex()) + "]");
         m_pBoolParamHead = p;
     }

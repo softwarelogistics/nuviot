@@ -212,6 +212,14 @@ String SimMQTT::SendCommand(String cmd, String expectedReply, unsigned long dela
     }
 }
 
+bool SimMQTT::Init(boolean trace) {
+    if(!SetLTE(trace))       return false;
+    if(!SetNBIoTMode(trace)) return false;
+    if(!DisconnectIP(trace)) return false;
+    if(!SetBand(trace))      return false;
+    ResetModemBuffer();
+}
+
 String SimMQTT::SendCommand(String cmd, boolean trace)
 {
     return SendCommand(cmd, "", 0, 500, false, trace);
@@ -236,10 +244,9 @@ int SimMQTT::GetSignalQuality(boolean trace)
 
 #define BAND = "ALL_BAND"
 
-void SimMQTT::SetBand(boolean trace)
+boolean SimMQTT::SetBand(boolean trace)
 {
-    SendCommand("AT+CBAND?", trace);
-    SendCommand("AT+CBAND=\"ALL_MODE\"", trace);
+    return SendCommand("AT+CBAND=\"ALL_MODE\"", trace) == S_OK;
 }
 
 boolean SimMQTT::GetCREG(boolean trace)
@@ -264,26 +271,31 @@ boolean SimMQTT::GetCGREG(boolean trace)
 
 boolean SimMQTT::IsSIM800Online(boolean trace)
 {
-    boolean isOnline = SendCommand("AT", S_OK, 0, 500, false, trace) == S_OK;
-    if (isOnline)
-    {
-        EnableErrorMessages(trace);
-        if (SendCommand("AT+CIPSHUT", S_SHUT_OK, 0, 5000, false, trace) != S_OK)
-        {
-            return false;
-        }
+    return SendCommand("AT", S_OK, 0, 500, false, trace) == S_OK;
+}
 
-        if (SendCommand("AT+CNMP=38", S_OK, 0, 500, false, trace) != S_OK)
-        {
-            return false;
-        }
+bool SimMQTT::DisconnectIP(boolean trace)
+{
+    return (SendCommand("AT+CIPSHUT", S_SHUT_OK, 0, 5000, false, trace) != S_OK);
+}
 
-        if (SendCommand("AT+CMNB=1", S_OK, 0, 500, false, trace) != S_OK)
-        {
-            return false;
-        }
-    }
-    return isOnline;
+bool SimMQTT::SetLTE(boolean trace)
+{
+    if(SendCommand("AT+CNMP=38", S_OK, 0, 500, false, trace) != S_OK)
+        return true;
+
+    m_lastError = "COMMS0004";
+
+    return false;
+}
+
+bool SimMQTT::SetNBIoTMode(boolean trace) 
+{
+    if(SendCommand("AT+CMNB=1", S_OK, 0, 500, false, trace) != S_OK)
+        return true;
+
+    m_lastError = "COMMS0005";
+    return false;
 }
 
 String SimMQTT::GetSIMId(boolean trace)
@@ -449,28 +461,6 @@ void SimMQTT::Flush()
     }
 
     m_txHead = m_txTail;
-}
-
-void SimMQTT::SetAPN(boolean trace)
-{
-    String desiredAPN;
-    if (m_apnUid != NULL && m_apnUid.length() > 0 &&
-        m_apnPwd != NULL && m_apnPwd.length() > 0)
-    {
-        desiredAPN = "\"" + String(m_apn) + "\",\"" + m_apnUid + "\",\"" + m_apnPwd + "\"";
-    }
-    else
-    {
-        desiredAPN = "\"" + String(m_apn) + "\"";
-    }
-
-    String currentAPN = SendCommand("AT+CSTT?", trace);
-    currentAPN = currentAPN.substring(7);
-
-    if (currentAPN != desiredAPN)
-    {
-        SendCommand("AT+CSTT=" + desiredAPN, trace);
-    }
 }
 
 void SimMQTT::WriteString(String str, boolean trace)
@@ -741,6 +731,35 @@ bool SimMQTT::ConnectMQTT(String site, boolean trace)
     return ConnectMQTT(site, "", "", "mqttclient", trace);
 }
 
+bool SimMQTT::Reset(boolean trace)
+{
+    return SendCommand("AT+CFUN=1,1", "SMS Ready", 0, 15000, false, trace) == S_OK;
+}
+
+boolean SimMQTT::SetAPN(boolean trace)
+{
+    String desiredAPN;
+    if (m_apnUid != NULL && m_apnUid.length() > 0 &&
+        m_apnPwd != NULL && m_apnPwd.length() > 0)
+    {
+        desiredAPN = "\"" + String(m_apn) + "\",\"" + m_apnUid + "\",\"" + m_apnPwd + "\"";
+    }
+    else
+    {
+        desiredAPN = "\"" + String(m_apn) + "\"";
+    }
+
+    String currentAPN = SendCommand("AT+CSTT?", trace);
+    currentAPN = currentAPN.substring(7);
+
+    if (currentAPN != desiredAPN)
+    {
+        return SendCommand("AT+CSTT=" + desiredAPN, trace) == S_OK;
+    }
+
+    return true;
+}
+
 /* should be called to make sure the state is reset before doing any work with 
  * the modem.  If we are in a state where it's expecting a buffer to be send
  * this will clear it. */
@@ -862,44 +881,21 @@ bool SimMQTT::ConnectMQTT(String site, String uid, String pwd, String clientId, 
 
 bool SimMQTT::Connect(String apn, String apnUid, String apnPwd, boolean trace)
 {
-    ResetModemBuffer();
-
     long start = millis();
 
     m_apn = apn;
     m_apnUid = apnUid;
     m_apnPwd = apnPwd;
 
-    DebugPrint(trace, "Begin SIM800L Startup.");
-    callback("Begin Connection");
-
     boolean connected = false;
     while (!connected)
     {
-        DebugPrint(trace, "Starting communication with modem.");
+        String simId = GetSIMId(trace);
 
-        callback("Start commo w/ modem.");
-
-        while (!IsSIM800Online(trace))
-        {
-            delay(500);
-            DebugPrint(trace, "Pending commo w/ modem.");
-            callback("Pending commo w/ modem.");
-            if (millis() - start > 60000)
-            {
-                callback("No commo with modem.");
-                return false;
-            }
-        }
-
-        SetBand(trace);
-
-        GetSIMId(trace);
-
-        callback("Connect to cell service");
+        callback("SIM ID: " + simId);
 
         DebugPrint(trace, "Connect to cell service.");
-        while (!GetCGREG(trace) )
+        while (!GetCGREG(trace))
         {
             DebugPrint(trace, "Not connect to cell service.");
             callback("No connect to cell service");
