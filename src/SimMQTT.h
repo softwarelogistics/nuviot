@@ -75,7 +75,7 @@ private:
     bool DisconnectIP(boolean trace);
     bool IsString(byte buffer[], int len);
     boolean SendBuffer(boolean truce);
-    void WriteRealLength(int realLeangth, boolean trace);
+    void WriteRemainingLength(int realLeangth, boolean trace);
     void WriteControlField(byte packetId, boolean trace);
     boolean ReadMQTTResponse(uint8_t expected, bool trace);
  

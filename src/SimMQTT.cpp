@@ -212,11 +212,16 @@ String SimMQTT::SendCommand(String cmd, String expectedReply, unsigned long dela
     }
 }
 
-bool SimMQTT::Init(boolean trace) {
-    if(!SetLTE(trace))       return false;
-    if(!SetNBIoTMode(trace)) return false;
-    if(!DisconnectIP(trace)) return false;
-    if(!SetBand(trace))      return false;
+bool SimMQTT::Init(boolean trace)
+{
+    if (!SetLTE(trace))
+        return false;
+    if (!SetNBIoTMode(trace))
+        return false;
+    if (!DisconnectIP(trace))
+        return false;
+    if (!SetBand(trace))
+        return false;
     ResetModemBuffer();
 }
 
@@ -281,7 +286,7 @@ bool SimMQTT::DisconnectIP(boolean trace)
 
 bool SimMQTT::SetLTE(boolean trace)
 {
-    if(SendCommand("AT+CNMP=38", S_OK, 0, 500, false, trace) != S_OK)
+    if (SendCommand("AT+CNMP=38", S_OK, 0, 500, false, trace) != S_OK)
         return true;
 
     m_lastError = "COMMS0004";
@@ -289,9 +294,9 @@ bool SimMQTT::SetLTE(boolean trace)
     return false;
 }
 
-bool SimMQTT::SetNBIoTMode(boolean trace) 
+bool SimMQTT::SetNBIoTMode(boolean trace)
 {
-    if(SendCommand("AT+CMNB=1", S_OK, 0, 500, false, trace) != S_OK)
+    if (SendCommand("AT+CMNB=1", S_OK, 0, 500, false, trace) != S_OK)
         return true;
 
     m_lastError = "COMMS0005";
@@ -622,14 +627,23 @@ void SimMQTT::WriteControlField(byte packetHeader, boolean trace)
     EnqueueByte(packetHeader);
 }
 
-void SimMQTT::WriteRealLength(int realLength, boolean trace)
+void SimMQTT::WriteRemainingLength(int realLength, boolean trace)
 {
-    if (trace)
-    {
-        Serial.println("Real Length: [" + String(realLength) + "] total packet length: [" + String(realLength + 2) + "]");
-    }
+    DebugPrint(trace, "Real Length: [" + String(realLength) + "] total packet length: [" + String(realLength + 2) + "]");
 
-    EnqueueByte((uint8_t)realLength);
+    // In the MQTT spec if longer then 127 set bit 8 in the first byte
+    // to send over, set the continuation bit
+    // Then take what's in the bits after the 7th bit
+    // shift them over so they make up byte of 7 bits.
+    if(realLength > 0x7F) {
+        byte lsb = realLength & 0x7F | 0x80;
+        EnqueueByte(lsb);
+        byte msb = ((realLength >> 7) & 0xFF)
+        EnqueueByte(msb);
+    }
+    else {
+        EnqueueByte((uint8_t)realLength);
+    }
 }
 
 boolean SimMQTT::Ping(boolean trace)
@@ -649,7 +663,7 @@ boolean SimMQTT::Publish(String topic, String payload, byte qos, boolean trace)
 {
     Loop(trace && m_verbose);
 
-    byte rl = 2 + topic.length() +
+    int rl = 2 + topic.length() +
               2 + // packet id
               payload.length();
     byte controlField = 0x30;
@@ -786,7 +800,6 @@ boolean SimMQTT::SendBuffer(boolean trace)
     write_it_all = true;
     String startSend = "AT+CIPSEND=" + String(sendLength);
 
-    Serial.println(startSend);
     m_serial->println(startSend);
     WaitForReply(startSend, 5, trace);
 
