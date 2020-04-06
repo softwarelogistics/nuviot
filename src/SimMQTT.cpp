@@ -12,10 +12,7 @@
 #define S_SHUT_OK "SHUT OK"
 #define S_CONNECT_OK "CONNECT OK"
 
-#define MQTT_CONNECT 0x10
 #define GPRS_SEND_PACKET 0x1A
-#define MQTT_PUBLISH 0x30
-#define MQTT_SUBSCRIBE 0x82
 
 SimMQTT::SimMQTT(HardwareSerial *serial, Display *display)
 {

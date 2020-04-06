@@ -2,7 +2,7 @@
 #define SIMMQTT_H
 
 #include <arduino.h>
-#include <Display.h>
+#include "Display.h"
 
 #define QOS0 0
 #define QOS1 1
@@ -88,7 +88,6 @@ private:
 public:
     SimMQTT(HardwareSerial *serial, Display *display);
    
-
     boolean Init(bool trace);
 
     boolean IsSIM800Online(boolean trace);
