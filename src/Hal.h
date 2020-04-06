@@ -1,12 +1,12 @@
-#ifndef Hal_c
-#define Hal_c
+#ifndef HAL_C
+#define HAL_C
 
 #include <Arduino.h>
 
 class Hal {
     public:
         void restart();
-        int getWiFi_RSSI();
+  
 };
 
 #endif

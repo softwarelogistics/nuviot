@@ -1,5 +1,11 @@
 #include "Channel.h"
 
+Channel::Channel(Stream *stream, Console *console)
+{
+    m_stream = stream;
+    m_console = console;
+}
+
 void Channel::enqueueByte(uint8_t byte)
 {
     m_txBuffer[m_txTail] = byte;
@@ -22,6 +28,13 @@ size_t Channel::available()
 
 size_t Channel::readBytes(byte *buffer, size_t length)
 {
+    long start = millis();
+    while(m_stream->available() < length && ((millis() - start) < 5000));        
+
+    if(m_stream->available() < length){
+        return -1;
+    }
+
     return m_stream->readBytes(buffer, length);
 }
 
@@ -37,7 +50,7 @@ void Channel::transmit(byte *buffer, size_t len)
 
 void Channel::transmitln(String msg)
 {
-    m_stream->print(msg);
+    m_stream->println(msg);
 }
 
 void Channel::print(String msg)
@@ -48,6 +61,19 @@ void Channel::print(String msg)
 void Channel::println(String msg)
 {
     m_stream->println(msg);
+}
+
+String Channel::readStringUntil(char ch, int timeout)
+{
+    unsigned long existingTimeout = m_stream->getTimeout();
+    m_stream->setTimeout(timeout);
+    String result = m_stream->readStringUntil(ch);
+    m_stream->setTimeout(existingTimeout);
+    return result;
+}
+
+void Channel::enqueueString(String str){
+    enqueueByteArray((uint8_t *)str.c_str(), str.length());
 }
 
 void Channel::enqueueByteArray(uint8_t buffer[], size_t len)
@@ -82,36 +108,6 @@ void Channel::flush() {
             m_stream->write(m_txBuffer[idx]);
         }
     }
-
-    // The SIM module will echo back all the bytes are sent to it.
-    // this simply pulls them from the receive buffer so they don't
-    // get in the way of the other algorithms.
-    while (m_stream->available() < sendLength)
-        ;
-
-    int charCount = m_stream->readBytes(m_tempBuffer, sendLength);
-    if(charCount != sendLength)
-    {
-        Serial.println("WTF!!!! Didn't read correct amount.");
-    }
-
-    for(int idx = 0; idx < charCount; ++idx){
-        if(idx > 0)
-            Serial.print(" ");
-            
-        m_console->printByte(m_tempBuffer[idx + m_txHead]);
-    }
-
-    Serial.println(";");
-
-    for(int idx = 0; idx < charCount; ++idx){
-        if(idx > 0)
-            Serial.print(" ");
-
-        m_console->printByte(m_txBuffer[idx + m_txHead]);
-    }
-
-    Serial.println(";");
 
     m_txHead = m_txTail;
 }

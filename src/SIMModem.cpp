@@ -1,6 +1,12 @@
 #include "SIMModem.h"
 #include "Utils.h"
 
+SIMModem::SIMModem(Channel *channel, Console *console)
+{
+    m_channel = channel;
+    m_console = console;
+}
+
 bool SIMModem::waitForReply(String expectedReply, int iterations)
 {
     bool shouldContinue = true;
@@ -24,7 +30,7 @@ bool SIMModem::waitForReply(String expectedReply, int iterations)
         loopCount++;
         if (iterations != -1 && loopCount > iterations)
         {
-            m_console->print("Timed out waiting for: [" + expectedReply + "] Iterations => " + String(iterations));
+            m_console->printError("Timed out waiting for: [" + expectedReply + "] Iterations => " + String(iterations));
             return false;
         }
 
@@ -34,10 +40,136 @@ bool SIMModem::waitForReply(String expectedReply, int iterations)
 
 bool SIMModem::enableTransparentMode()
 {
+    return sendCommand("AT+CIPMODE=1") == S_OK;
 }
 
-bool SIMModem::enableCommandMode()
+bool SIMModem::disableTransparentMode()
 {
+    return sendCommand("AT+CIPMODE=0") == S_OK;
+}
+
+bool SIMModem::exitCommandMode()
+{
+    delay(1000);
+    m_channel->print("+++");
+    delay(1000);
+
+    bool result = waitForReply("OK", 5);
+    if (result)
+    {
+        m_console->print("Enable command mode.");
+    }
+    else
+    {
+        m_console->printError("Did not enable command mode.");
+    }
+
+    return result;
+}
+
+bool SIMModem::beginDownload(String url)
+{
+    long start = millis();
+
+    while (!isServiceConnected())
+    {
+        delay(500);
+        m_console->printWarning("Service status is not up, retrying.");
+
+        if (millis() - start > 60000)
+        {
+            m_lastError = "SIM0011";
+
+            m_console->printError("Timeout waiting for service connection.");
+            return false;
+        }
+    }
+
+    if (!setBearer())
+    {
+        m_console->printError("COULD NOT SET BEARER");
+        return false;
+    }
+
+    if (sendCommand("AT+HTTPINIT") != S_OK)
+    {
+        m_console->printError("COULD NOT SEND HTTPINIT=\"URL\",\"....\"");
+        return false;
+    }
+
+    if (sendCommand("AT+HTTPPARA=\"URL\",\"" + url + "\"") != S_OK)
+    {
+        m_console->printError("COULD NOT SEND HTTPPARAM=\"URL\",\"....\"");
+        return false;
+    }
+
+    if (sendCommand("AT+HTTPPARA=\"CID\",1") != S_OK)
+    {
+        m_console->printError("COULD NOT SEND HTTPPARAM=\"CIDE\",1");
+        return false;
+    }
+
+    if (sendCommand("AT+HTTPACTION=0") != S_OK)
+    {
+        m_console->printError("COULD NOT SEND HTTPACTION=0");
+        return false;
+    }
+
+    m_console->setVerboseLogging(true);
+
+    int retryCount = 0;
+    bool done = false;
+    long contentSize = 0;
+    while (!done && retryCount++ < 5)
+    {
+        String msg = m_channel->readStringUntil('\n', 10000);
+        msg.trim();
+        if (msg != "")
+        {
+            m_console->print("Http Call Response: " + msg);
+            contentSize = atol(msg.substring(msg.lastIndexOf(",") + 1).c_str());
+            done = true;
+        }
+
+        delay(retryCount * 500);
+    }
+
+    if (retryCount == 5)
+    {
+        m_console->printError("No server response from AT+HTTPACTION=0");
+        return false;
+    }
+
+    m_console->print("Received content size of [" + String(contentSize) + "].");
+
+    m_channel->transmit("AT+HTTPREAD\r\n");
+    String echoResponse = m_channel->readStringUntil('\n', 10000);
+    echoResponse.trim();
+
+    m_console->print("Echo Response: " + echoResponse);
+    String readResponse = m_channel->readStringUntil('\n', 10000);
+    readResponse.trim();
+    m_console->print("Read Response: " + readResponse);
+
+    while (contentSize > 0)
+    {
+        long toRead = 128 < contentSize ? 128 : contentSize;
+
+        int actualRead = m_channel->readBytes(m_tempBuffer, toRead);
+        if (actualRead != -1)
+        {
+            contentSize -= actualRead;
+            m_tempBuffer[actualRead - 1] = 0x00;
+
+            //Serial.println("RESPONSE MESSAGE" + String((char *)m_tempBuffer));
+        }
+        else
+        {
+            m_console->print("Bytes Read [" + String(actualRead) + "] with total of [" + String(contentSize) + "] bytes.");
+        }
+    }
+
+    m_console->setVerboseLogging(false);
 }
 
 String SIMModem::sendCommand(String cmd)
@@ -50,7 +182,7 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
     int start = millis();
     String returnValue = S_OK;
     m_console->printVerbose("Sending Command ==>" + cmd);
-    m_channel->transmitln(cmd);
+    m_channel->transmit(cmd + "\r\n");
 
     if (delay > 0)
     {
@@ -62,13 +194,16 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
     {
         if (millis() - start > timeout)
         {
-            m_console->printVerbose(S_TIMEOUT);
+            m_console->printWarning(S_TIMEOUT);
             return "-1";
         }
 
         if (m_channel->available() > 0)
         {
             String msg = m_channel->readStringUntil('\n', timeout);
+            msg.trim();
+            m_console->printVerbose(msg);
+
             if (msg.length() > 0)
             {
                 if (msg == expectedReply)
@@ -158,7 +293,7 @@ bool SIMModem::enableErrorMessages()
     return sendCommand("AT+CMEE=2") == S_OK;
 }
 
-boolean SIMModem::connectGPRS()
+bool SIMModem::connectGPRS()
 {
     return sendCommand("AT+CIICR", "", 0, 85000, false) == S_OK;
 }
@@ -228,6 +363,45 @@ bool SIMModem::setAPN()
     return true;
 }
 
+bool SIMModem::setBearer()
+{
+    if (sendCommand("AT+SAPBR=3,1,\"APN\",\"" + m_apn + "\"") != S_OK)
+    {
+        m_console->printError("Could not set SAPBR APN");
+        return false;
+    }
+
+    if (m_apnUid != NULL && m_apnUid.length() > 0 &&
+        m_apnPwd != NULL && m_apnPwd.length() > 0)
+    {
+        if (sendCommand("AT+SAPBR=3,1,\"USER\",\"" + m_apn + "\"") != S_OK)
+        {
+            m_console->printError("Could not set SAPBR USER");
+            return false;
+        }
+
+        if (sendCommand("AT+SAPBR=3,1,\"PWD\",\"" + m_apnUid + "\"") != S_OK)
+        {
+            m_console->printError("Could not set SAPBR PWD");
+            return false;
+        }
+    }
+
+    if (sendCommand("AT+SAPBR=1,1") != S_OK)
+    {
+        m_console->printError("Could not open Bearer");
+        return false;
+    }
+
+    if (sendCommand("AT+SAPBR=2,1", S_OK, 0, 1500, false) != S_OK)
+    {
+        m_console->printError("Could not open Bearer");
+        return false;
+    }
+
+    return true;
+}
+
 bool SIMModem::disconnectIP()
 {
     return (sendCommand("AT+CIPSHUT", S_SHUT_OK, 0, 5000, false) != S_OK);
@@ -262,6 +436,11 @@ int SIMModem::getSignalQuality()
 
 String SIMModem::getIPAddress()
 {
+    return m_ipAddress;
+}
+
+String SIMModem::parseIPAddress()
+{
     String ipAddress = sendCommand("AT+CIFSR", "", 0, 500, true);
     if (ipAddress == "0.0.0.0")
     {
@@ -291,6 +470,22 @@ String SIMModem::getIPAddress()
     return "";
 }
 
+bool SIMModem::connectServer(String hostName, String port)
+{
+    if (sendCommand("AT+CIPSHUT", S_SHUT_OK, 0, 5000, false) != S_OK)
+    {
+        return false;
+    }
+
+    String connect = "AT+CIPSTART=\"TCP\",\"" + hostName + "\",\"" + port + "\"";
+    if (sendCommand(connect, S_CONNECT, 0, 5000, false) != S_OK)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 bool SIMModem::connect(String apn, String apnUid, String apnPwd)
 {
     long start = millis();
@@ -305,7 +500,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
         m_simId = getSIMId();
 
         start = millis();
-        m_console->print("Connect to cell service.");
+        m_console->printVerbose("Connect to cell service.");
         while (!getCGREG())
         {
             m_console->printWarning("Not connect to cell service.");
@@ -341,7 +536,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
             if (millis() - start > 60000)
             {
                 m_lastError = "SIM0011";
-                
+
                 m_console->printError("Timeout waiting for service connection.");
                 return false;
             }
@@ -349,14 +544,14 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
 
         m_console->print("Service status is up.");
 
-        m_ipAddress = ""; // GetIPAddress(trace);
+        m_ipAddress = "";
         if (m_ipAddress == "")
         {
-            boolean isGPRSConnected = false;
+            bool isGPRSConnected = false;
             start = millis();
             while (!isGPRSConnected)
             {
-               m_console->print("GPRS Not Connected - Connecting.");
+                m_console->print("GPRS Not Connected - Connecting.");
                 delay(500);
 
                 isGPRSConnected = connectGPRS();
@@ -370,8 +565,8 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
             }
 
             m_console->print("GRPS Now connected.");
-      
-            m_ipAddress = getIPAddress();
+
+            m_ipAddress = parseIPAddress();
             m_console->print("Now Connected IP Address is " + m_ipAddress);
         }
         else
@@ -381,3 +576,4 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
 
         connected = true;
     }
+}

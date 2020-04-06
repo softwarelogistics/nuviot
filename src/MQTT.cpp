@@ -43,15 +43,15 @@ void MQTT::writeLengthPrefixedString(String str)
     byte lenBuffer[2];
     lenBuffer[0] = (byte)(str.length() >> 8);
     lenBuffer[1] = (byte)(str.length() & 0xFF);
-    m_channel->transmit(lenBuffer, 2);
-    m_channel->print(str);
+    m_channel->enqueueByteArray(lenBuffer, 2);
+    m_channel->enqueueString(str);
 
     m_console->printVerbose("Sending [" + String(str.length() + 2) + "] bytes for [" + str + "]");
 }
 
 void MQTT::writeString(String str)
 {
-    m_channel->print(str);
+    m_channel->enqueueString(str);
 }
 
 void MQTT::writeByteArray(byte *buffer, int length)
@@ -71,30 +71,86 @@ int MQTT::readRemainingLength()
     return remainingLength;
 }
 
-byte MQTT::readResponse(byte expected)
+void MQTT::handlePublishedMessage()
 {
-    int loopCount = 10;
+    int remainingLength = readRemainingLength();
+    if (remainingLength > 0)
+    {
+        m_channel->readBytes(m_rxBuffer, remainingLength);
+
+        int topicLength = (m_rxBuffer[0] << 8) | m_rxBuffer[1];
+        String topic = "";
+        for (int idx = 0; idx < topicLength; ++idx)
+        {
+            // there is likely a better way...
+            topic += String((char)m_rxBuffer[idx + 2]);
+        }
+
+        if (messageReceivedCallback != NULL)
+        {
+            messageReceivedCallback(topic, &m_rxBuffer[2 + topicLength], remainingLength - (2 + topicLength));
+        }
+    }
+}
+
+void MQTT::checkForReceivedMessages()
+{
+    byte responseCode = m_channel->readByte();
+    m_console->printByte("Received [", responseCode, "] from MQTT Server.");
+    switch (responseCode)
+    {
+    case MQTT_PUBLISH:
+        handlePublishedMessage();
+    }
+}
+
+bool MQTT::readResponse(byte expected)
+{
+    int loopCount = 200;
     m_console->printByte("Waiting for [", expected, "] as response from MQTT Server.");
 
     while (loopCount-- > 0)
     {
-
         if (m_channel->available() > 0)
         {
             byte responseCode = m_channel->readByte();
-            int remainingLength = readRemainingLength();
-            if (remainingLength > 0)
-            {
-                m_channel->readBytes(m_rxBuffer, remainingLength);
-            }
+            m_console->printByte("Received [", responseCode, "] from MQTT Server.");
 
-            if (responseCode == expected)
+            switch (responseCode)
             {
-                return true;
+            case MQTT_PUBLISH:
+                handlePublishedMessage();
+                break;
+            default:
+                int remainingLength = readRemainingLength();
+                if (remainingLength > 0)
+                {
+                    m_console->printVerbose("Returned remaining length: " + String(remainingLength));
+                    size_t bytesRead = m_channel->readBytes(m_rxBuffer, remainingLength);
+                    if (bytesRead == remainingLength)
+                    {
+                        m_console->printByteArray(m_rxBuffer, remainingLength);
+                    }
+                    else
+                    {
+                        m_console->printError("Expected array of " + String(remainingLength) + " received " + String((int)bytesRead) + " bytes.");
+                        return false;
+                    }
+                }
+                else
+                {
+                    m_console->printVerbose("No payload from message.  ");
+                }
+
+                if (responseCode == expected)
+                {
+                    m_console->printVerbose("Returned expected response code.");
+                    return true;
+                }
             }
         }
 
-        delay(100);
+        delay(10);
     }
 
     m_console->printError("Error waiting for MQTT Response.");
@@ -149,7 +205,7 @@ bool MQTT::connect(String uid, String pwd, String clientId)
     }
     else
     {
-        m_console->print("Not connect to MQTT.");
+        m_console->printError("Not connected to MQTT.");
         return false;
     }
 }
@@ -229,7 +285,7 @@ bool MQTT::subscribe(String topic, byte qos)
     if (readResponse(0x90))
     {
         m_subscriptionId++;
-        m_console->printVerbose("Subscribed to [" + topic + "]");
+        m_console->print("Subscribed to [" + topic + "]");
         /* we previously incremented it so decrement it now */
         return m_subscriptionId - 1;
     }
@@ -254,8 +310,13 @@ bool MQTT::ping()
 
 void MQTT::setMessageReceivedCallback(void (*callback)(String topic, unsigned char *buffer, size_t len))
 {
+    messageReceivedCallback = callback;
 }
 
 void MQTT::loop()
 {
+    if (m_channel->available() > 0)
+    {
+        checkForReceivedMessages();
+    }
 }

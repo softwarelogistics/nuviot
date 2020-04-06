@@ -30,8 +30,8 @@ public:
     String getLastError();
 
 private:
-    void (*errorCallback)(String error);
-    void (*messageReceivedCallback)(String topic, byte buffer[], int length);
+    void (*errorCallback)(String error) = NULL;
+    void (*messageReceivedCallback)(String topic, unsigned char buffer[], size_t length) = NULL;
 
     Console *m_console;
     Channel *m_channel;
@@ -44,7 +44,7 @@ private:
     int m_rxBufferTail = 0;
 
     int m_txBufferHead = 0;
-    int m_rxBufferTail = 0;
+    int m_txBufferTail = 0;
 
     int m_packetId = 0;
     int m_subscriptionId = 0;
@@ -57,10 +57,13 @@ private:
     void writeRemainingLength(unsigned int remaining_length);
     int readRemainingLength();
     void writeByteArray(byte *buffer, int length);
+    void handlePublishedMessage();
+
+    void checkForReceivedMessages();
 
     void flush();
 
-    byte readResponse(byte expected);
+    bool readResponse(byte expected);
 };
 
 #endif

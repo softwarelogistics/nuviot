@@ -22,6 +22,8 @@ public:
 
     void enqueueByte(uint8_t byte);
     void enqueueByteArray(uint8_t buffer[], size_t len);
+    void enqueueString(String str);
+
     void flush();
     
     String readStringUntil(char ch, int timeout);

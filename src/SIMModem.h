@@ -9,8 +9,11 @@
 #define S_OK "OK"
 #define S_AT "AT"
 #define S_SHUT_OK "SHUT OK"
-#define S_CONNECT_OK "CONNECT OK"
+#define S_CONNECT "CONNECT"
+#define S_CLOSED "CLOSED"
 #define S_RESET "RESET!"
+
+#define TEMP_BUFFER_SIZE 2048
 
 #include <Arduino.h>
 #include "Console.h"
@@ -18,11 +21,12 @@
 
 class SIMModem {
 public:
-    SIMModem(Stream *stream, Console *console);
+    SIMModem(Channel *channel, Console *console);
 
     bool isServiceConnected();
     bool isModemOnline();
     bool connectGPRS();
+    bool connectServer(String hostName, String port);
     bool resetModem();
     bool enableErrorMessages();
     String getSIMId();
@@ -30,12 +34,15 @@ public:
     String getIPAddress();
     int getSignalQuality();
 
+    bool beginDownload(String url);
+
     bool enableTransparentMode();
-    bool enableCommandMode();
+    bool disableTransparentMode();
+    bool exitCommandMode();
     bool connect(String apn, String apnPwd, String apnUid);
 
 private:
-    byte m_tempBuffer[2048];
+    byte m_tempBuffer[TEMP_BUFFER_SIZE];
     String m_lastError;
     String m_apn;
     String m_apnUid;
@@ -48,7 +55,9 @@ private:
   
     String sendCommand(String command);
     String sendCommand(String cmd, String expectedReply, unsigned long delayMS, long timeout, boolean returnAny);    bool setNBIoTMode();
+    String parseIPAddress();
     
+    bool setBearer();
     bool setLTE();
     bool setAPN();
     bool setBand();

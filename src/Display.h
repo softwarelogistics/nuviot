@@ -2,12 +2,10 @@
 #define Display_h
 
 #include <Arduino.h>
-#include <M5Stack.h>
 #include <U8g2lib.h>
 #include <U8x8lib.h>
 
 #define DISPLAY_U8G 100
-#define DISPLAY_M5STACK 101
 
 class Display
 {
@@ -55,19 +53,11 @@ public:
 
     void setTextColor(unsigned long color)
     {
-        if (m_displayType == DISPLAY_M5STACK)
-        {
-            M5.Lcd.setTextColor(color);
-        }
     }
 
     void setTextSize(int textSize)
     {
         m_textSize = textSize;
-        if (m_displayType == DISPLAY_M5STACK)
-        {
-            M5.Lcd.setTextSize(textSize);
-        }
     }
 
     void clearBuffer(unsigned long color)
@@ -75,11 +65,6 @@ public:
         if (m_displayType == DISPLAY_U8G)
         {
             u8g2->clearBuffer();
-        }
-
-        if (m_displayType == DISPLAY_M5STACK)
-        {
-            M5.Lcd.fillScreen(color);
         }
 
         m_top = 5;
@@ -90,11 +75,6 @@ public:
         if (m_displayType == DISPLAY_U8G)
         {
             u8g2->clearBuffer();
-        }
-
-        if (m_displayType == DISPLAY_M5STACK)
-        {
-            M5.Lcd.fillScreen(WHITE);
         }
 
         m_top = 5;
@@ -162,12 +142,6 @@ public:
         if (m_displayType == DISPLAY_U8G)
         {
             u8g2->drawStr((u8g2_uint_t)x, (u8g2_uint_t)y, str);
-        }
-
-        if (m_displayType == DISPLAY_M5STACK)
-        {
-            M5.Lcd.setCursor(x, y);
-            M5.Lcd.print(str);
         }
     }
 };

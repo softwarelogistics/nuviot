@@ -475,6 +475,8 @@ void SimMQTT::EneuqueByteArray(uint8_t buffer[], int len)
     }
 }
 
+#define MQTT_CONNECT 0x10
+
 void SimMQTT::Flush()
 {
     int sendLength = m_txTail - m_txHead;
