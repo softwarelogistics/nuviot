@@ -9,7 +9,7 @@
 #define QOS2 2
 
 #define TX_BUFFER_SIZE 1024
-#define RX_BUFFER_SIZE 1024
+#define RX_BUFFER_SIZE 2048
 
 class SimMQTT
 {
@@ -27,7 +27,7 @@ private:
 
     void (*callback)(String status);
     
-    byte m_tempBuffer[256];
+    byte m_tempBuffer[2048];
    
     byte m_txBuffer[TX_BUFFER_SIZE];
     byte m_rxBuffer[RX_BUFFER_SIZE];
@@ -41,12 +41,16 @@ private:
     bool write_it_all = false;
 
 private:
+    String readStringUntil(char c, int timeout);
+    size_t readBytes(uint8_t *buffer, size_t length);
     void WriteString(String str, boolean trace);
     void WriteLengthPrefixedString(String str, boolean trace);
 
     void DebugPrint(boolean trace, String msg);
     void PrintByteArray(boolean trace, String prefix, byte buffer[], int len);
     void PrintByteArray(boolean trace, byte array[], int len);
+    void PrintByteArray(boolean trace, String prefix, byte buffer[]);
+    void PrintByteArray(boolean trace, byte array[]);    
     void PrintByte(byte ch);
     boolean ReadByteArray(boolean trace, byte array[], int len, long timeOutMS);
     boolean ReadByteArray(boolean trace, byte array[], int len);
@@ -62,6 +66,8 @@ private:
     boolean SetLTE();
     boolean DisconnectIP();
     boolean ConnectGPRS(boolean trace);
+
+    boolean ReceivePublishedMessage(unsigned char *buffer, unsigned int bufferSize, boolean trace);
 
     void EnqueueByte(uint8_t byte);
     void EneuqueByteArray(uint8_t buffer[], int len);

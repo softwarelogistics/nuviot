@@ -227,6 +227,10 @@ bool NuvIoTState::getDebugMode()
     return m_debugMode;
 }
 
+void NuvIoTState::setDebugMode(bool mode) {
+    m_debugMode = mode;
+}
+
 String NuvIoTState::getWiFiSSID()
 {
     return m_WiFiSSID;

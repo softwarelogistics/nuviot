@@ -105,6 +105,7 @@ public:
 
     bool getVerboseLogging();
     bool getDebugMode();
+    void setDebugMode(bool mode);
 
     String queryState();
 

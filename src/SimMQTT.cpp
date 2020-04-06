@@ -8,7 +8,7 @@
 #define S_AT "AT"
 #define S_ERROR "ERROR"
 
-#define S_SEND_OK "SEND OK"
+#define S_SEND_OK "\nSEND OK\r\n"
 #define S_SHUT_OK "SHUT OK"
 #define S_CONNECT_OK "CONNECT OK"
 
@@ -31,8 +31,21 @@ void SimMQTT::DebugPrint(boolean trace, String msg)
     }
 }
 
+bool SimMQTT::ReceivePublishedMessage(unsigned char *buffer, unsigned int bufferSize, boolean trace) {
+    int remainingLength = buffer[1];
+    int topicLength = (buffer[2] << 8) | buffer[3];
+
+    readBytes(m_tempBuffer, (remainingLength + topicLength) - bufferSize);
+}
+
 bool SimMQTT::HandleByteArray(unsigned char *buffer, unsigned int bufferSize, boolean trace)
 {
+    PrintByteArray(true, "Handle Binary: ", buffer, bufferSize);
+    if (buffer[0] == 0x30)
+    {        
+        return ReceivePublishedMessage(buffer, bufferSize, trace);
+    }
+
     return true;
 }
 
@@ -40,7 +53,9 @@ bool SimMQTT::IsString(byte buffer[], int len)
 {
     for (int idx = 0; idx < len; ++idx)
     {
-        if ((buffer[idx] < 32 || buffer[idx] > 127) && buffer[idx] != 0x00)
+        if ((buffer[idx] < 32 || buffer[idx] > 127) &&
+            buffer[idx] != 0x00 &&
+            buffer[idx] != 0x0d && buffer[idx] != 0x0a)
         {
             return false;
         }
@@ -55,12 +70,8 @@ boolean SimMQTT::Loop(boolean trace)
 
     if (existingBufferLen > 0)
     {
-        m_serial->readBytes(m_tempBuffer, existingBufferLen);
-        PrintByteArray(trace, "Found in buffer: ", m_tempBuffer, existingBufferLen);
-    }
-    else
-    {
-        DebugPrint(trace, "empty buffer.");
+        readBytes(m_tempBuffer, existingBufferLen);
+        HandleByteArray(m_tempBuffer, existingBufferLen, trace);
     }
 }
 
@@ -70,47 +81,38 @@ boolean SimMQTT::WaitForReply(String expectedReply, int iterations, boolean trac
     int loopCount = 0;
     while (shouldContinue)
     {
-        if (m_serial->available() > 0)
+        int bytesToRead = m_serial->available();
+        if (bytesToRead >= expectedReply.length())
         {
-            String msg = m_serial->readStringUntil('\n');
-            msg.trim();
-            if (msg == expectedReply)
+            readBytes(m_tempBuffer, expectedReply.length());
+
+            PrintByteArray(true, "Original Message: ", m_tempBuffer, expectedReply.length());
+
+            if (strncmp(expectedReply.c_str(), (char *)m_tempBuffer, expectedReply.length()) == 0)
             {
                 DebugPrint(trace, "WaitForReply - Match: [" + expectedReply + "] Iteration: " + String(loopCount));
                 return true;
             }
-            else
-            {
-                if (msg == S_CALL_READY || msg == S_SMS_READY)
-                {
-                    return false;
-                }
 
-                msg.getBytes(m_tempBuffer, msg.length() + 1);
-                if (IsString(m_tempBuffer, msg.length()))
-                {
-                    DebugPrint(trace, "WaitForReply - Expected: [" + expectedReply + "] Acutal: [" + msg + "] - Iterations: " + String(loopCount));
-                }
-                else
-                {
-                    PrintByteArray(trace, "WaitForReply - Binary: " + expectedReply + ", Raw Buffer: ", m_tempBuffer, msg.length());
-                }
-
-                byte buff[256];
-                msg.getBytes(buff, msg.length() + 1);
-                HandleByteArray(buff, msg.length(), trace);
-            }
+            HandleByteArray(m_tempBuffer, expectedReply.length(), trace);
         }
 
         loopCount++;
         if (iterations != -1 && loopCount > iterations)
         {
-            DebugPrint(trace, "Timed out waiting for: [" + expectedReply + "]");
+            DebugPrint(trace, "Timed out waiting for: [" + expectedReply + "] Iterations => " + String(iterations));
             return false;
         }
 
         delay(250);
     }
+}
+
+String SimMQTT::readStringUntil(char c, int timeout)
+{
+    String msg = m_serial->readStringUntil('\n');
+    msg.trim();
+    return msg;
 }
 
 String SimMQTT::SendCommand(String cmd, String expectedReply, unsigned long delayMS, long timeout, boolean returnAny, boolean trace)
@@ -138,9 +140,7 @@ String SimMQTT::SendCommand(String cmd, String expectedReply, unsigned long dela
 
         if (m_serial->available() > 0)
         {
-            String msg = m_serial->readStringUntil('\r');
-            msg.trim();
-
+            String msg = readStringUntil('\n', timeout);
             if (msg.length() > 0)
             {
                 if (msg == expectedReply)
@@ -199,7 +199,7 @@ String SimMQTT::SendCommand(String cmd, String expectedReply, unsigned long dela
                         else
                         {
                             returnValue = "";
-                            PrintByteArray(true, "  binary response: ", m_tempBuffer, msg.length());
+                            PrintByteArray(true, "Binary Response - Length: " + String(msg.length()) + " Values: ", m_tempBuffer, msg.length());
                         }
                     }
                 }
@@ -329,33 +329,78 @@ void SimMQTT::PrintByte(uint8_t ch)
     Serial.print(hexChar);
 }
 
+void SimMQTT::PrintByteArray(boolean trace, byte buffer[])
+{
+    PrintByteArray(trace, buffer, -1);
+}
+
 void SimMQTT::PrintByteArray(boolean trace, byte buffer[], int len)
 {
     if (trace && false)
     {
         Serial.print("Byte Array: " + String(len) + " chars ");
 
-        for (int idx = 0; idx < len; ++idx)
+        if (len == -1)
         {
-            PrintByte(buffer[idx]);
-            if (idx < len - 1)
-                Serial.print(" ");
+            int idx = 0;
+            byte ch = buffer[idx];
+            while (ch != 0x00)
+            {
+                if (idx > 0)
+                    Serial.print(" ");
+
+                PrintByte(ch);
+
+                idx++;
+                ch = buffer[idx];
+            }
+        }
+        else
+        {
+            for (int idx = 0; idx < len; ++idx)
+            {
+                PrintByte(buffer[idx]);
+                if (idx < len - 1)
+                    Serial.print(" ");
+            }
         }
 
         Serial.println(";");
     }
 }
 
+void SimMQTT::PrintByteArray(boolean trace, String prefix, byte buffer[])
+{
+    PrintByteArray(trace, prefix, buffer, -1);
+}
+
 void SimMQTT::PrintByteArray(boolean trace, String prefix, byte buffer[], int len)
 {
-    if (trace && false)
+    if (trace)
     {
         Serial.print(prefix);
-        for (int idx = 0; idx < len; ++idx)
+        if (len == -1)
         {
-            PrintByte(buffer[idx]);
-            if (idx < len - 1)
-                Serial.print(" ");
+            int idx = 0;
+            byte ch = buffer[idx];
+            while (ch != 0x00)
+            {
+                if (idx > 0)
+                    Serial.print(" ");
+                PrintByte(ch);
+
+                idx++;
+                ch = buffer[idx];
+            }
+        }
+        else
+        {
+            for (int idx = 0; idx < len; ++idx)
+            {
+                PrintByte(buffer[idx]);
+                if (idx < len - 1)
+                    Serial.print(" ");
+            }
         }
 
         Serial.println(";");
@@ -435,10 +480,7 @@ void SimMQTT::EneuqueByteArray(uint8_t buffer[], int len)
 
 void SimMQTT::Flush()
 {
-    if (write_it_all)
-    {
-        Serial.println("Data: " + String(m_txHead) + " " + String(m_txTail));
-    }
+    int sendLength = m_txTail - m_txHead;
 
     if (m_txTail < m_txHead)
     {
@@ -451,21 +493,54 @@ void SimMQTT::Flush()
         {
             m_serial->write(m_txBuffer[idx]);
         }
+
+        int sendLength = m_txTail + (TX_BUFFER_SIZE - m_txHead);
     }
     else
     {
-        if (write_it_all)
-        {
-            PrintByteArray(true, &m_txBuffer[m_txHead], m_txTail - m_txHead);
-        }
-
         for (int idx = m_txHead; idx < m_txTail; ++idx)
         {
             m_serial->write(m_txBuffer[idx]);
         }
     }
 
+    // The SIM module will echo back all the bytes are sent to it.
+    // this simply pulls them from the receive buffer so they don't
+    // get in the way of the other algorithms.
+    while (m_serial->available() < sendLength)
+        ;
+
+    int charCount = m_serial->readBytes(m_tempBuffer, sendLength);
+    if(charCount != sendLength)
+    {
+        Serial.println("WTF!!!! Didn't read correct amount.");
+    }
+
+    for(int idx = 0; idx < charCount; ++idx){
+        if(idx > 0)
+            Serial.print(" ");
+            
+        PrintByte(m_tempBuffer[idx + m_txHead]);
+    }
+
+    Serial.println(";");
+
+    for(int idx = 0; idx < charCount; ++idx){
+        if(idx > 0)
+            Serial.print(" ");
+
+        PrintByte(m_txBuffer[idx + m_txHead]);
+    }
+
+    Serial.println(";");
+
     m_txHead = m_txTail;
+}
+
+size_t SimMQTT::readBytes(uint8_t *buffer, size_t length)
+{    
+    int bytesRead = m_serial->readBytes(buffer, length);
+    Serial.println("Read " + String(bytesRead));
 }
 
 void SimMQTT::WriteString(String str, boolean trace)
@@ -515,7 +590,7 @@ boolean SimMQTT::ReadByteArray(boolean trace, byte buffer[], int expectedLen, lo
         return false;
     }
 
-    m_serial->readBytes(buffer, expectedLen);
+    readBytes(buffer, expectedLen);
     PrintByteArray(trace, m_tempBuffer, expectedLen);
 
     return true;
@@ -548,7 +623,7 @@ bool SimMQTT::ReadMQTTResponse(uint8_t expected, bool trace)
                 int payloadLen = m_tempBuffer[0];
                 if (payloadLen > 0)
                 {
-                    m_serial->readBytes(m_tempBuffer, payloadLen);
+                    readBytes(m_tempBuffer, payloadLen);
                     PrintByteArray(trace, "Reading MQTT Response Payload: ", m_tempBuffer, payloadLen);
                 }
 
@@ -635,43 +710,48 @@ void SimMQTT::WriteRemainingLength(int realLength, boolean trace)
     // to send over, set the continuation bit
     // Then take what's in the bits after the 7th bit
     // shift them over so they make up byte of 7 bits.
-    if(realLength > 0x7F) {
+    if (realLength > 0x7F)
+    {
         byte lsb = realLength & 0x7F | 0x80;
         EnqueueByte(lsb);
-        byte msb = ((realLength >> 7) & 0xFF)
+        byte msb = ((realLength >> 7) & 0xFF);
         EnqueueByte(msb);
     }
-    else {
+    else
+    {
         EnqueueByte((uint8_t)realLength);
     }
 }
 
 boolean SimMQTT::Ping(boolean trace)
 {
-    Loop(trace && m_verbose);
+    Loop(true);
 
-    byte pingMsg[] = {
-        0xC0, 0x00};
+    byte pingMsg[] = {0xC0, 0x00};
 
     WriteByteArray(pingMsg, sizeof(pingMsg), trace && m_verbose);
-    SendBuffer(trace && m_verbose);
+    if (!SendBuffer(trace && m_verbose))
+    {
+        DebugPrint(trace, "Timeout waiting for SEND_OK on PING");
+        return false;
+    }
 
     return ReadMQTTResponse(0xD0, trace && m_verbose);
 }
 
 boolean SimMQTT::Publish(String topic, String payload, byte qos, boolean trace)
 {
-    Loop(trace && m_verbose);
+    Loop(true);
 
     int rl = 2 + topic.length() +
-              2 + // packet id
-              payload.length();
+             2 + // packet id
+             payload.length();
     byte controlField = 0x30;
 
     controlField = controlField | (qos << 1);
 
     WriteControlField(controlField, trace && m_verbose);
-    WriteRealLength(rl, trace && m_verbose);
+    WriteRemainingLength(rl, trace && m_verbose);
 
     byte packetIdBuffer[] = {
         (m_packetId >> 8) && 0xFF,
@@ -683,12 +763,12 @@ boolean SimMQTT::Publish(String topic, String payload, byte qos, boolean trace)
 
     WriteByteArray(packetIdBuffer, 2, trace && m_verbose);
 
-    Serial.println("[" + payload + "] len: " + String(payload.length()));
-
     WriteString(payload, trace);
 
     if (!SendBuffer(trace && m_verbose))
     {
+        m_lastError = "Timeout waiting for SEND_OK on PULBISH";
+        DebugPrint(trace, m_lastError);
         return false;
     }
 
@@ -697,7 +777,7 @@ boolean SimMQTT::Publish(String topic, String payload, byte qos, boolean trace)
 
 boolean SimMQTT::Publish(String topic, byte qos, boolean trace)
 {
-    Loop(trace && m_verbose);
+    Loop(true);
 
     byte rl = 2 + topic.length() +
               2; // packet id
@@ -706,7 +786,7 @@ boolean SimMQTT::Publish(String topic, byte qos, boolean trace)
     controlField = controlField | (qos << 1);
 
     WriteControlField(controlField, trace && m_verbose);
-    WriteRealLength(rl, trace && m_verbose);
+    WriteRemainingLength(rl, trace && m_verbose);
 
     WriteLengthPrefixedString(topic, trace);
 
@@ -784,7 +864,7 @@ void SimMQTT::ResetModemBuffer()
     int available = m_serial->available();
     if (available > 0)
     {
-        m_serial->readBytes(m_tempBuffer, available);
+        readBytes(m_tempBuffer, available);
         PrintByteArray(true, "Found and disposed: ", m_tempBuffer, available);
     }
 
@@ -801,25 +881,17 @@ boolean SimMQTT::SendBuffer(boolean trace)
     String startSend = "AT+CIPSEND=" + String(sendLength);
 
     m_serial->println(startSend);
-    WaitForReply(startSend, 5, trace);
-
-    bool shouldContinue = true;
-    while (shouldContinue)
+    if (!WaitForReply(startSend + "\r\r\n> ", 5, trace))
     {
-        int recvCount = m_serial->available();
-        if (recvCount > 0)
-        {
-            ReadByteArray(trace, m_tempBuffer, 1);
-            if (m_tempBuffer[0] == '>')
-            {
-                shouldContinue = false;
-            }
-        }
+        m_lastError = "Timeout waiting for AT+CIPSEND";
+        DebugPrint(trace, m_lastError);
+        return false;
     }
 
     Flush();
+
     write_it_all = false;
-    return WaitForReply(S_SEND_OK, 5, trace);
+    return WaitForReply(S_SEND_OK, 20, trace);
 }
 
 bool SimMQTT::ConnectMQTT(String site, String uid, String pwd, String clientId, boolean trace)
@@ -860,7 +932,7 @@ bool SimMQTT::ConnectMQTT(String site, String uid, String pwd, String clientId, 
     };
 
     WriteControlField(MQTT_CONNECT, trace && m_verbose);
-    WriteRealLength(realLength, trace && m_verbose);
+    WriteRemainingLength(realLength, trace && m_verbose);
 
     WriteLengthPrefixedString(MQTT_HEADER, trace && m_verbose);
 
@@ -875,6 +947,8 @@ bool SimMQTT::ConnectMQTT(String site, String uid, String pwd, String clientId, 
 
     if (!SendBuffer(trace && m_verbose))
     {
+        m_lastError = "Timeout sending Connect";
+        DebugPrint(trace, "Timeout sending Connect");
         return false;
     }
 
