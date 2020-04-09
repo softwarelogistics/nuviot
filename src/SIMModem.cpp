@@ -48,7 +48,7 @@ bool SIMModem::disableTransparentMode()
     return sendCommand("AT+CIPMODE=0") == S_OK;
 }
 
-bool SIMModem::exitCommandMode()
+bool SIMModem::exitTransparentMode()
 {
     delay(1000);
     m_channel->print("+++");
@@ -67,55 +67,33 @@ bool SIMModem::exitCommandMode()
     return result;
 }
 
-bool SIMModem::beginDownload(String url)
+long SIMModem::configureForDownload(String url)
 {
-    long start = millis();
-
-    while (!isServiceConnected())
-    {
-        delay(500);
-        m_console->printWarning("Service status is not up, retrying.");
-
-        if (millis() - start > 60000)
-        {
-            m_lastError = "SIM0011";
-
-            m_console->printError("Timeout waiting for service connection.");
-            return false;
-        }
-    }
-
-    if (!setBearer())
-    {
-        m_console->printError("COULD NOT SET BEARER");
-        return false;
-    }
-
     if (sendCommand("AT+HTTPINIT") != S_OK)
     {
-        m_console->printError("COULD NOT SEND HTTPINIT=\"URL\",\"....\"");
-        return false;
-    }
-
-    if (sendCommand("AT+HTTPPARA=\"URL\",\"" + url + "\"") != S_OK)
-    {
-        m_console->printError("COULD NOT SEND HTTPPARAM=\"URL\",\"....\"");
-        return false;
+        m_console->printError("COULD NOT SEND HTTPINIT");
+        return -1;
     }
 
     if (sendCommand("AT+HTTPPARA=\"CID\",1") != S_OK)
     {
-        m_console->printError("COULD NOT SEND HTTPPARAM=\"CIDE\",1");
-        return false;
+        m_console->printError("COULD NOT SEND HTTPPARAM=\"CID\",1");
+        return -1;
+    }
+
+    String downloadCommand = "AT+HTTPPARA=\"URL\",\"" + url + "\"";
+
+    if (sendCommand(downloadCommand) != S_OK)
+    {
+        m_console->printError("COULD NOT SEND HTTPPARAM=\"URL\",\"....\"");
+        return -1;
     }
 
     if (sendCommand("AT+HTTPACTION=0") != S_OK)
     {
         m_console->printError("COULD NOT SEND HTTPACTION=0");
-        return false;
+        return -1;
     }
-
-    m_console->setVerboseLogging(true);
 
     int retryCount = 0;
     bool done = false;
@@ -126,7 +104,6 @@ bool SIMModem::beginDownload(String url)
         msg.trim();
         if (msg != "")
         {
-            m_console->print("Http Call Response: " + msg);
             contentSize = atol(msg.substring(msg.lastIndexOf(",") + 1).c_str());
             done = true;
         }
@@ -137,36 +114,153 @@ bool SIMModem::beginDownload(String url)
     if (retryCount == 5)
     {
         m_console->printError("No server response from AT+HTTPACTION=0");
-        return false;
+        return -1;
     }
-
-    m_console->print("Received content size of [" + String(contentSize) + "].");
 
     m_channel->transmit("AT+HTTPREAD\r\n");
     String echoResponse = m_channel->readStringUntil('\n', 10000);
     echoResponse.trim();
 
-    m_console->print("Echo Response: " + echoResponse);
     String readResponse = m_channel->readStringUntil('\n', 10000);
     readResponse.trim();
-    m_console->print("Read Response: " + readResponse);
+
+    return contentSize;
+}
+
+#define BLOCK_SIZE 512
+
+long SIMModem::downloadContent(long contentSize, unsigned char *buffer)
+{
+    long totalBytesRead = 0;
 
     while (contentSize > 0)
     {
-        long toRead = 128 < contentSize ? 128 : contentSize;
+        long toRead = BLOCK_SIZE < contentSize ? BLOCK_SIZE : contentSize;
 
         int actualRead = m_channel->readBytes(m_tempBuffer, toRead);
+
         if (actualRead != -1)
         {
-            contentSize -= actualRead;
-            m_tempBuffer[actualRead - 1] = 0x00;
+            for (int idx = 0; idx < actualRead; ++idx)
+            {
+                buffer[idx + totalBytesRead] = m_tempBuffer[idx];
+            }
 
-            //Serial.println("RESPONSE MESSAGE" + String((char *)m_tempBuffer));
+            contentSize -= actualRead;
+            totalBytesRead += actualRead;
+
+            //        Serial.println("RESPONSE MESSAGE" + String((char *)m_tempBuffer));
         }
         else
         {
             m_console->print("Bytes Read [" + String(actualRead) + "] with total of [" + String(contentSize) + "] bytes.");
         }
+    }
+
+    waitForReply("OK", 10);
+
+    return totalBytesRead;
+}
+
+bool SIMModem::beginDownload(String url)
+{
+    long start = millis();
+    while (!isServiceConnected())
+    {
+        delay(500);
+        m_console->printWarning("Service status is not up, retrying.");
+
+        if (millis() - start > 60000)
+        {
+            m_lastError = "SIM0011";
+
+            m_console->printError("Timeout waiting for service connection.");
+            return -1;
+        }
+    }
+
+    if (!setBearer())
+    {
+        m_console->printError("COULD NOT SET BEARER");
+        return -1;
+    }
+
+    long contentSize = configureForDownload(url + "/size");
+    if (contentSize == -1)
+    {
+        return false;
+    }
+
+    m_console->setVerboseLogging(true);
+
+    m_console->print("Received content size of [" + String(contentSize) + "].");
+
+    long bytesread = downloadContent(contentSize, m_rxBuffer);
+
+    m_console->printByteArray(m_rxBuffer, 20);
+
+    if (bytesread == contentSize)
+    {
+        m_rxBuffer[contentSize] = 0;
+        long fullFileSize = atol((char *)m_rxBuffer);
+
+        if (sendCommand("AT+HTTPTERM") != S_OK)
+        {
+            m_console->setVerboseLogging(false);
+            m_console->printError("COULD NOT TERMINATE HTTP SESSION");
+            return -1;
+        }
+
+        m_console->print("String full content size to download [" + String(fullFileSize) + "].");
+
+        int chunks = (fullFileSize / DOWNLOAD_BUFFER_SIZE) + 1;
+
+        for (int chunkIndex = 0; chunkIndex < chunks; ++chunkIndex)
+        {
+            m_console->print("Download chunk " + String(chunkIndex + 1) + " of " + String(chunks + 1) + ".");
+
+            long start = chunkIndex * DOWNLOAD_BUFFER_SIZE;
+
+            int downloadChunkSize = (fullFileSize - start);
+            if (downloadChunkSize > DOWNLOAD_BUFFER_SIZE)
+                downloadChunkSize = DOWNLOAD_BUFFER_SIZE;
+
+            m_console->setVerboseLogging(false);
+
+            String downloadQueryString = "?start=" + String(start) + "&length=" + String(downloadChunkSize);
+            m_console->print("Query String" + downloadQueryString);
+
+            contentSize = configureForDownload(url + downloadQueryString);
+            if (contentSize == -1)
+            {
+                m_console->setVerboseLogging(false);
+                return false;
+            }
+
+            m_console->print("Received content size of [" + String(contentSize) + "].");
+
+            m_console->setVerboseLogging(true);
+
+            downloadContent(contentSize, m_rxBuffer);
+
+            if (sendCommand("AT+HTTPTERM") != S_OK)
+            {
+                m_console->setVerboseLogging(false);
+                m_console->printError("COULD NOT TERMINATE HTTP SESSION");
+                return -1;
+            }
+        }
+    }
+    else
+    {
+        m_console->printError("Mismatch in bytes read [" + String(bytesread) + "] and content size [" + String(contentSize) + "]");
+    }
+
+    if (sendCommand("AT+HTTPTERM") != S_OK)
+    {
+        m_console->setVerboseLogging(false);
+        m_console->printError("COULD NOT TERMINATE HTTP SESSION");
+        return -1;
     }
 
     m_console->setVerboseLogging(false);
@@ -307,24 +401,29 @@ bool SIMModem::isServiceConnected()
 
 bool SIMModem::isModemOnline()
 {
-    return sendCommand("AT", S_OK, 0, 500, false) == S_OK;
+    return sendCommand("AT", S_OK, 0, 500, false) != S_OK;
+}
+
+bool SIMModem::selectNetwork()
+{
+    return sendCommand("AT+COPS=4,2,\"310410\"", S_OK, 0, 500, false) == S_OK;
 }
 
 bool SIMModem::setNBIoTMode()
 {
-    if (sendCommand("AT+CMNB=1", S_OK, 0, 500, false) != S_OK)
+    if (sendCommand("AT+CMNB=1", S_OK, 0, 500, false) == S_OK)
         return true;
 
-    m_lastError = "COMMS0005";
+    m_lastError = "COMMS015";
     return false;
 }
 
 bool SIMModem::setLTE()
 {
-    if (sendCommand("AT+CNMP=38", S_OK, 0, 500, false) != S_OK)
+    if (sendCommand("AT+CNMP=38", S_OK, 0, 500, false) == S_OK)
         return true;
 
-    m_lastError = "COMMS0004";
+    m_lastError = "COMMS014";
 
     return false;
 }
@@ -334,9 +433,20 @@ bool SIMModem::resetModem()
     return sendCommand("AT+CFUN=1,1", "SMS Ready", 0, 15000, false) == S_OK;
 }
 
+bool SIMModem::setPDPContext()
+{
+    String str = "AT+CGDCONT=1,\"IP\",\"hologram\",\"0.0.0.0\",0,0,0,0";
+    return sendCommand(str) == S_OK;
+}
+
 bool SIMModem::setBand()
 {
-    return sendCommand("AT+CBAND=\"ALL_MODE\"") == S_OK;
+    if(sendCommand("AT+CBAND=\"ALL_MODE\"") == S_OK)
+        return true;
+
+    m_lastError = "COMMS016";
+
+    return false;
 }
 
 bool SIMModem::setAPN()
@@ -417,9 +527,47 @@ bool SIMModem::getCGREG()
     return (creg.charAt(10) == '1' || creg.charAt(10) == '5');
 }
 
+bool SIMModem::init()
+{
+    m_console->print("Initialization Started.");
+
+    if (!setBand())
+    {
+        m_lastError = "Could not set band.";
+        m_console->printError("Could not set band.");
+        return false;
+    }
+
+    if (!setLTE())
+    {
+        m_lastError = "Could not set LTE.";
+        m_console->printError("Could not set LTE.");
+        return false;
+    }
+
+    if (!setNBIoTMode())
+    {
+        m_lastError = "Could not set NBIoT Mode.";
+        m_console->printError(m_lastError);
+        return false;
+    }
+
+    if (!setPDPContext())
+    {
+        m_lastError = "Could not set PDP Context.";
+        m_console->printError(m_lastError);
+        return false;
+    }
+
+    m_console->print("Initialization Completed.");
+
+    return true;
+}
+
 String SIMModem::getSIMId()
 {
-    return sendCommand("AT+CCID");
+    m_simId = sendCommand("AT+CCID");
+    return m_simId;
 }
 
 int SIMModem::getSignalQuality()
@@ -486,8 +634,17 @@ bool SIMModem::connectServer(String hostName, String port)
     return true;
 }
 
+bool SIMModem::setBaudRate() {
+    return sendCommand("AT+IPR=115200");
+}
+
 bool SIMModem::connect(String apn, String apnUid, String apnPwd)
 {
+    if (!init())
+    {
+        return false;
+    }
+
     long start = millis();
 
     m_apn = apn;

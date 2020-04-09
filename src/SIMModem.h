@@ -14,6 +14,7 @@
 #define S_RESET "RESET!"
 
 #define TEMP_BUFFER_SIZE 2048
+#define DOWNLOAD_BUFFER_SIZE 16384
 
 #include <Arduino.h>
 #include "Console.h"
@@ -30,19 +31,22 @@ public:
     bool resetModem();
     bool enableErrorMessages();
     String getSIMId();
+    bool setBaudRate();
     String getNetwork();
     String getIPAddress();
     int getSignalQuality();
 
     bool beginDownload(String url);
-
+    bool init();
     bool enableTransparentMode();
     bool disableTransparentMode();
-    bool exitCommandMode();
+    bool exitTransparentMode();
     bool connect(String apn, String apnPwd, String apnUid);
 
 private:
     byte m_tempBuffer[TEMP_BUFFER_SIZE];
+    byte m_rxBuffer[DOWNLOAD_BUFFER_SIZE];
+
     String m_lastError;
     String m_apn;
     String m_apnUid;
@@ -57,9 +61,13 @@ private:
     String sendCommand(String cmd, String expectedReply, unsigned long delayMS, long timeout, boolean returnAny);    bool setNBIoTMode();
     String parseIPAddress();
     
+    long downloadContent(long contentSize, unsigned char * buffer);
+    long configureForDownload(String url);
     bool setBearer();
     bool setLTE();
+    bool selectNetwork();
     bool setAPN();
+    bool setPDPContext();    
     bool setBand();
     bool sisconnectIP();
     bool disconnectIP();
