@@ -509,7 +509,12 @@ int NuvIoTState::getInt(String key)
     Param *pParam = findKey(m_pIntParamHead, key.c_str());
     if (pParam != NULL)
     {
-        return EEPROM.readInt(INT_BLOCK_START + pParam->getIndex() * sizeof(int));
+        int addr = INT_BLOCK_START + pParam->getIndex() * sizeof(int);        
+
+        int result = EEPROM.readInt(addr);
+        Serial.println("Read int value " + key + " " + String(result) + " at address " + String(addr));
+
+        return result;
     }
 
     return 0;
@@ -534,9 +539,10 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
         if (pParam != NULL)
         {
             int intValue = atoi(value.c_str());
-            EEPROM.writeShort(INT_BLOCK_START + pParam->getIndex() * sizeof(intValue), intValue);
+            int addr = INT_BLOCK_START + pParam->getIndex() * sizeof(intValue);
+            EEPROM.writeInt(addr, intValue);
             EEPROM.commit();
-            Serial.println("Write int value " + field + " " + String(intValue));
+            Serial.println("Write int value " + field + " " + String(intValue) + " at address " + String(addr));
         }
     }
     else if (fieldType == "Decimal")
@@ -635,7 +641,7 @@ void NuvIoTState::registerInt(const char *key, int defaultValue)
     if (m_pIntParamHead == NULL)
     {
         p->setIndex(0);
-        m_logger->logVerbose("Register bool to for [" + String(p->getKey()) + "] with value [" + String(p->getIntDefault()) + "] with index [" + String(p->getIndex()) + "]");
+        m_logger->logVerbose("Register int to for [" + String(p->getKey()) + "] with value [" + String(p->getIntDefault()) + "] with index [" + String(p->getIndex()) + "]");
         m_pIntParamHead = p;
     }
     else

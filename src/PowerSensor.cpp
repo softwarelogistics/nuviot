@@ -18,14 +18,14 @@ void PowerSensor::setup()
     m_voltage[1] = 120;
     m_voltage[2] = 120;
 
-    m_ctRatioFactor[0] = 100.0f;
-    m_ctRatioFactor[1] = 100.0f;
-    m_ctRatioFactor[2] = 100.0f;
+    m_ctRatioFactor[0] = 100;
+    m_ctRatioFactor[1] = 100;
+    m_ctRatioFactor[2] = 100;
 
     
     m_adcChannels[0] = 2; /* ADCMOD1 - 2 */
-    m_adcChannels[1] = 4; /* ADCMOD2 - 6 */    
-    m_adcChannels[2] = 5; /* ADCMOD2 - 5 */
+    m_adcChannels[1] = 4; /* ADCMOD2 - 0 */    
+    m_adcChannels[2] = 5; /* ADCMOD2 - 1 */
 }
 
 void PowerSensor::loop()
@@ -36,6 +36,9 @@ void PowerSensor::loop()
         {
             float avereageTotal = 0;
             int iterations = 50;
+
+            float min = 500;
+            float max = -1;
 
             // Assuming 60 hz
             // sample once every 10ms or collect values over 30 samples
@@ -51,22 +54,33 @@ void PowerSensor::loop()
             // this will establishe our baseline (which for our circuit should be very close
             // to 2.5 volts).
             float offset = avereageTotal / iterations;
-            Serial.println("Found average total: " + String(offset));
+            
 
             float levelTotal = 0;
 
             for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
             {
                 float voltage = m_adc->getVoltage(m_adcChannels[idx]);
+                if(voltage < min)
+                    min = voltage;
+
+                if(voltage > max)
+                    max = voltage;
+
                 /* start collecting the sum of the voltages */
                 levelTotal += voltage > offset ? voltage - offset : -(voltage - offset);
                 delay(10);
             }
 
+            float avgLevel = (levelTotal / (float)iterations);
+
+            // i = E / R, burden resistor = 33.0 
+            double current = avgLevel / 33.0f;
+
             // we are using a 100A : 0.050MA CT, with the burden resistor it's
             // a factor of 100.  If the CT ratio changes, we may need to consider
             // adjusting this as well.  This should probably be pulled from a setting.
-            m_channelAmps[idx] = (levelTotal / (float)iterations) * m_ctRatioFactor[idx];
+            m_channelAmps[idx] = avgLevel * m_ctRatioFactor[idx];
         }
     }
 

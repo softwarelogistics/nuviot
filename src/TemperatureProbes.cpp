@@ -16,8 +16,9 @@ void TemperatureProbes::setup()
 
 #define MIN_VALUE -999
 
-void TemperatureProbes::loop()
+void TemperatureProbes::readTemperatures()
 {
+
     for (int idx = 0; idx < 3; ++idx)
     {
         float temperature = MIN_VALUE;
@@ -51,7 +52,6 @@ void TemperatureProbes::loop()
             m_payload->hasTemperature1 = temperature != MIN_VALUE;
             m_payload->humidity1 = humidity == MIN_VALUE ? 0 : humidity;
             m_payload->hasHumidity1 = humidity != MIN_VALUE;
-
             break;
         case 1:
             m_payload->temperature2 = temperature == MIN_VALUE ? 0 : temperature;
@@ -67,6 +67,28 @@ void TemperatureProbes::loop()
             break;
         }
     }
+}
+
+void TemperatureProbes::loop()
+{
+    if (m_initialized)
+    {
+        readTemperatures();
+    }
+    else
+    {
+        /* first time through read it twice, that way the next we call this, every time
+           we read a temperature, we get the one requested in the last loop, since the first
+           time through we haven't requested it before...do it this way.*/
+
+        for (int idx = 0; idx < 2; ++idx)
+        {
+            readTemperatures();
+            delay(500);
+        }
+    }
+
+    m_initialized = true;
 }
 
 void TemperatureProbes::debugPrint()

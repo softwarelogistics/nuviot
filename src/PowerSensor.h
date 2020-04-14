@@ -28,7 +28,7 @@ class PowerSensor: public AbstractSensor {
 
         bool m_channelEnabled[3];
         float m_channelAmps[3];
-        float m_ctRatioFactor[3];
+        double m_ctRatioFactor[3];
         uint16_t m_voltage[3];
 
         ADC *m_adc;

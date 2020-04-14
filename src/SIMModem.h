@@ -34,7 +34,7 @@ public:
     bool setBaudRate();
     String getNetwork();
     String getIPAddress();
-    int getSignalQuality();
+    int getSignalQuality();    
 
     bool beginDownload(String url);
     bool init();
@@ -54,6 +54,7 @@ private:
     String m_simId;
     String m_network;
     String m_ipAddress;
+    int m_rssi;
 
     bool waitForReply(String expectedReply, int iterations);
   
@@ -73,6 +74,7 @@ private:
     bool disconnectIP();
     bool getCREG();
     bool getCGREG();   
+    int findRSSI();
   
     Console *m_console;
     Channel *m_channel;

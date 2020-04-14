@@ -232,6 +232,8 @@ bool MQTT::publish(String topic, String payload, byte qos)
     m_channel->enqueueByte((uint8_t)((m_packetId >> 8) && 0xFF));
     m_channel->enqueueByte((uint8_t)(m_packetId && 0xFF));
 
+    m_packetId++;
+
     writeString(payload);
 
     flush();

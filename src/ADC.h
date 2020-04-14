@@ -18,6 +18,9 @@ private:
     bool m_portEnabled[3];
     bool m_vbattEnabled;
 
+    bool m_bank1Enabled = false;
+    bool m_bank2Enabled = false;
+
 public:
     ADC(TwoWire *wire, MessagePayload *payload, Logger *logger)
     {
@@ -133,12 +136,12 @@ public:
 
     void loop()
     {
-        if(!_bank1->isOnline()) {
+        if(!_bank1->isOnline() && m_bank1Enabled) {
             m_messagePayload->lastError = "ADC Bank 1 Offline";
             m_logger->logError("ADC Bank 1 Offline");
             m_messagePayload->status = "Error";
         }
-        else if(!_bank2->isOnline()) {
+        else if(!_bank2->isOnline() && m_bank2Enabled) {
             m_messagePayload->lastError = "ADC Bank 2 Offline";
             m_logger->logError("ADC Bank 2 Offline");
             m_messagePayload->status = "Error";
@@ -167,6 +170,14 @@ public:
         for(int idx = 0; idx < 3; ++idx)
             if(m_portEnabled[idx])
                 m_logger->logVerbose("VADC" + String(idx) + "  :" + String(getADC(idx)));
+    }
+
+    bool setBankEnabled(int bank, bool enabled)
+    {
+        switch(bank) {
+            case 1: m_bank1Enabled = enabled; break;
+            case 2: m_bank2Enabled = enabled; break;
+        }
     }
 
     bool isBankOneOnline()

@@ -401,7 +401,7 @@ bool SIMModem::isServiceConnected()
 
 bool SIMModem::isModemOnline()
 {
-    return sendCommand("AT", S_OK, 0, 500, false) != S_OK;
+    return sendCommand("AT", S_OK, 0, 500, false) == S_OK;
 }
 
 bool SIMModem::selectNetwork()
@@ -571,12 +571,18 @@ String SIMModem::getSIMId()
 }
 
 int SIMModem::getSignalQuality()
+{    
+    return m_rssi;
+}
+
+int SIMModem::findRSSI()
 {
     String csq = sendCommand("AT+CSQ");
     if (csq.length() > 0)
     {
         csq = csq.substring(6);
-        return csq.substring(0, csq.charAt(1) == ',' ? 1 : 2).toInt();
+        m_rssi = csq.substring(0, csq.charAt(1) == ',' ? 1 : 2).toInt();
+        return m_rssi;
     }
 
     return -1;
@@ -673,10 +679,10 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
         m_network = getNetwork();
         m_console->print("Connected to network: " + m_network);
 
-        int signalStrength = getSignalQuality();
+        int signalStrength = findRSSI();
         while (signalStrength < 1)
         {
-            signalStrength = getSignalQuality();
+            signalStrength = findRSSI();
         }
 
         m_console->print("Signal strength: " + String(signalStrength));

@@ -36,6 +36,7 @@ class TemperatureProbes: public AbstractSensor{
     private:
         float m_temperatures[3];
         float m_humidities[3];
+        bool m_initialized;
 
         byte resolvePinIndex(int idx);
 
@@ -43,11 +44,13 @@ class TemperatureProbes: public AbstractSensor{
 
         OneWire *m_oneWires[3];
         DallasTemperature *m_probes[3];
-        DHT *m_dhts[3];
+        DHT *m_dhts[3]; 
         
         MessagePayload* m_payload;
         Logger* m_logger;
 
         NuvIoTState* m_state;        
+
+        void readTemperatures();
 };
 #endif
