@@ -31,7 +31,7 @@ public:
     bool resetModem();
     bool enableErrorMessages();
     String getSIMId();
-    bool setBaudRate();
+    bool setBaudRate(unsigned long baudRate);
     String getNetwork();
     String getIPAddress();
     int getSignalQuality();    

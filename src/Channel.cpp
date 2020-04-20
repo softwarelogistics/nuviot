@@ -1,6 +1,6 @@
 #include "Channel.h"
 
-Channel::Channel(Stream *stream, Console *console)
+Channel::Channel(HardwareSerial *stream, Console *console)
 {
     m_stream = stream;
     m_console = console;
@@ -45,7 +45,7 @@ void Channel::transmit(String msg)
 
 void Channel::transmit(byte *buffer, size_t len)
 {
-    m_stream->write((char *)buffer, len);
+    m_stream->write(buffer, len);
 }
 
 void Channel::transmitln(String msg)
@@ -61,6 +61,15 @@ void Channel::print(String msg)
 void Channel::println(String msg)
 {
     m_stream->println(msg);
+}
+
+void Channel::setBaudRate(unsigned long baudRate) {
+    m_stream->flush();    
+    m_stream->end();
+    m_stream->updateBaudRate(baudRate);
+    delay(1000);
+
+    m_console->printVerbose("We setting baud rate on stream " + String(baudRate) + " baud rate " + String(m_stream->baudRate()));
 }
 
 String Channel::readStringUntil(char ch, int timeout)

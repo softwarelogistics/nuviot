@@ -399,13 +399,37 @@ bool SIMModem::isServiceConnected()
     return responseCode == "1";
 }
 
+unsigned long baudRate[7] = { 4800, 9600, 19200, 38400, 57600, 115200, 230400 };
+
 bool SIMModem::isModemOnline()
 {
-    return sendCommand("AT", S_OK, 0, 500, false) == S_OK;
+    bool connected = false;
+    connected = sendCommand("AT", S_OK, 0, 500, false) == S_OK;
+    return connected;
+
+    m_console->printWarning("Checking for modem online");
+    
+    int idx = 0;
+    while(!connected && idx < 7) {
+        connected = sendCommand("AT", S_OK, 0, 500, false) == S_OK;
+
+        if(!connected){            
+            m_console->printWarning("Could not connect changing baud rate: " + String(baudRate[idx]));
+            delay(500);
+
+            m_channel->setBaudRate(baudRate[idx]);
+            idx++;            
+        }
+    }
+
+    m_console->printWarning("Out of loop " + String(connected));
+
+    return connected;
 }
 
 bool SIMModem::selectNetwork()
 {
+    /* Connect to AT&T network */
     return sendCommand("AT+COPS=4,2,\"310410\"", S_OK, 0, 500, false) == S_OK;
 }
 
@@ -640,8 +664,12 @@ bool SIMModem::connectServer(String hostName, String port)
     return true;
 }
 
-bool SIMModem::setBaudRate() {
-    return sendCommand("AT+IPR=115200");
+bool SIMModem::setBaudRate(unsigned long baudRate) {
+  // m_channel->setBaudRate(baudRate);
+    
+    String baudRateCmd = "AT+IPR=" + String(baudRate);
+    Serial.println(baudRateCmd);
+    return sendCommand(baudRateCmd);
 }
 
 bool SIMModem::connect(String apn, String apnUid, String apnPwd)

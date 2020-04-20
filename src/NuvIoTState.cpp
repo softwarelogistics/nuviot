@@ -227,7 +227,8 @@ bool NuvIoTState::getDebugMode()
     return m_debugMode;
 }
 
-void NuvIoTState::setDebugMode(bool mode) {
+void NuvIoTState::setDebugMode(bool mode)
+{
     m_debugMode = mode;
 }
 
@@ -366,6 +367,37 @@ String NuvIoTState::queryState()
     return state;
 }
 
+String NuvIoTState::getRemoteProperties()
+{
+    String state =
+        "PROPERTIES:readonly-firmwareSku=" + m_firmwareSku + "," +
+        "readonly-firmwareVersion=" + m_firmwareVersion;
+
+    Param *pNext = m_pBoolParamHead;
+    while (pNext != NULL)
+    {
+        state += ",Boolean-" + String(pNext->getKey()) + "=" + getBool(pNext->getKey());
+        pNext = pNext->pNext;
+    }
+
+    pNext = m_pIntParamHead;
+    while (pNext != NULL)
+    {
+        state += ",Integer-" + String(pNext->getKey()) + "=" + getInt(pNext->getKey());
+        pNext = pNext->pNext;
+    }
+
+    pNext = m_pFloatParamHead;
+    while (pNext != NULL)
+    {
+        state += ",Decimal-" + String(pNext->getKey()) + "=" + getFlt(pNext->getKey());
+        pNext = pNext->pNext;
+    }
+
+    state += ";";
+    return state;
+}
+
 void NuvIoTState::loop()
 {
     while (m_btSerial.available() > 0)
@@ -388,6 +420,22 @@ void NuvIoTState::loop()
             else if (msg == "REBOOT")
             {
                 m_hal->restart();
+            }
+            else if (msg == "PROPERTIES")
+            {
+                m_btSerial.println(getRemoteProperties());
+            }
+            else if (msg.substring(0, 3) == "SET")
+            {
+                String setCommand = String(&m_messageBuffer[4]);
+                int dashIdx = setCommand.indexOf('-');
+                int equalsIdx = setCommand.indexOf("=");
+                String type = setCommand.substring(0, dashIdx);
+                String key = setCommand.substring(dashIdx + 1, equalsIdx);
+                String value = setCommand.substring(equalsIdx + 1);
+
+                Serial.println(type + "] - [" + key + "] - [" + value + "]");
+                updateProperty(type, key, value);
             }
             else if (msg == "QUERY")
             {
@@ -509,7 +557,7 @@ int NuvIoTState::getInt(String key)
     Param *pParam = findKey(m_pIntParamHead, key.c_str());
     if (pParam != NULL)
     {
-        int addr = INT_BLOCK_START + pParam->getIndex() * sizeof(int);        
+        int addr = INT_BLOCK_START + pParam->getIndex() * sizeof(int);
 
         int result = EEPROM.readInt(addr);
         Serial.println("Read int value " + key + " " + String(result) + " at address " + String(addr));
@@ -554,6 +602,17 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             EEPROM.writeFloat(FLT_BLOCK_START + pParam->getIndex() * sizeof(float), floatValue);
             EEPROM.commit();
             Serial.println("Write float value " + field + " " + String(floatValue));
+        }
+    }
+    else if (fieldType == "Boolean")
+    {
+        Param *pParam = findKey(m_pBoolParamHead, field.c_str());
+        if (pParam != NULL)
+        {
+            bool boolValue= value == "true";
+            EEPROM.writeBool(BOOL_BLOCK_START + pParam->getIndex() * sizeof(float), boolValue);
+            EEPROM.commit();
+            Serial.println("Write bool value " + field + " " + String(boolValue));
         }
     }
 }

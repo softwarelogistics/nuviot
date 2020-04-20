@@ -108,6 +108,7 @@ public:
     void setDebugMode(bool mode);
 
     String queryState();
+    String getRemoteProperties();
 
     bool getSecureTransport();
     bool getIsAnonymous();

@@ -11,7 +11,7 @@
 class Channel
 {
 public:
-    Channel(Stream *stream, Console *console);
+    Channel(HardwareSerial *stream, Console *console);
 
     void transmit(String msg);
     void transmit(byte *msg, size_t len);
@@ -23,6 +23,8 @@ public:
     void enqueueByte(uint8_t byte);
     void enqueueByteArray(uint8_t buffer[], size_t len);
     void enqueueString(String str);
+
+    void setBaudRate(unsigned long baudRate);
 
     void flush();
     
@@ -44,7 +46,7 @@ private:
     byte m_rxBuffer[RX_BUFFER_SIZE];
     byte m_tempBuffer[1024];
 
-    Stream *m_stream;
+    HardwareSerial *m_stream;
     Console *m_console;
 };
 
