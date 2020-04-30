@@ -6,7 +6,7 @@
 #include <BluetoothSerial.h>
 #include "Display.h"
 #include "Hal.h"
-#include "Logger.h"
+#include "Console.h"
 
 enum Storage_DataTypes
 {
@@ -46,7 +46,8 @@ private:
     BluetoothSerial m_btSerial;
     Display *m_display;
     Hal *m_hal;
-    Logger *m_logger;
+    Console *m_console;
+    bool m_configurationMode = false;
 
     bool m_isInitialized = false;
     bool m_isCommissioned = false;
@@ -90,7 +91,7 @@ private:
     void createDefaults();
 
 public:
-    NuvIoTState(Display *display, Hal *hal, Logger *logger);
+    NuvIoTState(Display *display, Hal *hal, Console *console);
     void init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t deviceConfigVersion);
     bool isValid();
     void loop();
@@ -102,10 +103,14 @@ public:
     String getHostPassword();
     String getWiFiSSID();
     String getWiFiPassword();
+    String getFirmwareVersion();
+    String getFirmwareSKU();
 
     bool getVerboseLogging();
     bool getDebugMode();
     void setDebugMode(bool mode);
+
+    bool getIsConfigurationModeActive();
 
     String queryState();
     String getRemoteProperties();
@@ -129,6 +134,9 @@ public:
     void registerInt(const char *key, int defaultValue);
     void registerFloat(const char *key, float defaultValue);
     void registerBool(const char *key, bool defaultValue);
+
+private:
+    void readFirmware();    
 };
 
 #endif

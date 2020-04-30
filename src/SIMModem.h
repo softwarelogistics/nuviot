@@ -14,14 +14,16 @@
 #define S_RESET "RESET!"
 
 #define TEMP_BUFFER_SIZE 2048
-#define DOWNLOAD_BUFFER_SIZE 16384
+#define DOWNLOAD_BUFFER_SIZE 16384l
 
 #include <Arduino.h>
 #include "Console.h"
 #include "Channel.h"
+#include "Display.h"
 
 class SIMModem {
 public:
+    SIMModem(Display *display, Channel *channel, Console *console);
     SIMModem(Channel *channel, Console *console);
 
     bool isServiceConnected();
@@ -76,6 +78,7 @@ private:
     bool getCGREG();   
     int findRSSI();
   
+    Display *m_display;
     Console *m_console;
     Channel *m_channel;
 

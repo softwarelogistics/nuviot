@@ -1,24 +1,34 @@
 #include "TemperatureProbes.h"
 
-TemperatureProbes::TemperatureProbes(Logger *logger, MessagePayload *payload, NuvIoTState *state)
+TemperatureProbes::TemperatureProbes(Console *console, MessagePayload *payload, NuvIoTState *state)
 {
     m_payload = payload;
     m_state = state;
-    m_logger = logger;
+    m_console = console;
+}
+
+TemperatureProbes::TemperatureProbes(Console *console, NuvIoTState *state)
+{
+    m_payload = NULL;
+    m_state = state;
+    m_console = console;
 }
 
 void TemperatureProbes::setup()
 {
-    m_sensorConfigurations[0] = None;
-    m_sensorConfigurations[1] = None;
-    m_sensorConfigurations[2] = None;
+    for (int idx = 0; idx < 3; ++idx)
+    {
+        m_sensorConfigurations[idx] = None;
+        m_probes[idx] = NULL;
+        m_oneWires[idx] = NULL;
+        m_dhts[idx] = NULL;
+    }
 }
 
-#define MIN_VALUE -999
+#define MIN_VALUE -9999
 
 void TemperatureProbes::readTemperatures()
 {
-
     for (int idx = 0; idx < 3; ++idx)
     {
         float temperature = MIN_VALUE;
@@ -29,9 +39,32 @@ void TemperatureProbes::readTemperatures()
         case None:
             break;
         case DS18B20:
-            m_probes[idx]->requestTemperatures();
-            temperature = m_probes[idx]->getTempFByIndex(0);
-            break;
+        {
+            bool success = false;
+            int retryCount = 0;
+         
+            while (!success && retryCount++ < 10)
+            {
+                m_probes[idx]->requestTemperatures();
+                temperature = m_probes[idx]->getTempFByIndex(0);
+                if (temperature < -100 || temperature > 175)
+                {
+                    delay(500);
+                    m_console->printError("ERR DS18B20 Attempt: " + String(retryCount));
+                }
+                else
+                {
+                    success = true;
+                }
+            }
+
+            if (!success)
+            {
+                temperature = -999;
+            }
+        }
+
+        break;
         case Dht11:
         case Dht22:
             humidity = m_dhts[idx]->readHumidity();
@@ -45,26 +78,29 @@ void TemperatureProbes::readTemperatures()
         if (humidity != MIN_VALUE)
             m_humidities[idx] = humidity;
 
-        switch (idx)
+        if (m_payload != NULL)
         {
-        case 0:
-            m_payload->temperature1 = temperature == MIN_VALUE ? 0 : temperature;
-            m_payload->hasTemperature1 = temperature != MIN_VALUE;
-            m_payload->humidity1 = humidity == MIN_VALUE ? 0 : humidity;
-            m_payload->hasHumidity1 = humidity != MIN_VALUE;
-            break;
-        case 1:
-            m_payload->temperature2 = temperature == MIN_VALUE ? 0 : temperature;
-            m_payload->hasTemperature2 = temperature != MIN_VALUE;
-            m_payload->humidity2 = humidity == MIN_VALUE ? 0 : humidity;
-            m_payload->hasHumidity2 = humidity != MIN_VALUE;
-            break;
-        case 2:
-            m_payload->temperature3 = temperature == MIN_VALUE ? 0 : temperature;
-            m_payload->hasTemperature3 = temperature != MIN_VALUE;
-            m_payload->humidity3 = humidity == MIN_VALUE ? 0 : humidity;
-            m_payload->hasHumidity3 = humidity != MIN_VALUE;
-            break;
+            switch (idx)
+            {
+            case 0:
+                m_payload->temperature1 = temperature == MIN_VALUE ? 0 : temperature;
+                m_payload->hasTemperature1 = temperature != MIN_VALUE;
+                m_payload->humidity1 = humidity == MIN_VALUE ? 0 : humidity;
+                m_payload->hasHumidity1 = humidity != MIN_VALUE;
+                break;
+            case 1:
+                m_payload->temperature2 = temperature == MIN_VALUE ? 0 : temperature;
+                m_payload->hasTemperature2 = temperature != MIN_VALUE;
+                m_payload->humidity2 = humidity == MIN_VALUE ? 0 : humidity;
+                m_payload->hasHumidity2 = humidity != MIN_VALUE;
+                break;
+            case 2:
+                m_payload->temperature3 = temperature == MIN_VALUE ? 0 : temperature;
+                m_payload->hasTemperature3 = temperature != MIN_VALUE;
+                m_payload->humidity3 = humidity == MIN_VALUE ? 0 : humidity;
+                m_payload->hasHumidity3 = humidity != MIN_VALUE;
+                break;
+            }
         }
     }
 }
@@ -97,13 +133,13 @@ void TemperatureProbes::debugPrint()
     {
         if (m_sensorConfigurations[idx] != None)
         {
-            m_logger->logVerbose("TEMP" + String(idx) + "  :" + String(getTemperature(idx)));
+            m_console->printVerbose("TEMP" + String(idx) + "  :" + String(getTemperature(idx)));
         }
 
         if (m_sensorConfigurations[idx] == Dht11 ||
             m_sensorConfigurations[idx] == Dht22)
         {
-            m_logger->logVerbose("HUMD" + String(idx) + "  :" + String(getHumidity(idx)));
+            m_console->printVerbose("HUMD" + String(idx) + "  :" + String(getHumidity(idx)));
         }
     }
 }
@@ -125,23 +161,84 @@ void TemperatureProbes::configureProbe(int idx, SensorConfigs config)
     byte pin = resolvePinIndex(idx);
     if (pin == -1)
     {
-        m_logger->logError("Invalid pin on configure probe.");
+        m_console->printVerbose("Invalid pin on configure probe.");
         return;
     }
 
     switch (config)
     {
     case None:
+        if (m_dhts[idx] != NULL)
+        {
+            delete m_dhts[idx];
+            m_dhts[idx] = NULL;
+        }
+
+        if (m_probes[idx] != NULL)
+        {
+            delete m_probes[idx];
+            m_probes[idx] = NULL;
+        }
+
+        if (m_oneWires[idx] != NULL)
+        {
+            delete m_oneWires[idx];
+            m_oneWires[idx] = NULL;
+        }
+
         break;
     case Dht11:
-        m_dhts[idx] = new DHT(pin, DHT21);
+        if (m_probes[idx] != NULL)
+        {
+            delete m_probes[idx];
+            m_probes[idx] = NULL;
+        }
+
+        if (m_oneWires[idx] != NULL)
+        {
+            delete m_oneWires[idx];
+            m_oneWires[idx] = NULL;
+        }
+
+        if (m_dhts[idx] == NULL)
+        {
+            m_dhts[idx] = new DHT(pin, DHT21);
+        }
         break;
     case Dht22:
-        m_dhts[idx] = new DHT(pin, DHT22);
+        if (m_probes[idx] != NULL)
+        {
+            delete m_probes[idx];
+            m_probes[idx] = NULL;
+        }
+
+        if (m_oneWires[idx] != NULL)
+        {
+            delete m_oneWires[idx];
+            m_oneWires[idx] = NULL;
+        }
+
+        if (m_dhts[idx] == NULL)
+        {
+            m_dhts[idx] = new DHT(pin, DHT22);
+        }
         break;
     case DS18B20:
-        m_oneWires[idx] = new OneWire(pin);
-        m_probes[idx] = new DallasTemperature(m_oneWires[idx]);
+        if (m_dhts[idx] != NULL)
+        {
+            delete m_dhts[idx];
+            m_dhts[idx] = NULL;
+        }
+
+        if (m_oneWires[idx] == NULL)
+        {
+            m_oneWires[idx] = new OneWire(pin);
+        }
+
+        if (m_probes[idx] == NULL)
+        {
+            m_probes[idx] = new DallasTemperature(m_oneWires[idx]);
+        }
         break;
     }
 

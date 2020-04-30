@@ -95,6 +95,7 @@ public:
         {
             case 1: m_top += 15; break;
             case 2: m_top += 25; break;
+            default: m_top += 15; break;
         }
     }
 

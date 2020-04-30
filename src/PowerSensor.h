@@ -4,12 +4,12 @@
 #include "MessagePayload.h"
 #include "NuvIoTState.h"
 #include "ADC.h"
-#include "Logger.h"
 #include "AbstractSensor.h"
+#include "Console.h"
 
 class PowerSensor: public AbstractSensor {
     public:
-        PowerSensor(ADC *adc, Logger *logger, MessagePayload *payload, NuvIoTState *state);
+        PowerSensor(ADC *adc, Console *console, MessagePayload *payload, NuvIoTState *state);
         void setup();
         void loop();
         void debugPrint();
@@ -32,7 +32,7 @@ class PowerSensor: public AbstractSensor {
         uint16_t m_voltage[3];
 
         ADC *m_adc;
-        Logger *m_logger;
+        Console *m_console;
         NuvIoTState *m_state;
         MessagePayload *m_payload;    
 };

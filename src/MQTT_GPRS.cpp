@@ -1,4 +1,4 @@
-#include "MQTT.h"
+#include "MQTT_GPRS.h"
 
 MQTT::MQTT(Channel *channel, Console *console)
 {
@@ -13,7 +13,9 @@ void MQTT::writeControlField(byte control_field)
 
 void MQTT::writeRemainingLength(unsigned int remainingLength)
 {
+#ifdef MQTT_VERBOSE    
     m_console->printVerbose("Real Length: [" + String(remainingLength) + "] total packet length: [" + String(remainingLength + 2) + "]");
+#endif    
 
     // In the MQTT spec if longer then 127 set bit 8 in the first byte
     // to send over, set the continuation bit
@@ -46,7 +48,9 @@ void MQTT::writeLengthPrefixedString(String str)
     m_channel->enqueueByteArray(lenBuffer, 2);
     m_channel->enqueueString(str);
 
+#ifdef MQTT_VERBOSE    
     m_console->printVerbose("Sending [" + String(str.length() + 2) + "] bytes for [" + str + "]");
+#endif    
 }
 
 void MQTT::writeString(String str)
@@ -107,14 +111,18 @@ void MQTT::checkForReceivedMessages()
 bool MQTT::readResponse(byte expected)
 {
     int loopCount = 200;
+#ifdef MQTT_VERBOSE        
     m_console->printByte("Waiting for [", expected, "] as response from MQTT Server.");
+#endif    
 
     while (loopCount-- > 0)
     {
         if (m_channel->available() > 0)
         {
             byte responseCode = m_channel->readByte();
+#ifdef MQTT_VERBOSE                
             m_console->printByte("Received [", responseCode, "] from MQTT Server.");
+#endif            
 
             switch (responseCode)
             {
@@ -125,7 +133,9 @@ bool MQTT::readResponse(byte expected)
                 int remainingLength = readRemainingLength();
                 if (remainingLength > 0)
                 {
+#ifdef MQTT_VERBOSE                        
                     m_console->printVerbose("Returned remaining length: " + String(remainingLength));
+#endif                    
                     size_t bytesRead = m_channel->readBytes(m_rxBuffer, remainingLength);
                     if (bytesRead == remainingLength)
                     {
@@ -137,10 +147,12 @@ bool MQTT::readResponse(byte expected)
                         return false;
                     }
                 }
+#ifdef MQTT_VERBOSE                    
                 else
                 {
                     m_console->printVerbose("No payload from message.  ");
                 }
+#endif                
 
                 if (responseCode == expected)
                 {
@@ -200,7 +212,9 @@ bool MQTT::connect(String uid, String pwd, String clientId)
 
     if (readResponse(0x20))
     {
-        m_console->print("Connected to MQTT");
+#ifdef MQTT_VERBOSE            
+        m_console->printVerbose("Connected to MQTT");
+#endif        
         return true;
     }
     else
@@ -287,7 +301,9 @@ bool MQTT::subscribe(String topic, byte qos)
     if (readResponse(0x90))
     {
         m_subscriptionId++;
-        m_console->print("Subscribed to [" + topic + "]");
+#ifdef MQTT_VERBOSE            
+        m_console->printVerbose("Subscribed to [" + topic + "]");
+#endif        
         /* we previously incremented it so decrement it now */
         return m_subscriptionId - 1;
     }

@@ -10,8 +10,9 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     mqttInstance->handleMqttCallback(topic, payload, length);
 }
 
-NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, WiFiClient *client, Display *display, OtaServices *ota, Hal *hal, NuvIoTState *state)
+NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, Console *console, WiFiClient *client, Display *display, OtaServices *ota, Hal *hal, NuvIoTState *state)
 {
+    m_console = console;
     m_client = client;
     m_mqtt = new PubSubClient(*client);
     m_wifi = wifiConnection;
@@ -65,7 +66,7 @@ void NuvIoTMQTT::connect()
 
         IPAddress remote_addr;
         (WiFi.hostByName(m_state->getHostName().c_str(), remote_addr));
-        Serial.println(m_state->getHostName() + "=" + remote_addr.toString() + " with device id: " + m_state->getDeviceId());
+        m_console->println(m_state->getHostName() + "=" + remote_addr.toString() + " with device id: " + m_state->getDeviceId());
 
         //m_mqtt->setServer(m_state->getHostName().c_str(), 1883);
         m_mqtt->setServer(remote_addr, 1883);
@@ -76,7 +77,7 @@ void NuvIoTMQTT::connect()
         }
         else
         {
-            Serial.println(m_state->getHostName() + " " + m_state->getDeviceId() + " " + remote_addr.toString() + " " + m_state->getHostUserName() + " " + m_state->getHostPassword());
+            m_console->println(m_state->getHostName() + " " + m_state->getDeviceId() + " " + remote_addr.toString() + " " + m_state->getHostUserName() + " " + m_state->getHostPassword());
             connectResult = m_mqtt->connect(m_state->getDeviceId().c_str(), m_state->getHostUserName().c_str(), m_state->getHostPassword().c_str());
         }
 
@@ -84,11 +85,12 @@ void NuvIoTMQTT::connect()
 
         if (m_client->connected())
         {
-            Serial.println("looks like client is connected.");
+            publish("nuviot/srvr/dvcsrvc/" + m_state->getDeviceId() + "/online", "{'firmwareversion':'" + m_state->getFirmwareVersion() + "','firmwareSku':'" + m_state->getFirmwareSKU() + "'}");
+            m_console->println("Success connecting to MQTT server " + m_state->getHostName() + ".");
         }
         else
         {
-            Serial.println("looks like we are not connected.");
+            m_console->printError("Could not connect to MQTT server " + m_state->getHostName() + ".");
         }
 
         if (connectResult)
@@ -96,7 +98,7 @@ void NuvIoTMQTT::connect()
             for (int idx = 0; idx < m_subscrptionCount; ++idx)
             {
                 m_mqtt->subscribe(m_subscriptions[idx].c_str());
-                Serial.println("Added subscription: " + m_subscriptions[idx]);
+                m_console->println("Added subscription: " + m_subscriptions[idx]);
             }
 
             m_mqtt->setCallback(mqttCallback);
@@ -117,11 +119,21 @@ void NuvIoTMQTT::connect()
     }
 }
 
+void NuvIoTMQTT::registerCallback(void (*callback)(String, String)) {
+    m_callback = callback;
+}
+
 void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int length)
 {
-    Serial.print("Message arrived [");
-    Serial.print(topic);
-    Serial.print("] ");
+    String strTopic = String(topic);
+    String strPayload = "";
+
+    for (int i = 0; i < length; i++)
+    {
+        strPayload +=(char)payload[i]; 
+    }
+
+    m_console->printVerbose("Message arrived [" + String(topic) + "]");
 
     String parts[10];
     int partIdx = 0;
@@ -134,7 +146,9 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
         case '/':
             topic[idx] = 0x00;
             String segment = String(&topic[start]);
-            Serial.println(segment);
+            
+        
+            
             parts[partIdx++] = segment;
 
             start = idx + 1;
@@ -142,18 +156,16 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
         }
     }
 
-    String segment = String(&topic[start]);
-    Serial.println(segment);
-    parts[partIdx++] = segment;
+    parts[partIdx++] = String(&topic[start]);
 
-    for (int idx = 0; idx < partIdx; ++idx)
-    {
-        Serial1.println(parts[idx]);
+    for(int idx = 0; idx < partIdx; ++idx) {
+        m_console->printVerbose("Topic Segment: " + String(idx) + ". [" + parts[idx] + "]");
     }
 
-    for (int i = 0; i < length; i++)
-    {
-        Serial.print((char)payload[i]);
+    if(length > 0) {
+        m_console->printVerbose("Payload:");
+        m_console->printVerbose(strPayload);
+        m_console->printVerbose("");
     }
 
     if (partIdx >= 4)
@@ -216,10 +228,17 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
             else if(action == "update") {
                 if(partIdx >= 4) {
                     String url = "http://api.nuviot.com/api/firmware/download/" + parts[4];
+                    publish(String("nuviot/srvr/dvcsrvc/" + m_state->getDeviceId() + "/fwupdate/start"), String("{'url':'" + url + "'}") );                    
                     m_ota->start(url);
+                    /* if we succeed we automatically restart, if we got here it was a failure. */
+                    publish(String("nuviot/srvr/dvcsrvc/" + m_state->getDeviceId() + "/fwupdate/fail"), String("{'url':'" + url + "'}" ));                    
                 }
             }
         }
+    }
+
+    if(m_callback != NULL) {
+        m_callback(strTopic, strPayload);
     }
 
     Serial.println();

@@ -1,18 +1,22 @@
 #include "WiFiConnectionHelper.h"
 
-WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state){
+WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state)
+{
     m_display = display;
     m_State = state;
     m_client = client;
 }
 
-void WiFiConnectionHelper::loop(){
-    if (WiFi.status() != WL_CONNECTED){
+void WiFiConnectionHelper::loop()
+{
+    if (WiFi.status() != WL_CONNECTED)
+    {
         connect(true);
     }
 }
 
-void WiFiConnectionHelper::connect(bool isReconnect) {
+void WiFiConnectionHelper::connect(bool isReconnect)
+{
     int status = WiFi.status();
 
     int attempt = 0;
@@ -25,7 +29,9 @@ void WiFiConnectionHelper::connect(bool isReconnect) {
     {
         attempt++;
 
-        if(attempt % 20 == 0){
+        if (attempt % 20 == 0)
+        {
+            WiFi.disconnect();
             Serial.println(m_State->getWiFiSSID() + " " + m_State->getWiFiPassword());
             WiFi.begin(m_State->getWiFiSSID().c_str(), m_State->getWiFiPassword().c_str());
         }
@@ -33,10 +39,10 @@ void WiFiConnectionHelper::connect(bool isReconnect) {
         delay(500);
 
         m_State->loop();
-        
+
         m_display->clearBuffer();
         m_display->drawString(0, 0, "NuvIoT");
-        m_display->drawString(0, 16, isReconnect ? "Reconnecting WiFi" : "Connecting WiFi");        
+        m_display->drawString(0, 16, isReconnect ? "Reconnecting WiFi" : "Connecting WiFi");
         m_display->drawString(0, 32, m_State->getWiFiSSID().c_str());
 
         delay(2500);
@@ -58,7 +64,7 @@ void WiFiConnectionHelper::connect(bool isReconnect) {
         switch (status)
         {
         case WL_IDLE_STATUS:
-           m_display->drawString(0, 48, "Idle");
+            m_display->drawString(0, 48, "Idle");
             break;
         case WL_NO_SHIELD:
             m_display->drawString(0, 48, "No Shield");
@@ -93,7 +99,22 @@ void WiFiConnectionHelper::connect(bool isReconnect) {
     Serial.println("Connected to WiFi");
 }
 
-void WiFiConnectionHelper::disconnect() 
+bool WiFiConnectionHelper::isConnected()
+{
+    return WiFi.status() == WL_CONNECTED;
+}
+
+
+String WiFiConnectionHelper::getIPAddress() {
+    return WiFi.localIP().toString();
+    
+}
+
+String WiFiConnectionHelper::getMACAddress() {
+    return WiFi.macAddress();
+}
+
+void WiFiConnectionHelper::disconnect()
 {
     WiFi.disconnect();
 }

@@ -32,6 +32,7 @@ size_t Channel::readBytes(byte *buffer, size_t length)
     while(m_stream->available() < length && ((millis() - start) < 5000));        
 
     if(m_stream->available() < length){
+        m_console->printError("Expected: " + String(length) + " read " + String(m_stream->available()) );
         return -1;
     }
 

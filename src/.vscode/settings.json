@@ -9,6 +9,13 @@
         "xstring": "cpp",
         "xtree": "cpp",
         "string": "cpp",
-        "unordered_map": "cpp"
+        "unordered_map": "cpp",
+        "algorithm": "cpp",
+        "iomanip": "cpp",
+        "xlocmon": "cpp",
+        "xlocnum": "cpp",
+        "shared_mutex": "cpp",
+        "locale": "cpp",
+        "xlocale": "cpp"
     }
 }

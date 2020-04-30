@@ -1,9 +1,9 @@
 #include "PowerSensor.h"
 
-PowerSensor::PowerSensor(ADC *adc, Logger *logger, MessagePayload *payload, NuvIoTState *state)
+PowerSensor::PowerSensor(ADC *adc, Console *console, MessagePayload *payload, NuvIoTState *state)
 {
     m_adc = adc;
-    m_logger = logger;
+    m_console = console;
     m_payload = payload;
     m_state = state;
 }
@@ -22,9 +22,8 @@ void PowerSensor::setup()
     m_ctRatioFactor[1] = 100;
     m_ctRatioFactor[2] = 100;
 
-    
     m_adcChannels[0] = 2; /* ADCMOD1 - 2 */
-    m_adcChannels[1] = 4; /* ADCMOD2 - 0 */    
+    m_adcChannels[1] = 4; /* ADCMOD2 - 0 */
     m_adcChannels[2] = 5; /* ADCMOD2 - 1 */
 }
 
@@ -54,17 +53,16 @@ void PowerSensor::loop()
             // this will establishe our baseline (which for our circuit should be very close
             // to 2.5 volts).
             float offset = avereageTotal / iterations;
-            
 
             float levelTotal = 0;
 
             for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
             {
                 float voltage = m_adc->getVoltage(m_adcChannels[idx]);
-                if(voltage < min)
+                if (voltage < min)
                     min = voltage;
 
-                if(voltage > max)
+                if (voltage > max)
                     max = voltage;
 
                 /* start collecting the sum of the voltages */
@@ -74,7 +72,7 @@ void PowerSensor::loop()
 
             float avgLevel = (levelTotal / (float)iterations);
 
-            // i = E / R, burden resistor = 33.0 
+            // i = E / R, burden resistor = 33.0
             double current = avgLevel / 33.0f;
 
             // we are using a 100A : 0.050MA CT, with the burden resistor it's
@@ -92,10 +90,14 @@ void PowerSensor::loop()
     m_payload->current3 = m_channelEnabled[2] ? m_channelAmps[2] : -1;
 }
 
-void PowerSensor::debugPrint() 
+void PowerSensor::debugPrint()
 {
-    for(int idx = 0; idx < 3; ++idx)
-        if(m_channelEnabled[idx]) m_logger->logVerbose("AMPS" + String(idx) + "  :" + String(m_channelAmps[idx]));
+    for (int idx = 0; idx < 3; ++idx) {
+        if (m_channelEnabled[idx])
+        {
+            m_console->printVerbose("AMPS" + String(idx) + "  :" + String(m_channelAmps[idx]));
+        }
+    }
 }
 
 void PowerSensor::setChannelVoltage(uint8_t channel, uint16_t voltage)

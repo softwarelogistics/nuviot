@@ -39,9 +39,14 @@ void Console::printVerbose(String msg)
     }
 }
 
-void Console::print(String msg)
+void Console::println(String msg)
 {
     m_stream->println(msg);
+}
+
+void Console::print(String msg)
+{
+    m_stream->print(msg);
 }
 
 void Console::newline()

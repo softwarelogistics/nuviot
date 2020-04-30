@@ -12,6 +12,10 @@ class WiFiConnectionHelper {
         void setup();
         void disconnect();
         void loop();
+
+        bool isConnected();
+        String getIPAddress();
+        String getMACAddress();
           
     private:
         void connect(bool isReconnecting);

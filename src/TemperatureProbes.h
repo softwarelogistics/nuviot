@@ -6,7 +6,7 @@
 #include <DallasTemperature.h>
 #include "MessagePayload.h"
 #include "NuvIoTState.h"
-#include "Logger.h"
+#include "Console.h"
 #include "AbstractSensor.h"
 
 enum SensorConfigs {
@@ -22,7 +22,8 @@ enum SensorConfigs {
 
 class TemperatureProbes: public AbstractSensor{
     public:
-        TemperatureProbes(Logger *logger, MessagePayload *payload, NuvIoTState *state);
+        TemperatureProbes(Console *console, MessagePayload *payload, NuvIoTState *state);
+        TemperatureProbes(Console *console, NuvIoTState *state);
 
         void setup();
         void debugPrint();
@@ -46,8 +47,8 @@ class TemperatureProbes: public AbstractSensor{
         DallasTemperature *m_probes[3];
         DHT *m_dhts[3]; 
         
-        MessagePayload* m_payload;
-        Logger* m_logger;
+        MessagePayload* m_payload = NULL;
+        Console* m_console;
 
         NuvIoTState* m_state;        
 

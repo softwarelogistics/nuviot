@@ -55,6 +55,7 @@ bool OtaServices::start(String url)
 
 bool OtaServices::downloadOverWiFi(String url)
 {
+    m_console->println("Begin download " + url);
     int downloaded = 0;
     int written = 0;
     int total = 1;
@@ -77,12 +78,15 @@ bool OtaServices::downloadOverWiFi(String url)
     if (httpCode > 0 && httpCode == HTTP_CODE_OK)
     {
         m_display->clearBuffer();
-        m_display->drawStr("Updating Firmare");
+        m_display->drawStr("Updating Firmware");
         m_display->sendBuffer();
 
         // get lenght of document (is -1 when Server sends no Content-Length header)
         len = http.getSize();
         total = len;
+#ifdef MQTT_VERBOSE            
+        m_console->println("Begin download of: " + String(len));
+#endif        
         downloaded = 0;
         // get tcp stream
         WiFiClient *stream = http.getStreamPtr();
@@ -107,7 +111,9 @@ bool OtaServices::downloadOverWiFi(String url)
                         if (written > 0)
                         {
                             int percentCommplete = (100 * downloaded) / total;
-                            const char *str = String("Progress " + String(percentCommplete)).c_str();
+                            String progress = "Progress " + String(percentCommplete);
+                            const char *str = progress.c_str();
+                            m_console->println(progress);
                             for (int idx = 0; idx < percentCommplete / 10; ++idx)
                             {
                                 progressBar[idx] = '.';
@@ -115,7 +121,7 @@ bool OtaServices::downloadOverWiFi(String url)
 
                             progressBar[percentCommplete] = 0x00;
 
-                            m_display->drawStr("Updating Firmare", str, progressBar);
+                            m_display->drawStr("Updating Firmware", str, progressBar);
                             if (written != c)
                             {
                                 //m_display->drawString(0,48, "Partial Recieve - likely failure");
@@ -125,6 +131,8 @@ bool OtaServices::downloadOverWiFi(String url)
                         }
                         else
                         {
+                            m_console->printError("Could not flash file " + url);
+                            m_console->printError("Could not write byte array.");
                             m_display->drawStr("Flashing failed");
                             ret = -1;
                             break;
@@ -141,12 +149,17 @@ bool OtaServices::downloadOverWiFi(String url)
         }
         else
         {
+            m_console->printError("Could not flash file " + url);
+            m_console->printError("Call to Update returned false.");
             m_display->drawStr("Flashing init ... failed!");
             ret = -1;
         }
     }
     else
     {
+        m_console->printError("Could not download file " + url);
+        m_console->printError("HTTP Code " + String(httpCode));
+
         m_display->drawStr("HTTP Get Failed");
         ret - 1;
     }
@@ -156,12 +169,19 @@ bool OtaServices::downloadOverWiFi(String url)
     {
         if (Update.end())
         {
+#ifdef MQTT_VERBOSE                
+            m_console->println("Success flashing, pausing and then restarting.");            
+#endif            
             m_display->drawStr("Success flashing", "Restarting");
             delay(2000);
+            m_console->println("Success flashing, restarting.");
             m_hal->restart();
         }
         else
         {
+            m_console->printError("Could not flash file " + url);
+            m_console->printError("MD5 Error");
+
             m_display->drawStr("Flasing Failed", "MD5 Error");
             delay(2000);
             ret = -1;
@@ -169,6 +189,9 @@ bool OtaServices::downloadOverWiFi(String url)
     }
     else
     {
+        m_console->printError("Could not download file " + url);
+        m_console->printError("Downloaded: " + String(downloaded) + " total:" + String(total));
+
         m_display->drawStr("Flashing Failed", "Download Error");
         ret = -1;
     }

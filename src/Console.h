@@ -17,6 +17,7 @@ public:
     void printByteArray(String prefix, byte buffer[], size_t length);
     
     void printVerbose(String msg);
+    void println(String msg);
     void print(String msg);
     void newline();
     void printError(String err);

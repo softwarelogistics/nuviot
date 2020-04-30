@@ -5,8 +5,7 @@
 
 class Hal {
     public:
-        void restart();
-  
+        void restart();        
 };
 
 #endif

@@ -3,18 +3,18 @@
 
 #include <Wire.h>
 #include "ADS1115.h"
-#include "Logger.h"
 #include "MessagePayload.h"
 #include "AbstractSensor.h"
+#include "Console.h"
 
 
 class ADC : public AbstractSensor
 {
 private:
-    Logger *m_logger;
     MessagePayload *m_messagePayload;
     ADS1115 *_bank1;
     ADS1115 *_bank2;
+    Console *m_console;
     bool m_portEnabled[3];
     bool m_vbattEnabled;
 
@@ -22,8 +22,11 @@ private:
     bool m_bank2Enabled = false;
 
 public:
-    ADC(TwoWire *wire, MessagePayload *payload, Logger *logger)
+    ADC(TwoWire *wire, Console *console, MessagePayload *payload)
     {
+
+        m_console = console;
+
         /* addr2 = +5V, ADCMOD1 */
         _bank1 = new ADS1115(wire, ADS1115_ADDRESS2);
 
@@ -98,7 +101,7 @@ public:
     {
         if (port > 2)
         {
-            m_logger->logError("Attempt to get ADC value for port 3 or greater, only adc ports 0, 1 and 2 are valid.");
+            m_console->printError("ADC Port > 2");
         }
 
         switch (port)
@@ -123,7 +126,7 @@ public:
     {
         if (port > 2)
         {
-            m_logger->logError("Attempt to enable ADC port 3 or greater, only adc ports 0, 1 and 2 are valid.");
+            m_console->printError("ADC > 2");
         }
 
         m_portEnabled[port] = enabled;
@@ -137,13 +140,13 @@ public:
     void loop()
     {
         if(!_bank1->isOnline() && m_bank1Enabled) {
-            m_messagePayload->lastError = "ADC Bank 1 Offline";
-            m_logger->logError("ADC Bank 1 Offline");
+            m_messagePayload->lastError = "ADC 1 Offline";
+            m_console->printError("ADC 1 Offline");
             m_messagePayload->status = "Error";
         }
         else if(!_bank2->isOnline() && m_bank2Enabled) {
-            m_messagePayload->lastError = "ADC Bank 2 Offline";
-            m_logger->logError("ADC Bank 2 Offline");
+            m_messagePayload->lastError = "ADC 2 Offline";
+            m_console->printError("ADC 2 Offline");
             m_messagePayload->status = "Error";
         }
 
@@ -166,10 +169,10 @@ public:
     }
 
     void debugPrint() {
-        if(m_vbattEnabled) m_logger->logVerbose("VBATT  : " + String(getVBATT()));
+        if(m_vbattEnabled) m_console->printVerbose("VBATT  : " + String(getVBATT()));
         for(int idx = 0; idx < 3; ++idx)
             if(m_portEnabled[idx])
-                m_logger->logVerbose("VADC" + String(idx) + "  :" + String(getADC(idx)));
+                m_console->printVerbose("VADC" + String(idx) + "  :" + String(getADC(idx)));
     }
 
     bool setBankEnabled(int bank, bool enabled)
