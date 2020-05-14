@@ -46,7 +46,7 @@ boolean TFMini::begin(HardwareSerial* serial) {
 uint16_t TFMini::getDistance() {
   int numMeasurementAttempts = 0;
   while (takeMeasurement() != 0) {
-    numMeasurementAttempts += 1;
+    numMeasurementAttempts++;
     if (numMeasurementAttempts > TFMINI_MAX_MEASUREMENT_ATTEMPTS) {
       Serial.println ("TF Mini error: too many measurement attempts");
       Serial.println ("Last error:");
@@ -131,10 +131,11 @@ void TFMini::externalTrigger() {
 // Private: Handles the low-level bits of communicating with the TFMini, and detecting some communication errors.
 int TFMini::takeMeasurement() {
   int numCharsRead = 0;
+  int attemptCount = 0;
   uint8_t lastChar = 0x00;  
   
   // Step 1: Read the serial stream until we see the beginning of the TF Mini header, or we timeout reading too many characters.
-  while (1) {
+  while (attemptCount++ < 20) {
 
     if (hwdSerial->available()) {      
       uint8_t curChar = hwdSerial->read();
@@ -148,6 +149,9 @@ int TFMini::takeMeasurement() {
         lastChar = curChar;
         numCharsRead += 1; 
       }           
+    }
+    else {
+        Serial.println("No data from hw serial read.");
     }
 
     // Error detection:  If we read more than X characters without finding a frame header, then it's likely there is an issue with 
@@ -187,6 +191,11 @@ int TFMini::takeMeasurement() {
     distance = -1;
     strength = -1;
     if (TFMINI_DEBUGMODE == 1) Serial.println("ERROR: bad checksum");
+    return -1;
+  }
+
+  if(attemptCount == 0) {
+    Serial.println("No data from TF MIni");
     return -1;
   }
 

@@ -5,6 +5,12 @@ Console::Console(Stream *stream)
     m_stream = stream;
 }
 
+Console::Console(BluetoothSerial *btSerial, Stream *stream)
+{
+    m_stream = stream;
+    m_btSerial = btSerial;
+}
+
 void Console::printByte(byte ch)
 {
     if (m_verboseLogging)
@@ -13,6 +19,13 @@ void Console::printByte(byte ch)
         m_stream->print("0x");
         sprintf(hexChar, "%02X", ch);
         m_stream->print(hexChar);
+
+        if(m_btSerial != NULL)
+        {
+            m_btSerial->print("0x");
+            sprintf(hexChar, "%02X", ch);
+            m_btSerial->print(hexChar);
+        }
     }
 }
 
@@ -20,9 +33,9 @@ void Console::printByte(String prefix, byte byte, String suffix)
 {
     if (m_verboseLogging)
     {
-        m_stream->print(prefix);
+        print(prefix);
         printByte(byte);
-        m_stream->println(suffix);
+        println(suffix);
     }
 }
 
@@ -35,23 +48,32 @@ void Console::printVerbose(String msg)
 {
     if (m_verboseLogging)
     {
-        m_stream->println(msg);
+        println(msg);
     }
 }
 
 void Console::println(String msg)
 {
     m_stream->println(msg);
+    if(m_btSerial != NULL) {
+        m_btSerial->println(msg);
+    }
 }
 
 void Console::print(String msg)
 {
     m_stream->print(msg);
+    if(m_btSerial != NULL) {
+        m_btSerial->print(msg);
+    }
 }
 
 void Console::newline()
 {
     m_stream->println();
+    if(m_btSerial != NULL) {
+        m_btSerial->println();
+    }
 }
 
 void Console::printError(String err)
@@ -68,6 +90,13 @@ void Console::printWarning(String warning)
     m_stream->println("=======");
     m_stream->println(warning);
     m_stream->println();
+
+    if(m_btSerial != NULL) {
+        m_btSerial->println("WARNING");
+        m_btSerial->println("=======");
+        m_btSerial->println(warning);
+        m_btSerial->println();
+    }
 }
 
 void Console::printByteArray(byte buffer[])

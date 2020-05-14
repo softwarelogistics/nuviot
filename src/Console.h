@@ -2,11 +2,13 @@
 #define CONSOLE_H
 
 #include <Arduino.h>
+#include <BluetoothSerial.h>
 
 class Console
 {
 public:
-    Console(Stream *stram);
+    Console(Stream *stream);
+    Console(BluetoothSerial *btSerial, Stream *stream);
 
     void printByte(byte byte);
     void printByte(String prefix, byte byte, String suffix);
@@ -26,6 +28,7 @@ public:
     void setVerboseLogging(bool verbose);
 
 private:
+    BluetoothSerial *m_btSerial = NULL;
     Stream *m_stream;
     bool m_verboseLogging = false;
 };

@@ -43,7 +43,7 @@ public:
 class NuvIoTState
 {
 private:
-    BluetoothSerial m_btSerial;
+    BluetoothSerial *m_btSerial;
     Display *m_display;
     Hal *m_hal;
     Console *m_console;
@@ -91,7 +91,7 @@ private:
     void createDefaults();
 
 public:
-    NuvIoTState(Display *display, Hal *hal, Console *console);
+    NuvIoTState(Display *display, BluetoothSerial *btSerial, Hal *hal, Console *console);
     void init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t deviceConfigVersion);
     bool isValid();
     void loop();

@@ -90,11 +90,12 @@
     960 - 20 x 1 byte value BOOL
  */
 
-NuvIoTState::NuvIoTState(Display *display, Hal *hal, Console *console)
+NuvIoTState::NuvIoTState(Display *display, BluetoothSerial *btSerial, Hal *hal, Console *console)
 {
     m_display = display;
     m_hal = hal;
     m_console = console;
+    m_btSerial = btSerial;
 }
 
 void NuvIoTState::init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t structureVersion)
@@ -121,7 +122,7 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
 
     m_DeviceId = (!m_isInitialized) ? "?" : readString(DEVICEID_START, DEVICEID_LEN);
     String btSerialName = "NuvIoT - " + (m_isInitialized ? m_DeviceId : firmwareSku);
-    m_btSerial.begin(btSerialName); //Name of your Bluetooth Signal
+    m_btSerial->begin(btSerialName); //Name of your Bluetooth Signal
 
     const uint8_t *bt_addr = esp_bt_dev_get_address();
 
@@ -410,24 +411,24 @@ String NuvIoTState::getRemoteProperties()
 
 void NuvIoTState::readFirmware()
 {
-    while (m_btSerial.available() < 2)
+    while (m_btSerial->available() < 2)
     {
         delay(1);
     }
 
-    short blockCount = m_btSerial.read() << 8 | m_btSerial.read();
+    short blockCount = m_btSerial->read() << 8 | m_btSerial->read();
     byte buffer[16 * 1024];
 
     Serial.println("Number of blocks: " + String(blockCount));
     for (int idx = 0; idx < blockCount; ++idx)
     {
-        while (m_btSerial.available() < 2)
+        while (m_btSerial->available() < 2)
         {
             delay(1);
         }
 
-        short blockSize = m_btSerial.read() << 8 | m_btSerial.read();
-        while (m_btSerial.available() < blockSize)
+        short blockSize = m_btSerial->read() << 8 | m_btSerial->read();
+        while (m_btSerial->available() < blockSize)
         {
             delay(1);
         }
@@ -436,24 +437,24 @@ void NuvIoTState::readFirmware()
 
         for (int ch = 0; ch < blockSize; ++ch)
         {
-            buffer[ch] = (byte)m_btSerial.read();
+            buffer[ch] = (byte)m_btSerial->read();
             checkSum ^= buffer[ch];
         }
 
-        while (m_btSerial.available() < 2)
+        while (m_btSerial->available() < 2)
         {
             delay(1);
         }
 
-        short calcCheckSum = m_btSerial.read() << 8 | m_btSerial.read();
+        short calcCheckSum = m_btSerial->read() << 8 | m_btSerial->read();
 
 #ifdef STATE_VERBOSE
         m_console->printVerbose("Block: " + String(idx) + " " + String(blockSize) + " " + checkSum + " " + calcCheckSum);
 #endif        
     }
-    while (m_btSerial.available())
+    while (m_btSerial->available())
     {
-        m_btSerial.read();
+        m_btSerial->read();
     }
 }
 
@@ -464,9 +465,9 @@ bool NuvIoTState::getIsConfigurationModeActive()
 
 void NuvIoTState::loop()
 {
-    while (m_btSerial.available() > 0)
+    while (m_btSerial->available() > 0)
     {
-        int ch = m_btSerial.read();
+        int ch = m_btSerial->read();
 
         if (ch == '\n')
         {
@@ -492,7 +493,7 @@ void NuvIoTState::loop()
             }
             else if (msg == "PROPERTIES")
             {
-                m_btSerial.println(getRemoteProperties());
+                m_btSerial->println(getRemoteProperties());
             }
             else if (msg.substring(0, 3) == "SET")
             {
@@ -508,28 +509,31 @@ void NuvIoTState::loop()
             }
             else if (msg == "QUERY")
             {
-                m_btSerial.print("0," + m_DeviceId + ";");
-                m_btSerial.print("1," + m_HostName + ";");
-                m_btSerial.print("2,");
-                m_btSerial.print(m_anonymous ? "true;" : "false;");
+                m_btSerial->print("0," + m_DeviceId + ";");
+                m_btSerial->print("1," + m_HostName + ";");
+                m_btSerial->print("2,");
+                m_btSerial->print(m_anonymous ? "true;" : "false;");
                 if (!m_anonymous)
                 {
-                    m_btSerial.print("3," + m_HostUserName + ";");
-                    m_btSerial.print("4," + m_HostPassword + ";");
+                    m_btSerial->print("3," + m_HostUserName + ";");
+                    m_btSerial->print("4," + m_HostPassword + ";");
                 }
 
-                m_btSerial.print("5," + m_DeviceAccessKey + ";");
-                m_btSerial.print("6," + m_WiFiSSID + ";");
+                m_btSerial->print("5," + m_DeviceAccessKey + ";");
+                m_btSerial->print("6," + m_WiFiSSID + ";");
 
-                m_btSerial.print("100," + m_firmwareSku + ";");
-                m_btSerial.print("101," + m_firmwareVersion + ";");
-                m_btSerial.println("102,ESP32;");
+                m_btSerial->print("100," + m_firmwareSku + ";");
+                m_btSerial->print("101," + m_firmwareVersion + ";");
+                m_btSerial->println("102,ESP32;");
+            }
+            else if (msg == "QUIT") {
+                m_configurationMode = false;                
             }
             else if (msg == "COMMISSION")
             {
                 EEPROM.writeUShort(IS_CONFIG_LOCATION, COMMISSIONED_ID);
                 EEPROM.commit();
-                m_btSerial.println("999,ACK\n");
+                m_btSerial->println("999,ACK\n");
                 m_hal->restart();
             }
             else
@@ -539,12 +543,12 @@ void NuvIoTState::loop()
                 case '0': // Device ID;
                     m_DeviceId = String(&m_messageBuffer[2]);
                     writeString(DEVICEID_START, m_DeviceId);
-                    m_btSerial.println("0,ACK;");
+                    m_btSerial->println("0,ACK;");
                     break;
                 case '1': // Server Host Name
                     m_HostName = String(&m_messageBuffer[2]);
                     writeString(SERVER_HOST, m_HostName);
-                    m_btSerial.println("1,ACK;");
+                    m_btSerial->println("1,ACK;");
                     break;
                 case '2': // Anonyous
                     m_anonymous = String(&m_messageBuffer[2]) == "true";
@@ -554,32 +558,32 @@ void NuvIoTState::loop()
                         writeString(SERVER_USER_NAME_START, "");
                         writeString(SERVER_PASSWORD, "");
                     }
-                    m_btSerial.println("2,ACK;");
+                    m_btSerial->println("2,ACK;");
                     break;
                 case '3': // Server User Name
                     m_HostUserName = String(&m_messageBuffer[2]);
                     writeString(SERVER_USER_NAME_START, m_HostUserName);
-                    m_btSerial.println("3,ACK;");
+                    m_btSerial->println("3,ACK;");
                     break;
                 case '4': // Server Password
                     m_HostPassword = String(&m_messageBuffer[2]);
                     writeString(SERVER_PASSWORD, m_HostPassword);
-                    m_btSerial.println("4,ACK;");
+                    m_btSerial->println("4,ACK;");
                     break;
                 case '5': // Device Access m_DeviceAccessKey
                     m_DeviceAccessKey = String(&m_messageBuffer[2]);
                     writeString(DEVICE_ACCESS_CODE_START, m_DeviceAccessKey);
-                    m_btSerial.println("5,ACK;");
+                    m_btSerial->println("5,ACK;");
                     break;
                 case '6':
                     m_WiFiSSID = String(&m_messageBuffer[2]);
                     writeString(WIFI_SSID_START, m_WiFiSSID);
-                    m_btSerial.println("6,ACK;");
+                    m_btSerial->println("6,ACK;");
                     break;
                 case '7':
                     m_WiFiPassword = String(&m_messageBuffer[2]);
                     writeString(WIFI_PASSWORD_START, m_WiFiPassword);
-                    m_btSerial.println("7,ACK;");
+                    m_btSerial->println("7,ACK;");
                     break;
                 }
             }
