@@ -45,6 +45,9 @@ public:
     bool exitTransparentMode();
     bool connect(String apn, String apnPwd, String apnUid);
 
+    bool initGPS();
+    String readGPS();
+    
 private:
     byte m_tempBuffer[TEMP_BUFFER_SIZE];
     byte m_rxBuffer[DOWNLOAD_BUFFER_SIZE];
