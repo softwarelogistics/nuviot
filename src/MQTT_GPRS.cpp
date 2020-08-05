@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "MQTT_GPRS.h"
 
 MQTT::MQTT(Channel *channel, Console *console)

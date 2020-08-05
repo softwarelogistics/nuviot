@@ -7,6 +7,7 @@
 #include "AbstractSensor.h"
 #include "Console.h"
 
+#define NUMBER_ADC_PORTS 6
 
 class ADC : public AbstractSensor
 {
@@ -15,7 +16,7 @@ private:
     ADS1115 *_bank1;
     ADS1115 *_bank2;
     Console *m_console;
-    bool m_portEnabled[3];
+    bool m_portEnabled[NUMBER_ADC_PORTS];
     bool m_vbattEnabled;
 
     bool m_bank1Enabled = false;
@@ -33,9 +34,11 @@ public:
         /* addr1 = GND, ADCMOD2 */
         _bank2 = new ADS1115(wire, ADS1115_ADDRESS1);
 
-        m_portEnabled[0] = false;
-        m_portEnabled[1] = false;
-        m_portEnabled[2] = false;
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
+        {
+            m_portEnabled[idx] = false;
+        }
+
         m_vbattEnabled = false;
         m_messagePayload = payload;
 
@@ -46,14 +49,14 @@ public:
          * idx: LBL  - Connector
          * 0 = VBATT - POWER
          * 1 = ADC2  - ADC3
-         * 2 = ADC3  - CT 3
+         * 2 = ADC3  - CT 3 ADC6
          * 3 = ADC4  - N/C
          *
          *  
          * Bank 2
          * =================
-         * 4 = ADC6  - CT 2 
-         * 5 = ADC5  - CT 1
+         * 4 = ADC6  - CT 2 ADC5
+         * 5 = ADC5  - CT 1 ADC4
          * 6 = ADC7  - ADC 2
          * 7 = ADC8  - ADC 1
          * 
@@ -99,9 +102,9 @@ public:
 
     float getADC(byte port)
     {
-        if (port > 2)
+        if (port > 5)
         {
-            m_console->printError("ADC Port > 2");
+            m_console->printError("ADC Port > 5");
         }
 
         switch (port)
@@ -112,6 +115,12 @@ public:
             return m_portEnabled[port] ? m_messagePayload->voltage2 : -1;
         case 2:
             return m_portEnabled[port] ? m_messagePayload->voltage3 : -1;
+        case 3:
+            return m_portEnabled[port] ? m_messagePayload->voltage4 : -1;
+        case 4:
+            return m_portEnabled[port] ? m_messagePayload->voltage5 : -1;
+        case 5:
+            return m_portEnabled[port] ? m_messagePayload->voltage6 : -1;
         }
 
         return -1;
@@ -134,29 +143,31 @@ public:
 
     void setup()
     {
-
     }
 
     void loop()
     {
-        if(!_bank1->isOnline() && m_bank1Enabled) {
+        if (!_bank1->isOnline() && m_bank1Enabled)
+        {
             m_messagePayload->lastError = "ADC 1 Offline";
             m_console->printError("ADC 1 Offline");
             m_messagePayload->status = "Error";
         }
-        else if(!_bank2->isOnline() && m_bank2Enabled) {
+        else if (!_bank2->isOnline() && m_bank2Enabled)
+        {
             m_messagePayload->lastError = "ADC 2 Offline";
             m_console->printError("ADC 2 Offline");
             m_messagePayload->status = "Error";
         }
 
-        _bank2->isOnline();
-
         m_messagePayload->hasVBatt = m_vbattEnabled;
-        
+
         m_messagePayload->hasVoltage1 = m_portEnabled[0];
-        m_messagePayload->hasVoltage2 = m_portEnabled[1];        
+        m_messagePayload->hasVoltage2 = m_portEnabled[1];
         m_messagePayload->hasVoltage3 = m_portEnabled[2];
+        m_messagePayload->hasVoltage4 = m_portEnabled[3];
+        m_messagePayload->hasVoltage5 = m_portEnabled[4];
+        m_messagePayload->hasVoltage6 = m_portEnabled[5];
 
         m_messagePayload->vbatt = m_vbattEnabled ? getVBATT() : -1;
         delay(250);
@@ -166,20 +177,33 @@ public:
         delay(250);
         m_messagePayload->voltage3 = m_messagePayload->hasVoltage3 ? getVoltage(1) : -1;
         delay(250);
+        m_messagePayload->voltage4 = m_messagePayload->hasVoltage3 ? getVoltage(5) : -1;
+        delay(250);
+        m_messagePayload->voltage5 = m_messagePayload->hasVoltage3 ? getVoltage(4) : -1;
+        delay(250);        
+        m_messagePayload->voltage6 = m_messagePayload->hasVoltage3 ? getVoltage(2) : -1;
+        delay(250);                
     }
 
-    void debugPrint() {
-        if(m_vbattEnabled) m_console->printVerbose("VBATT  : " + String(getVBATT()));
-        for(int idx = 0; idx < 3; ++idx)
-            if(m_portEnabled[idx])
+    void debugPrint()
+    {
+        if (m_vbattEnabled)
+            m_console->printVerbose("VBATT  : " + String(getVBATT()));
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
+            if (m_portEnabled[idx])
                 m_console->printVerbose("VADC" + String(idx) + "  :" + String(getADC(idx)));
     }
 
     bool setBankEnabled(int bank, bool enabled)
     {
-        switch(bank) {
-            case 1: m_bank1Enabled = enabled; break;
-            case 2: m_bank2Enabled = enabled; break;
+        switch (bank)
+        {
+        case 1:
+            m_bank1Enabled = enabled;
+            break;
+        case 2:
+            m_bank2Enabled = enabled;
+            break;
         }
     }
 

@@ -104,7 +104,6 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     m_firmwareVersion = firmwareVersion;
 
     EEPROM.begin(2048);
-    
 
     // are we fully ready to be online?
     m_isCommissioned = EEPROM.readUShort(IS_CONFIG_LOCATION) == COMMISSIONED_ID;
@@ -190,7 +189,7 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
 
     Param *pNode = m_pIntParamHead;
     while (pNode != NULL)
-    {        
+    {
         m_console->println(String(pNode->getIndex() + ". " + String(pNode->getKey())));
         pNode = pNode->pNext;
     }
@@ -286,13 +285,13 @@ void NuvIoTState::createDefaults()
         {
 #ifdef STATE_VERBOSE
             m_console->printVerbose("Flt [" + String(pNext->getKey()) + "] set at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif            
+#endif
         }
         else
         {
-#ifdef STATE_VERBOSE            
+#ifdef STATE_VERBOSE
             m_console->printVerbose("Flt [" + String(pNext->getKey()) + "] not set, default: " + String(pNext->getFltDefault()) + " at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif            
+#endif
             EEPROM.writeFloat(FLT_BLOCK_START + pNext->getIndex() * sizeof(float), pNext->getFltDefault());
             m_fltSetValueMask = m_fltSetValueMask | fieldMask;
         }
@@ -305,15 +304,15 @@ void NuvIoTState::createDefaults()
         uint64_t fieldMask = (uint64_t)pow(2, pNext->getIndex());
         if ((m_intSetValueMask & fieldMask) == fieldMask)
         {
-#ifdef STATE_VERBOSE                        
+#ifdef STATE_VERBOSE
             m_console->printVerbose("Int [" + String(pNext->getKey()) + "] at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
 #endif
         }
         else
         {
-#ifdef STATE_VERBOSE                                    
+#ifdef STATE_VERBOSE
             m_console->printVerbose("Int [" + String(pNext->getKey()) + "] not set, default: " + String(pNext->getIntDefault()) + " at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif            
+#endif
             EEPROM.writeInt(INT_BLOCK_START + pNext->getIndex() * sizeof(int), pNext->getIntDefault());
 
             m_intSetValueMask = m_intSetValueMask | fieldMask;
@@ -327,15 +326,15 @@ void NuvIoTState::createDefaults()
         uint64_t fieldMask = (uint64_t)pow(2, pNext->getIndex());
         if ((m_boolSetValueMask & fieldMask) == fieldMask)
         {
-#ifdef STATE_VERBOSE                                                
+#ifdef STATE_VERBOSE
             m_console->printVerbose("Bool [" + String(pNext->getKey()) + "] at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif            
+#endif
         }
         else
         {
-#ifdef STATE_VERBOSE                                                            
+#ifdef STATE_VERBOSE
             m_console->printVerbose("Bool [" + String(pNext->getKey()) + "] not set, default: " + String(pNext->getBoolDefault()) + " at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif            
+#endif
             EEPROM.writeInt(BOOL_BLOCK_START + pNext->getIndex() * sizeof(bool), pNext->getBoolDefault());
             m_boolSetValueMask = m_boolSetValueMask | fieldMask;
         }
@@ -409,53 +408,64 @@ String NuvIoTState::getRemoteProperties()
     return state;
 }
 
+int _lstSend = 0;
+
 void NuvIoTState::readFirmware()
 {
+    m_console->enableBTOut(false);
+
+    m_console->println("Start DFU");
+    m_btSerial->print("ok-start\n");
+
     while (m_btSerial->available() < 2)
     {
         delay(1);
     }
 
     short blockCount = m_btSerial->read() << 8 | m_btSerial->read();
-    byte buffer[16 * 1024];
+    byte buffer[512];
 
-    Serial.println("Number of blocks: " + String(blockCount));
+    m_console->println("Started reading [" + String(blockCount) + "] blocks");
+    m_btSerial->print("ok-send:" + String(blockCount) + "\n");
+
     for (int idx = 0; idx < blockCount; ++idx)
     {
         while (m_btSerial->available() < 2)
-        {
             delay(1);
-        }
 
         short blockSize = m_btSerial->read() << 8 | m_btSerial->read();
-        while (m_btSerial->available() < blockSize)
+        Serial.println("Expecting block size of " + String(blockSize));
+
+        while (m_btSerial->available() < blockSize + 1)
         {
+            if (millis() - _lstSend > 1000)
+            {
+                _lstSend = millis();
+                m_console->println("Bytes in hopper [" + String(m_btSerial->available()) + "].");
+            }
             delay(1);
         }
 
-        short checkSum = 0;
+        byte calcCheckSum = 0;
 
         for (int ch = 0; ch < blockSize; ++ch)
         {
             buffer[ch] = (byte)m_btSerial->read();
-            checkSum ^= buffer[ch];
+            calcCheckSum += buffer[ch];
         }
 
-        while (m_btSerial->available() < 2)
-        {
-            delay(1);
-        }
-
-        short calcCheckSum = m_btSerial->read() << 8 | m_btSerial->read();
-
-#ifdef STATE_VERBOSE
-        m_console->printVerbose("Block: " + String(idx) + " " + String(blockSize) + " " + checkSum + " " + calcCheckSum);
-#endif        
+        byte actualCheckSum = m_btSerial->read();
+        //#define STATE_VERBOSE
+        //#ifdef STATE_VERBOSE
+        m_console->printVerbose("Block: (" + String(idx) + "/" + String(blockCount) + ") " + String(blockSize) + " " + calcCheckSum + " " + actualCheckSum + " " + buffer[0] + " " + buffer[1] + "  " + buffer[498] + " " + buffer[499]);
+        m_btSerial->print("ok-recv:" + String(idx) + "\n");
+        delay(5);
+        //#endif
     }
-    while (m_btSerial->available())
-    {
-        m_btSerial->read();
-    }
+
+    m_btSerial->print("ok-done:" + String(blockCount));
+
+    m_console->enableBTOut(true);
 }
 
 bool NuvIoTState::getIsConfigurationModeActive()
@@ -526,8 +536,9 @@ void NuvIoTState::loop()
                 m_btSerial->print("101," + m_firmwareVersion + ";");
                 m_btSerial->println("102,ESP32;");
             }
-            else if (msg == "QUIT") {
-                m_configurationMode = false;                
+            else if (msg == "QUIT")
+            {
+                m_configurationMode = false;
             }
             else if (msg == "COMMISSION")
             {
@@ -661,9 +672,9 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             int addr = INT_BLOCK_START + pParam->getIndex() * sizeof(intValue);
             EEPROM.writeInt(addr, intValue);
             EEPROM.commit();
-#ifdef STATE_VERBOSE                                    
+#ifdef STATE_VERBOSE
             m_console->printVerbose("SET int " + field + " " + String(intValue) + " at address " + String(addr));
-#endif            
+#endif
         }
     }
     else if (fieldType == "Decimal")
@@ -674,9 +685,9 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             float floatValue = atof(value.c_str());
             EEPROM.writeFloat(FLT_BLOCK_START + pParam->getIndex() * sizeof(float), floatValue);
             EEPROM.commit();
-#ifdef STATE_VERBOSE                        
+#ifdef STATE_VERBOSE
             m_console->printVerbose("SET float " + field + "=" + String(floatValue));
-#endif            
+#endif
         }
     }
     else if (fieldType == "Boolean")
@@ -687,9 +698,9 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             bool boolValue = value == "true";
             EEPROM.writeBool(BOOL_BLOCK_START + pParam->getIndex() * sizeof(float), boolValue);
             EEPROM.commit();
-#ifdef STATE_VERBOSE            
+#ifdef STATE_VERBOSE
             m_console->printVerbose("SET bool " + field + "=" + String(boolValue));
-#endif            
+#endif
         }
     }
 }
@@ -757,9 +768,9 @@ Param *NuvIoTState::appendValue(Param *pHead, Param *pNode)
         {
             pNode->setIndex(idx);
             pNext->pNext = pNode;
-#ifdef STATE_VERBOSE        
+#ifdef STATE_VERBOSE
             m_console->printVerbose("Add [" + String(pNode->getKey()) + "] idx [" + String(pNode->getIndex()) + "]");
-#endif            
+#endif
 
             return pNode;
         }
@@ -778,9 +789,9 @@ void NuvIoTState::registerInt(const char *key, int defaultValue)
     if (m_pIntParamHead == NULL)
     {
         p->setIndex(0);
-#ifdef STATE_VERBOSE        
+#ifdef STATE_VERBOSE
         m_console->printVerbose("Reg int [" + String(p->getKey()) + "]=[" + String(p->getIntDefault()) + "] idx [" + String(p->getIndex()) + "]");
-#endif        
+#endif
         m_pIntParamHead = p;
     }
     else
@@ -814,9 +825,9 @@ void NuvIoTState::registerBool(const char *key, boolean defaultValue)
     if (m_pBoolParamHead == NULL)
     {
         p->setIndex(0);
-#ifdef STATE_VERBOSE                                                        
+#ifdef STATE_VERBOSE
         m_console->printVerbose("Reg bool [" + String(p->getKey()) + "]=[" + String(p->getBoolDefault()) + "] idx [" + String(p->getIndex()) + "]");
-#endif        
+#endif
 
         m_pBoolParamHead = p;
     }

@@ -350,7 +350,8 @@ int16_t ADS1115::getLastConversionResults()
 
 float ADS1115::readADC_Voltage(uint8_t channel)
 {
-  return (readADC_SingleEnded(channel) / 26789.0f) * 5.0f;
+  uint16_t raw = readADC_SingleEnded(channel);
+  return ( raw / 26789.0f) * 5.0f;
 }
 
 bool ADS1115::isOnline() {

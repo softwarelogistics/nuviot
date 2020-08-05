@@ -6,9 +6,13 @@
 
 class Console
 {
+private:
+    bool m_btEnabled = true;
+
 public:
     Console(Stream *stream);
     Console(BluetoothSerial *btSerial, Stream *stream);
+    Console(BluetoothSerial *btSerial);
 
     void printByte(byte byte);
     void printByte(String prefix, byte byte, String suffix);
@@ -26,6 +30,8 @@ public:
     void printWarning(String warning);
 
     void setVerboseLogging(bool verbose);
+
+    void enableBTOut(bool enabled);
 
 private:
     BluetoothSerial *m_btSerial = NULL;

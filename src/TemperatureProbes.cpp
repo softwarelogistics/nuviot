@@ -1,5 +1,21 @@
 #include "TemperatureProbes.h"
 
+#define SL_BOARD_TYPE
+
+#ifdef SL_BOARD_TYPE
+#define PROBE0_PIN 5
+#define PROBE1_PIN 17
+#define PROBE2_PIN 16
+#define PROBE3_PIN 4
+#define PROBE4_PIN 27
+#else
+#define PROBE0_PIN 17
+#define PROBE1_PIN 13
+#define PROBE2_PIN 14
+#define PROBE3_PIN 2 
+#define PROBE4_PIN -1
+#endif
+
 TemperatureProbes::TemperatureProbes(Console *console, MessagePayload *payload, NuvIoTState *state)
 {
     m_payload = payload;
@@ -16,7 +32,7 @@ TemperatureProbes::TemperatureProbes(Console *console, NuvIoTState *state)
 
 void TemperatureProbes::setup()
 {
-    for (int idx = 0; idx < 3; ++idx)
+    for (int idx = 0; idx < PROBECOUNT; ++idx)
     {
         m_sensorConfigurations[idx] = None;
         m_probes[idx] = NULL;
@@ -29,7 +45,7 @@ void TemperatureProbes::setup()
 
 void TemperatureProbes::readTemperatures()
 {
-    for (int idx = 0; idx < 3; ++idx)
+    for (int idx = 0; idx < PROBECOUNT; ++idx)
     {
         float temperature = MIN_VALUE;
         float humidity = MIN_VALUE;
@@ -43,17 +59,18 @@ void TemperatureProbes::readTemperatures()
             bool success = false;
             int retryCount = 0;
          
-            while (!success && retryCount++ < 10)
+            while (!success && retryCount++ < 1)
             {
                 m_probes[idx]->requestTemperatures();
                 temperature = m_probes[idx]->getTempFByIndex(0);
                 if (temperature < -100 || temperature > 175)
                 {
                     delay(500);
-                    m_console->printError("ERR DS18B20 Attempt: " + String(retryCount));
+                    m_console->printError("ERR DS18B20- " + String(idx) + " Attempt: " + String(retryCount));
                 }
                 else
                 {
+                    m_console->println("SUCCESS READING -> " + String(idx));
                     success = true;
                 }
             }
@@ -100,6 +117,21 @@ void TemperatureProbes::readTemperatures()
                 m_payload->humidity3 = humidity == MIN_VALUE ? 0 : humidity;
                 m_payload->hasHumidity3 = humidity != MIN_VALUE;
                 break;
+            case 3:
+                m_payload->temperature4 = temperature == MIN_VALUE ? 0 : temperature;
+                m_payload->hasTemperature4 = temperature != MIN_VALUE;
+                m_payload->humidity4 = humidity == MIN_VALUE ? 0 : humidity;
+                m_payload->hasHumidity4 = humidity != MIN_VALUE;
+                break;
+
+            case 4:
+                m_payload->temperature5 = temperature == MIN_VALUE ? 0 : temperature;
+                m_payload->hasTemperature5 = temperature != MIN_VALUE;
+                m_payload->humidity5 = humidity == MIN_VALUE ? 0 : humidity;
+                m_payload->hasHumidity5 = humidity != MIN_VALUE;
+                break;
+
+
             }
         }
     }
@@ -129,7 +161,7 @@ void TemperatureProbes::loop()
 
 void TemperatureProbes::debugPrint()
 {
-    for (int idx = 0; idx < 3; ++idx)
+    for (int idx = 0; idx < PROBECOUNT; ++idx)
     {
         if (m_sensorConfigurations[idx] != None)
         {
@@ -147,11 +179,15 @@ void TemperatureProbes::debugPrint()
 byte TemperatureProbes::resolvePinIndex(int idx)
 {
     if (idx == 0)
-        return 17;
+        return PROBE0_PIN;
     if (idx == 1)
-        return 13;
+        return PROBE1_PIN;
     if (idx == 2)
-        return 14;
+        return PROBE2_PIN;
+    if (idx == 3)
+        return PROBE3_PIN;
+    if (idx == 4)
+        return PROBE4_PIN;
 
     return -1;
 }
@@ -219,7 +255,7 @@ void TemperatureProbes::configureProbe(int idx, SensorConfigs config)
         }
 
         if (m_dhts[idx] == NULL)
-        {
+        {            
             m_dhts[idx] = new DHT(pin, DHT22);
         }
         break;
@@ -234,6 +270,8 @@ void TemperatureProbes::configureProbe(int idx, SensorConfigs config)
         {
             m_oneWires[idx] = new OneWire(pin);
         }
+
+        Serial.println("CONFIGURE PIN " + String(pin) + "  " + String(idx));
 
         if (m_probes[idx] == NULL)
         {

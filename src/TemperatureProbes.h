@@ -9,6 +9,8 @@
 #include "Console.h"
 #include "AbstractSensor.h"
 
+#define PROBECOUNT 5
+
 enum SensorConfigs {
     None,
     Dht11,
@@ -35,17 +37,17 @@ class TemperatureProbes: public AbstractSensor{
         void configureProbe(int idx, SensorConfigs config);
 
     private:
-        float m_temperatures[3];
-        float m_humidities[3];
+        float m_temperatures[PROBECOUNT];
+        float m_humidities[PROBECOUNT];
         bool m_initialized;
 
         byte resolvePinIndex(int idx);
 
-        SensorConfigs m_sensorConfigurations[3];
+        SensorConfigs m_sensorConfigurations[PROBECOUNT];
 
-        OneWire *m_oneWires[3];
-        DallasTemperature *m_probes[3];
-        DHT *m_dhts[3]; 
+        OneWire *m_oneWires[PROBECOUNT];
+        DallasTemperature *m_probes[PROBECOUNT];
+        DHT *m_dhts[PROBECOUNT]; 
         
         MessagePayload* m_payload = NULL;
         Console* m_console;

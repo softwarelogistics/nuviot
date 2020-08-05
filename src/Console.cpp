@@ -3,6 +3,7 @@
 Console::Console(Stream *stream)
 {
     m_stream = stream;
+    m_btSerial = NULL;
 }
 
 Console::Console(BluetoothSerial *btSerial, Stream *stream)
@@ -11,16 +12,27 @@ Console::Console(BluetoothSerial *btSerial, Stream *stream)
     m_btSerial = btSerial;
 }
 
+Console::Console(BluetoothSerial *btSerial)
+{
+    m_stream = NULL;
+    m_btSerial = btSerial;
+}
+
 void Console::printByte(byte ch)
 {
     if (m_verboseLogging)
     {
-        char hexChar[2];
-        m_stream->print("0x");
-        sprintf(hexChar, "%02X", ch);
-        m_stream->print(hexChar);
 
-        if(m_btSerial != NULL)
+        char hexChar[2];
+
+        if (m_stream != NULL)
+        {
+            m_stream->print("0x");
+            sprintf(hexChar, "%02X", ch);
+            m_stream->print(hexChar);
+        }
+
+        if (m_btSerial != NULL && m_btEnabled)
         {
             m_btSerial->print("0x");
             sprintf(hexChar, "%02X", ch);
@@ -39,6 +51,10 @@ void Console::printByte(String prefix, byte byte, String suffix)
     }
 }
 
+void Console::enableBTOut(bool enabled) {
+    m_btEnabled  = enabled;
+}
+
 void Console::setVerboseLogging(bool verbose)
 {
     m_verboseLogging = verbose;
@@ -54,44 +70,66 @@ void Console::printVerbose(String msg)
 
 void Console::println(String msg)
 {
-    m_stream->println(msg);
-    if(m_btSerial != NULL) {
+    if (m_stream != NULL)
+    {
+        m_stream->println(msg);
+    }
+
+    if (m_btSerial != NULL && m_btEnabled)
+    {
         m_btSerial->println(msg);
     }
 }
 
 void Console::print(String msg)
 {
-    m_stream->print(msg);
-    if(m_btSerial != NULL) {
+    if (m_stream != NULL)
+    {
+        m_stream->print(msg);
+    }
+
+    if (m_btSerial != NULL && m_btEnabled)
+    {
         m_btSerial->print(msg);
     }
 }
 
 void Console::newline()
 {
-    m_stream->println();
-    if(m_btSerial != NULL) {
+    if (m_stream != NULL)
+    {
+        m_stream->println();
+    }
+
+    if (m_btSerial != NULL && m_btEnabled)
+    {
         m_btSerial->println();
     }
 }
 
 void Console::printError(String err)
 {
-    m_stream->println("ERROR");
-    m_stream->println("=======");
-    m_stream->println(err);
-    m_stream->println();
+    if (m_stream != NULL)
+    {
+        m_stream->println("ERROR");
+        m_stream->println("=======");
+        m_stream->println(err);
+        m_stream->println();
+    }
 }
 
 void Console::printWarning(String warning)
 {
-    m_stream->println("WARNING");
-    m_stream->println("=======");
-    m_stream->println(warning);
-    m_stream->println();
+    if (m_stream != NULL)
+    {
+        m_stream->println("WARNING");
+        m_stream->println("=======");
+        m_stream->println(warning);
+        m_stream->println();
+    }
 
-    if(m_btSerial != NULL) {
+    if (m_btSerial != NULL && m_btEnabled)
+    {
         m_btSerial->println("WARNING");
         m_btSerial->println("=======");
         m_btSerial->println(warning);
@@ -118,14 +156,18 @@ void Console::printByteArray(String prefix, byte buffer[], size_t len)
 {
     if (m_verboseLogging)
     {
-        m_stream->print(prefix);
+        if (m_stream != NULL)
+        {
+            m_stream->print(prefix);
+        }
+
         if (len == -1)
         {
             int idx = 0;
             byte ch = buffer[idx];
             while (ch != 0x00)
             {
-                if (idx > 0)
+                if (idx > 0 && m_stream != NULL)
                     m_stream->print(" ");
 
                 printByte(ch);
@@ -139,11 +181,14 @@ void Console::printByteArray(String prefix, byte buffer[], size_t len)
             for (int idx = 0; idx < len; ++idx)
             {
                 printByte(buffer[idx]);
-                if (idx < len - 1)
+                if (idx < len - 1 && m_stream != NULL)
                     m_stream->print(" ");
             }
         }
 
-        m_stream->println(";");
+        if(m_stream != NULL)
+        {
+            m_stream->println(";");
+        }
     }
 }

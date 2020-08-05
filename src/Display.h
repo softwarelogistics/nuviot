@@ -6,6 +6,7 @@
 #include <U8x8lib.h>
 
 #define DISPLAY_U8G 100
+#define DISPLAY_NONE 200
 
 class Display
 {
