@@ -271,8 +271,6 @@ void TemperatureProbes::configureProbe(int idx, SensorConfigs config)
             m_oneWires[idx] = new OneWire(pin);
         }
 
-        Serial.println("CONFIGURE PIN " + String(pin) + "  " + String(idx));
-
         if (m_probes[idx] == NULL)
         {
             m_probes[idx] = new DallasTemperature(m_oneWires[idx]);

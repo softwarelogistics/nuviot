@@ -2,6 +2,7 @@
 #define RELAYMANAGER_H
 
 #include <Arduino.h>
+#include <LagoVistaPins.h>
 
 #define RELAY1_PIN 34
 #define RELAY2_PIN 35
@@ -11,24 +12,24 @@
 class RelayManager {
     public:
         RelayManager() {
-            pinMode(RELAY1_PIN, OUTPUT);
-            pinMode(RELAY2_PIN, OUTPUT);
-            pinMode(RELAY3_PIN, OUTPUT);
-            pinMode(RELAY4_PIN, OUTPUT);
+            pinMode(K1_CTL, OUTPUT);
+            pinMode(K2_CTL, OUTPUT);
+            pinMode(K3_CTL, OUTPUT);
+            pinMode(K4_CTL, OUTPUT);
         };
 
         void toggleRelay(int relayIndex, bool on){
-            pinMode(RELAY1_PIN, OUTPUT);
-            pinMode(RELAY2_PIN, OUTPUT);
-            pinMode(RELAY3_PIN, OUTPUT);
-            pinMode(RELAY4_PIN, OUTPUT);
+            pinMode(K1_CTL, OUTPUT);
+            pinMode(K2_CTL, OUTPUT);
+            pinMode(K3_CTL, OUTPUT);
+            pinMode(K4_CTL, OUTPUT);
 
             Serial.println("Relay " + String(relayIndex) + "  " + String(on));
 
-            if(relayIndex == 0) digitalWrite(RELAY1_PIN, on);
-            if(relayIndex == 1) digitalWrite(RELAY2_PIN, on);
-            if(relayIndex == 2) digitalWrite(RELAY3_PIN, on);
-            if(relayIndex == 3) digitalWrite(RELAY4_PIN, on);
+            if(relayIndex == 0) digitalWrite(K1_CTL, on);
+            if(relayIndex == 1) digitalWrite(K2_CTL, on);
+            if(relayIndex == 2) digitalWrite(K3_CTL, on);
+            if(relayIndex == 3) digitalWrite(K4_CTL, on);
         };
 };
 

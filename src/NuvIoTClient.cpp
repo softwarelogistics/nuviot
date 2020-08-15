@@ -69,6 +69,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     {
         m_display->drawStr("ERROR", "COMMS001", "No m_modem->", ("Retry Count " + String(++retryCount)).c_str());
         delay(2000);
+        m_state->loop();
     }
 
     m_modem->setBaudRate(baudRate);
@@ -84,6 +85,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     {
         m_display->drawStr("ERROR", "COMMS003", "Resetting m_modem->", ("Retry Count " + String(++retryCount)).c_str());
         delay(2000);
+        m_state->loop();
     }
 
     if (retryCount == 10)
@@ -97,12 +99,12 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     {
         m_display->drawStr("COMMS", "SIMID", simId.c_str());
         delay(1000);
+        m_state->loop();
     }
     else
     {
         m_display->drawStr("ERROR", "COMMS004", "Could not find SIMID", "Please check");
-        while (1)
-            ;
+        while (1);
     }
 
     retryCount = 0;
@@ -112,6 +114,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     {
         m_display->drawStr("ERROR", "COMMS005", "Initialize Modem Settings.", ("Retry Count " + String(++retryCount)).c_str());
         delay(2000);
+        m_state->loop();
         return false;
     }
 
@@ -124,6 +127,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
         while (!m_modem->enableTransparentMode() && retryCount < 10)
         {
             m_display->drawStr("ERROR", "COMMS006", "Failed Transparent Mode.", ("Retry Count " + String(++retryCount)).c_str());
+            m_state->loop();
         }
 
         if (retryCount == 10)
@@ -143,6 +147,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
         while (!m_modem->connect("hologram", "", "") && retryCount < 10)
         {
             m_display->drawStr("ERROR", "COMMS007", "Failed APN Connect.", ("Retry Count " + String(++retryCount)).c_str());
+            m_state->loop();
         }
 
         if (retryCount == 10)
@@ -161,11 +166,14 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
     int retryCount = 0;
 
+    m_state->loop();
+
     retryCount = 0;
     sendStatusUpdate("Connected to APN", "Connecting to MQTT");
     while (!m_modem->connectServer(m_state->getHostName(), "1883") && retryCount < 10)
     {
         m_display->drawStr("ERROR", "MQTT001", "Failed MQTT Server.", ("Retry Count " + String(++retryCount)).c_str());
+        m_state->loop();
     }
 
     if (retryCount == 10)
@@ -178,6 +186,7 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
     while (!m_mqtt->connect(m_state->getHostUserName(), m_state->getHostPassword(), m_state->getDeviceId()) && retryCount < 10)
     {
         m_display->drawStr("ERROR", "MQTT002", "Failed Auth m_mqtt->", ("Retry Count " + String(++retryCount)).c_str());
+        m_state->loop();
     }
 
     if (retryCount == 10)
@@ -190,6 +199,7 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
     while (!m_mqtt->publish("hvac/online/" + m_state->getDeviceId(), onlinePayload, QOS0) && retryCount < 10)
     {
         m_display->drawStr("ERROR", "MQTT003", "Failed publish Connect.", ("Retry Count " + String(++retryCount)).c_str());
+        m_state->loop();
     }
 
     if (retryCount == 10)
@@ -200,6 +210,7 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
     while (m_mqtt->subscribe("nuviot/dvcsrvc/" + m_state->getDeviceId() + "/#", QOS0) == -1 && retryCount < 10)
     {
         m_display->drawStr("ERROR", "MQTT004", "Failed Subscribe.", ("Retry Count " + String(++retryCount)).c_str());
+        m_state->loop();
     }
 
     if (retryCount == 10)
