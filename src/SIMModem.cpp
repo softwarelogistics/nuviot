@@ -63,7 +63,7 @@ bool SIMModem::disableTransparentMode()
     return sendCommand("AT+CIPMODE=0") == S_OK;
 }
 
-bool SIMModem::exitTransparentMode()
+bool SIMModem::exitDataMode()
 {
     delay(1000);
     m_channel->print("+++");
@@ -772,22 +772,42 @@ bool SIMModem::initGPS()
 {
     if (sendCommand("AT+CGNSPWR=1", S_OK, 0, 1500, false) != S_OK)
     {
-        m_console->printError("Could not open Bearer");
-        return false;
-    }
-
-    if (sendCommand("AT+CGNSURC=1", S_OK, 0, 1500, false) != S_OK)
-    {
-        m_console->printError("Could not open Bearer");
+        m_console->printError("Could not power up GPS");
         return false;
     }
 
     return true;
 }
 
+void SIMModem::startGPS()
+{
+    if (sendCommand("AT+CGNSURC=1", S_OK, 0, 1500, false) != S_OK)
+    {
+        m_console->printError("Could not open Bearer");
+    }
+}
+
+void SIMModem::stopGPS()
+{
+
+    if (sendCommand("AT+CGNSURC=0", S_OK, 0, 1500, false) != S_OK)
+    {
+        m_console->printError("Could not open Bearer");
+    }
+}
+
 String SIMModem::readGPS()
 {
-    return "false";
+    m_channel->print("AT+CGNSINF\r\n");
+    String gpsData = m_channel->readStringUntil('\n', 1500);
+
+    gpsData = m_channel->readStringUntil('\n', 1500);
+
+    m_console->print(gpsData);
+
+    gpsData = m_channel->readStringUntil('\n', 1500);
+
+    return "gpsData";
 }
 
 bool SIMModem::connect(String apn, String apnUid, String apnPwd)

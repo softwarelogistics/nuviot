@@ -20,11 +20,15 @@ class NuvIoTClient {
         String m_lastMsg;
         OtaServices *m_ota;
 
+        bool m_gpsEnabled;
+
     public:
         NuvIoTClient(SIMModem *modem, MQTT *mqtt, Console *console, Display *display, NuvIoTState *state, OtaServices *ota, Hal *hal);
         bool ConnectToAPN(bool transparentMode, bool connectToAPN, unsigned long baudRate);
         bool Connect(bool isReconnect, unsigned long baudRate);
         void messagePublished(String topic, unsigned char *payload, size_t length);
+
+        void enableGPS(bool enabled);
 
     private:
         void sendStatusUpdate(String msg, String nextAction);

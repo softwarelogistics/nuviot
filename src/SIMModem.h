@@ -42,10 +42,12 @@ public:
     bool init();
     bool enableTransparentMode();
     bool disableTransparentMode();
-    bool exitTransparentMode();
+    bool exitDataMode();
     bool connect(String apn, String apnPwd, String apnUid);
 
     bool initGPS();
+    void startGPS();
+    void stopGPS();
     String readGPS();
     
 private:

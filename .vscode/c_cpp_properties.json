@@ -3,6 +3,7 @@
         {
             "name": "Win32",
             "includePath": [
+                "C:\\Users\\kevin\\Documents\\Arduino\\libraries\\**",
                 "C:\\Users\\kevin\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
                 "C:\\Users\\kevin\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.5.2\\**",
                 "C:\\Users\\kevin\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.3\\libraries\\**",

@@ -51,6 +51,10 @@ void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction, Stri
     }
 }
 
+void NuvIoTClient::enableGPS(bool enabled){
+    m_gpsEnabled = enabled;
+}
+
 void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction)
 {
     sendStatusUpdate(currentState, nextAction, "Commo starting", 0);
@@ -218,6 +222,10 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
     sendStatusUpdate("Subscribed to sys msgs", "Ready");
 
+    if(m_gpsEnabled){
+        m_modem->startGPS();
+    }
+
     return true;
 }
 
@@ -229,7 +237,7 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
 
     if (topic.endsWith("testing"))
     {
-        m_modem->exitTransparentMode();
+        m_modem->exitDataMode();
         m_ota->start("http://api.nuviot.com/api/firmware/download/6AEFEA1606BB4C6CB2C5135CB42B4C77");
         return;
     }
@@ -339,7 +347,7 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
             {
                 if (partIdx >= 4)
                 {
-                    m_modem->exitTransparentMode();
+                    m_modem->exitDataMode();
                     String url = "http://api.nuviot.com/api/firmware/download/" + parts[4];
                     m_console->println("Request Download.");
                     m_console->println(url);
