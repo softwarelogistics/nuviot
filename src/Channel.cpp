@@ -69,8 +69,6 @@ void Channel::setBaudRate(unsigned long baudRate) {
     m_stream->end();
     m_stream->updateBaudRate(baudRate);
     delay(1000);
-
-    m_console->printVerbose("We setting baud rate on stream " + String(baudRate) + " baud rate " + String(m_stream->baudRate()));
 }
 
 String Channel::readStringUntil(char ch, int timeout)

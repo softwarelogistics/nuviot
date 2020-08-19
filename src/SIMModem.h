@@ -20,6 +20,7 @@
 #include "Console.h"
 #include "Channel.h"
 #include "Display.h"
+#include "GPSData.h"
 
 class SIMModem {
 public:
@@ -48,7 +49,7 @@ public:
     bool initGPS();
     void startGPS();
     void stopGPS();
-    String readGPS();
+    GPSData *readGPS();
     
 private:
     byte m_tempBuffer[TEMP_BUFFER_SIZE];
@@ -62,6 +63,8 @@ private:
     String m_network;
     String m_ipAddress;
     int m_rssi;
+
+    GPSData *m_gpsData;
 
     bool waitForReply(String expectedReply, int iterations);
   

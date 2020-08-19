@@ -116,6 +116,14 @@ void Console::printError(String err)
         m_stream->println(err);
         m_stream->println();
     }
+
+    if (m_btSerial != NULL && m_btEnabled)
+    {
+        m_btSerial->println("ERROR");
+        m_btSerial->println("=======");
+        m_btSerial->println(err);
+        m_btSerial->println();
+    }
 }
 
 void Console::printWarning(String warning)

@@ -7,6 +7,7 @@ SIMModem::SIMModem(Display *display, Channel *channel, Console *console)
     m_channel = channel;
     m_console = console;
     m_display = display;
+    m_gpsData = new GPSData();
 }
 
 SIMModem::SIMModem(Channel *channel, Console *console)
@@ -14,6 +15,7 @@ SIMModem::SIMModem(Channel *channel, Console *console)
     m_channel = channel;
     m_console = console;
     m_display = NULL;
+    m_gpsData = new GPSData();
 }
 
 bool SIMModem::waitForReply(String expectedReply, int iterations)
@@ -761,8 +763,6 @@ bool SIMModem::connectServer(String hostName, String port)
 
 bool SIMModem::setBaudRate(unsigned long baudRate)
 {
-    // m_channel->setBaudRate(baudRate);
-
     String baudRateCmd = "AT+IPR=" + String(baudRate);
     Serial.println(baudRateCmd);
     return sendCommand(baudRateCmd);
@@ -775,39 +775,98 @@ bool SIMModem::initGPS()
         m_console->printError("Could not power up GPS");
         return false;
     }
+    else {
+        m_console->printVerbose("Started up GPS");
+    }
 
     return true;
 }
 
 void SIMModem::startGPS()
 {
-    if (sendCommand("AT+CGNSURC=1", S_OK, 0, 1500, false) != S_OK)
+    m_console->println("Starting GPS Auto Send");
+    
+    exitDataMode();
+
+    initGPS();
+
+   /* if (sendCommand("AT+CGNSURC=1", S_OK, 0, 1500, false) != S_OK)
     {
-        m_console->printError("Could not open Bearer");
+        m_console->printError("Could not set GPS auto send mode.");
+    }
+    else {
+        m_console->println("Started GPS Auto Send");
+    }*/
+
+    if (sendCommand("ATO", S_CONNECT, 0, 1500, false) != S_OK)
+    {
+        m_console->printError("Could not switch back to data mode.");
+    }
+    else {
+        m_console->println("Switched back to data mode");
     }
 }
 
 void SIMModem::stopGPS()
 {
-
     if (sendCommand("AT+CGNSURC=0", S_OK, 0, 1500, false) != S_OK)
     {
         m_console->printError("Could not open Bearer");
     }
 }
 
-String SIMModem::readGPS()
+GPSData *SIMModem::readGPS()
 {
-    m_channel->print("AT+CGNSINF\r\n");
-    String gpsData = m_channel->readStringUntil('\n', 1500);
+    exitDataMode();
 
-    gpsData = m_channel->readStringUntil('\n', 1500);
+    while (m_channel->available())
+    {
+        m_console->printByte("   PRE => ", m_channel->readByte(), "x");
+    }
 
-    m_console->print(gpsData);
+    m_console->println("START");
+    m_console->setVerboseLogging(true);
+    m_channel->print("AT+CGNSINF\r");
+    String echo = m_channel->readStringUntil('\r', 100);
+    while (!m_channel->available()); m_channel->readByte();
+    while (!m_channel->available()); m_channel->readByte();
 
-    gpsData = m_channel->readStringUntil('\n', 1500);
+    String gpsData = m_channel->readStringUntil('\r', 100);
+    m_console->println(" GPS => " + gpsData);
 
-    return "gpsData";
+    while (!m_channel->available()); m_channel->readByte();
+    while (!m_channel->available()); m_channel->readByte(); 
+    while (!m_channel->available()); m_channel->readByte();
+
+    String ok = m_channel->readStringUntil('\r', 100);
+    while (!m_channel->available()); m_channel->readByte();
+
+    m_console->println("DONE");
+    m_console->println(" - ");
+
+    while (m_channel->available())
+    {
+        m_console->printByte("   PRE => ", m_channel->readByte(), "x");
+    }
+
+
+    if (sendCommand("ATO", S_CONNECT, 0, 1500, false) != S_OK)
+    {
+        m_console->printError("Could not switch back to data mode.");
+    }
+    else {
+        m_console->println("Switched back to data mode");
+    }    
+    
+    if (ok == "OK")
+    {
+        m_gpsData->parse(gpsData + "\r");
+        return m_gpsData;
+    }
+    else
+    {
+        return NULL;
+    }
 }
 
 bool SIMModem::connect(String apn, String apnUid, String apnPwd)
