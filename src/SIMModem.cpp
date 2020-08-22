@@ -819,20 +819,14 @@ GPSData *SIMModem::readGPS()
 {
     exitDataMode();
 
-    while (m_channel->available())
-    {
-        m_console->printByte("   PRE => ", m_channel->readByte(), "x");
-    }
+    while (m_channel->available());
 
-    m_console->println("START");
-    m_console->setVerboseLogging(true);
     m_channel->print("AT+CGNSINF\r");
     String echo = m_channel->readStringUntil('\r', 100);
     while (!m_channel->available()); m_channel->readByte();
     while (!m_channel->available()); m_channel->readByte();
 
     String gpsData = m_channel->readStringUntil('\r', 100);
-    m_console->println(" GPS => " + gpsData);
 
     while (!m_channel->available()); m_channel->readByte();
     while (!m_channel->available()); m_channel->readByte(); 
@@ -841,22 +835,10 @@ GPSData *SIMModem::readGPS()
     String ok = m_channel->readStringUntil('\r', 100);
     while (!m_channel->available()); m_channel->readByte();
 
-    m_console->println("DONE");
-    m_console->println(" - ");
-
-    while (m_channel->available())
-    {
-        m_console->printByte("   PRE => ", m_channel->readByte(), "x");
-    }
-
-
     if (sendCommand("ATO", S_CONNECT, 0, 1500, false) != S_OK)
     {
         m_console->printError("Could not switch back to data mode.");
     }
-    else {
-        m_console->println("Switched back to data mode");
-    }    
     
     if (ok == "OK")
     {

@@ -1,35 +1,35 @@
-#include "FlowMeter.h"
+#include "PulseCounter.h"
 
 #include <Arduino.h>
 
-FlowMeter *flowMeter;
+PulseCounter *__pulseCounter;
 
 void isr1() {
-    flowMeter->toggled(0);
+    __pulseCounter->toggled(0);
 }
 
 void isr2() {
-    flowMeter->toggled(1);
+    __pulseCounter->toggled(1);
 }
 
 void isr3() {
-    flowMeter->toggled(2);
+    __pulseCounter->toggled(2);
 }
 
 void isr4() {
-    flowMeter->toggled(3);
+    __pulseCounter->toggled(3);
 }
 
-FlowMeter::FlowMeter(Console *console) {
-    flowMeter = this;
+PulseCounter::PulseCounter(Console *console) {
+    __pulseCounter = this;
     m_console = console;
 }
 
-void FlowMeter::toggled(int channel) {
+void PulseCounter::toggled(int channel) {
     m_channelCounts[channel]++;
 }
 
-void FlowMeter::registerPin(uint8_t pin) {
+void PulseCounter::registerPin(uint8_t pin) {
     m_pins[m_channels] = pin;
 
     pinMode(pin, INPUT);
@@ -42,13 +42,13 @@ void FlowMeter::registerPin(uint8_t pin) {
     }
 }
 
-void FlowMeter::setup() {
+void PulseCounter::setup() {
     for(int idx = 0; idx < NUMBER_FLOW_CHANNELS; ++idx) {
-        m_flowRates[idx] = 0;
+        m_pulsePerSecond[idx] = 0;
         m_channelCounts[idx] = 0;
         for(int slot = 0; slot < FLOW_BUFFER_SIZE; ++slot)
         {
-            m_rateBuffer[idx][slot] = 0;
+            m_pulseBuffer[idx][slot] = 0;
         }
     }
 
@@ -57,7 +57,7 @@ void FlowMeter::setup() {
     }
 }
 
-void FlowMeter::loop() {
+void PulseCounter::loop() {
     uint32_t millisDelta = millis() - m_lastMillis;
     if(millisDelta > SAMPLE_PERIOD) {
         m_lastMillis = millis();
@@ -66,7 +66,7 @@ void FlowMeter::loop() {
         double factor = (double)SAMPLE_PERIOD / (double)millisDelta;
         for(int idx = 0; idx < NUMBER_FLOW_CHANNELS; ++idx)
         {
-            m_rateBuffer[idx][m_slotIndex] = (int)(m_channelCounts[idx] * factor);
+            m_pulseBuffer[idx][m_slotIndex] = (int)(m_channelCounts[idx] * factor);
             m_channelCounts[idx] = 0;
         }
 
@@ -83,20 +83,24 @@ void FlowMeter::loop() {
                 uint32_t countTotal = 0;
                 for(int slot = 0; slot < FLOW_BUFFER_SIZE; ++slot)
                 {
-                    countTotal += m_rateBuffer[channelIndex][slot];
+                    countTotal += m_pulseBuffer[channelIndex][slot];
                 }
 
-                m_flowRates[channelIndex] = countTotal / 3; /* 6 500ms samples or 3 seconds, we want to get counts per second */
+                m_pulsePerSecond[channelIndex] = countTotal / 3; /* 6 500ms samples or 3 seconds, we want to get counts per second */
             }    
         }
     }
 }
 
-void FlowMeter::debugPrint() {
+int PulseCounter::countsPerSecond(uint8_t channel){
+    return m_pulsePerSecond[channel];
+}
+
+void PulseCounter::debugPrint() {
     if(m_firstPassCompleted){
         for(int idx = 0; idx < m_channels; ++idx)
         {
-            m_console->printVerbose("COUNTS: " + String(idx) + "," + String(m_pins[idx]) + "," + String(m_flowRates[idx]) + " per second.");
+            m_console->printVerbose("COUNTS: " + String(idx) + "," + String(m_pins[idx]) + "," + String(m_pulsePerSecond[idx]) + " per second.");
         }
     }
 }
