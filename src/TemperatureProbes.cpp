@@ -3,8 +3,8 @@
 #define SL_BOARD_TYPE
 
 #ifdef SL_BOARD_TYPE
-#define PROBE0_PIN 5
-#define PROBE1_PIN 17
+#define PROBE0_PIN 17
+#define PROBE1_PIN 5
 #define PROBE2_PIN 16
 #define PROBE3_PIN 4
 #define PROBE4_PIN 27
@@ -16,17 +16,15 @@
 #define PROBE4_PIN -1
 #endif
 
-TemperatureProbes::TemperatureProbes(Console *console, MessagePayload *payload, NuvIoTState *state)
+TemperatureProbes::TemperatureProbes(Console *console, MessagePayload *payload)
 {
     m_payload = payload;
-    m_state = state;
     m_console = console;
 }
 
-TemperatureProbes::TemperatureProbes(Console *console, NuvIoTState *state)
+TemperatureProbes::TemperatureProbes(Console *console)
 {
     m_payload = NULL;
-    m_state = state;
     m_console = console;
 }
 
@@ -70,7 +68,6 @@ void TemperatureProbes::readTemperatures()
                 }
                 else
                 {
-                    m_console->println("SUCCESS READING -> " + String(idx));
                     success = true;
                 }
             }
@@ -165,13 +162,13 @@ void TemperatureProbes::debugPrint()
     {
         if (m_sensorConfigurations[idx] != None)
         {
-            m_console->printVerbose("TEMP" + String(idx) + "  :" + String(getTemperature(idx)));
+            m_console->printVerbose("temperature" + String(idx) + "=" + String(getTemperature(idx)));
         }
 
         if (m_sensorConfigurations[idx] == Dht11 ||
             m_sensorConfigurations[idx] == Dht22)
         {
-            m_console->printVerbose("HUMD" + String(idx) + "  :" + String(getHumidity(idx)));
+            m_console->printVerbose("humidity" + String(idx) + "=" + String(getHumidity(idx)));
         }
     }
 }

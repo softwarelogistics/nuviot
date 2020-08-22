@@ -23,6 +23,7 @@ void isr4() {
 PulseCounter::PulseCounter(Console *console) {
     __pulseCounter = this;
     m_console = console;
+    m_channels = 0;
 }
 
 void PulseCounter::toggled(int channel) {

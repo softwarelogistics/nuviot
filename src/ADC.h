@@ -10,7 +10,7 @@
 #include "Console.h"
 #include "LagoVistaPins.h"
 
-#define NUMBER_ADC_PORTS 6
+#define NUMBER_ADC_PORTS 7
 
 class ADC : public AbstractSensor
 {
@@ -25,17 +25,18 @@ private:
     bool m_bank1Enabled = false;
     bool m_bank2Enabled = false;
 
-public:
-    ADC(TwoWire *wire, Console *console, MessagePayload *payload)
-    {
+    float m_vbattScaler;
+    float m_scalers[NUMBER_ADC_PORTS];
 
+public:
+    ADC(TwoWire *wire, Console *console, MessagePayload *payload){
         m_console = console;
 
         /* addr2 = +5V, ADCMOD1 */
-        _bank1 = new ADS1115(wire, ADS1115_ADDRESS2);
+        _bank1 = new ADS1115(wire, ADS1115_ADDRESS2, 1);
 
         /* addr1 = GND, ADCMOD2 */
-        _bank2 = new ADS1115(wire, ADS1115_ADDRESS1);
+        _bank2 = new ADS1115(wire, ADS1115_ADDRESS1, 2);
 
         for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
         {
@@ -43,7 +44,7 @@ public:
         }
 
         m_vbattEnabled = false;
-        m_messagePayload = payload;
+        m_messagePayload = payload;        
 
         /* 
          *
@@ -64,6 +65,19 @@ public:
          * 7 = ADC8  - ADC 1
          * 
          */
+
+        m_vbattScaler = 1.0;
+        for(int idx = 0; idx < NUMBER_ADC_PORTS; ++idx) {
+            m_scalers[idx] = 1.0;
+        }
+    }
+
+    float setVBattScaler(float scaler) {
+        m_vbattScaler = scaler;
+    }
+
+    float setScaler(uint8_t channel, float scaler) {
+        m_scalers[channel] = scaler;
     }
 
     ~ADC()
@@ -101,14 +115,14 @@ public:
 
     float getVBATT()
     {
-        return (m_vbattEnabled) ? getVoltage(ADC_BATT) : -1;
+        return (m_vbattEnabled) ? (getVoltage(ADC_BATT) * m_vbattScaler) : -1;
     }
 
     float getADC(byte port)
     {
-        if (port > 5)
+        if (port > 6)
         {
-            m_console->printError("ADC Port > 5");
+            m_console->printError("ADC Port > 6");
         }
 
         switch (port)
@@ -125,6 +139,8 @@ public:
             return m_portEnabled[port] ? m_messagePayload->voltage5 : -1;
         case 5:
             return m_portEnabled[port] ? m_messagePayload->voltage6 : -1;
+        case 6:
+            return m_portEnabled[port] ? m_messagePayload->voltage7 : -1;            
         }
 
         return -1;
@@ -137,16 +153,16 @@ public:
 
     void enableADC(int port, bool enabled)
     {
-        if (port > 5)
+        if (port > 6)
         {
-            m_console->printError("ADC > 5");
+            m_console->printError("ADC > 6");
         }
 
         m_portEnabled[port] = enabled;
     }
 
     void setup()
-    {
+    {        
     }
 
     void loop()
@@ -174,32 +190,34 @@ public:
         m_messagePayload->hasVoltage6 = m_portEnabled[5];
 
         /* Bank 2 */
-        m_messagePayload->vbatt = m_vbattEnabled ? getVBATT() : -1;
-        delay(250);
-        m_messagePayload->voltage1 = m_messagePayload->hasVoltage1 ? getVoltage(ADC1) : -1; // 0
-        delay(250);
-        m_messagePayload->voltage2 = m_messagePayload->hasVoltage2 ? getVoltage(ADC2) : -1; // 1
-        delay(250);
-        m_messagePayload->voltage3 = m_messagePayload->hasVoltage3 ? getVoltage(ADC3) : -1; // 2
+        m_messagePayload->vbatt = m_vbattEnabled ? getVBATT() * m_vbattScaler : -1;
+        delay(20);
+        m_messagePayload->voltage1 = m_messagePayload->hasVoltage1 ? getVoltage(ADC1) * m_scalers[0] : -1; // 0
+        delay(20);
+        m_messagePayload->voltage2 = m_messagePayload->hasVoltage2 ? getVoltage(ADC2) * m_scalers[1] : -1; // 1
+        delay(20);
+        m_messagePayload->voltage3 = m_messagePayload->hasVoltage3 ? getVoltage(ADC3) * m_scalers[2] : -1; // 2
 
         /* Bank 1 */
-        delay(250);
-        m_messagePayload->voltage4 = m_messagePayload->hasVoltage4 ? getVoltage(ADC4_CT1) : -1; // 3
-        delay(250);
-        m_messagePayload->voltage5 = m_messagePayload->hasVoltage5 ? getVoltage(ADC5_CT2) : -1; // 4
-        delay(250);        
-        m_messagePayload->voltage6 = m_messagePayload->hasVoltage6 ? getVoltage(ADC6_CT3) : -1; // 5
-        delay(250);                
+        delay(20);
+        m_messagePayload->voltage4 = m_messagePayload->hasVoltage4 ? getVoltage(ADC4_CT1) * m_scalers[3] : -1; // 3
+        delay(20);
+        m_messagePayload->voltage5 = m_messagePayload->hasVoltage5 ? getVoltage(ADC5_CT2) * m_scalers[4] : -1; // 4
+        delay(20);        
+        m_messagePayload->voltage6 = m_messagePayload->hasVoltage6 ? getVoltage(ADC6_CT3) * m_scalers[5] : -1; // 5
+        delay(20);          
+        m_messagePayload->voltage7 = m_messagePayload->hasVoltage7 ? getVoltage(ADC7) * m_scalers[6] : -1; // 5
+        delay(20);          
     }
 
     void debugPrint()
     {
         if (m_vbattEnabled)
-            m_console->printVerbose("VBATT  : " + String(getVBATT()));
+            m_console->printVerbose("vbatt=" + String(getVBATT()));
 
         for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
             if (m_portEnabled[idx])
-                m_console->printVerbose("VADC" + String(idx) + "  :" + String(getADC(idx)));
+                m_console->printVerbose("vadc" + String(idx + 1) + "=" + String(getADC(idx)));
     }
 
     bool setBankEnabled(int bank, bool enabled)

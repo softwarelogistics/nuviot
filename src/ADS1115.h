@@ -17,7 +17,7 @@
 /*=========================================================================
     CONVERSION DELAY (in mS)
     -----------------------------------------------------------------------*/
-    #define ADS1115_CONVERSIONDELAY         (8)
+    #define ADS1115_CONVERSIONDELAY         (10)
 /*=========================================================================*/
 
 /*=========================================================================
@@ -109,10 +109,11 @@ protected:
    adsGain_t m_gain;
 
    TwoWire *m_wire;
+   uint8_t m_bank;
 
  public:
   ADS1115(uint8_t i2cAddress = ADS1115_ADDRESS1);
-  ADS1115(TwoWire *twoWire, uint8_t i2cAddress = ADS1115_ADDRESS1);
+  ADS1115(TwoWire *twoWire, uint8_t i2cAddress = ADS1115_ADDRESS1, uint8_t bank = 0);
 
   void begin(void);
   uint16_t  readADC_SingleEnded(uint8_t channel);

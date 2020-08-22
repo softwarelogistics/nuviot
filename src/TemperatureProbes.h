@@ -24,8 +24,8 @@ enum SensorConfigs {
 
 class TemperatureProbes: public AbstractSensor{
     public:
-        TemperatureProbes(Console *console, MessagePayload *payload, NuvIoTState *state);
-        TemperatureProbes(Console *console, NuvIoTState *state);
+        TemperatureProbes(Console *console, MessagePayload *payload);
+        TemperatureProbes(Console *console);
 
         void setup();
         void debugPrint();
@@ -51,8 +51,6 @@ class TemperatureProbes: public AbstractSensor{
         
         MessagePayload* m_payload = NULL;
         Console* m_console;
-
-        NuvIoTState* m_state;        
 
         void readTemperatures();
 };

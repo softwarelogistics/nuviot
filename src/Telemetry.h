@@ -15,18 +15,17 @@ public:
         m_stream = stream;
     }
 
-    void SendParameter(String name, double value)
-    {
-        m_stream->println(name + "=" + String(value));
-
-    }
-
-    void SendParameter(String name, int value)
+    void sendParameter(String name, double value)
     {
         m_stream->println(name + "=" + String(value));
     }
 
-    void SendParameter(String name, String value)
+    void sendParameter(String name, int value)
+    {
+        m_stream->println(name + "=" + String(value));
+    }
+
+    void sendParameter(String name, String value)
     {
         m_stream->println(name + "=" + value);
     }

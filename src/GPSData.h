@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "Console.h"
 #include <ArduinoJson.h>
-
+#include <Telemetry.h>
 
 /* strtok_fixed - fixed variation of strtok_single */
 static char *strtok_single(char *str, char const *delims)
@@ -38,7 +38,7 @@ public:
     char Fixstatus[2];
     char UTCdatetime[19];
     char latitude[11];
-    char logitude[12];
+    char longitude[12];
     char altitude[9];
     char speedOTG[7];
     char course[7];
@@ -68,7 +68,7 @@ public:
         strcpy(Fixstatus, strtok_single(NULL, ","));     // Gets Fix status
         strcpy(UTCdatetime, strtok_single(NULL, ","));   // Gets UTC date and time
         strcpy(latitude, strtok_single(NULL, ","));      // Gets latitude
-        strcpy(logitude, strtok_single(NULL, ","));      // Gets longi}tude
+        strcpy(longitude, strtok_single(NULL, ","));      // Gets longi}tude
         strcpy(altitude, strtok_single(NULL, ","));      // Gets MSL altitude
         strcpy(speedOTG, strtok_single(NULL, ","));      // Gets speed over ground
         strcpy(course, strtok_single(NULL, ","));        // Gets course over ground
@@ -110,7 +110,7 @@ public:
             doc["fixType"] = atoi(fixmode);
            
             doc["lat"] = atof(latitude);
-            doc["lon"] = atof(logitude);
+            doc["lon"] = atof(longitude);
             doc["alt"] = atof(altitude);
             doc["cog"] = atof(course);
             doc["sog"] = atof(speedOTG);
@@ -129,42 +129,27 @@ public:
 
     void debugPrint(Console *console)
     {
-        console->print("GNSSrunstatus=");
-        console->println(GNSSrunstatus);
-        console->print("Fixstatus=");
-        console->println(Fixstatus);
-        console->print("UTCdatetime=");
-        console->println(UTCdatetime);
-        console->print("latitude=");
-        console->println(latitude);
-        console->print("logitude=");
-        console->println(logitude);
-        console->print("altitude=");
-        console->println(altitude);
-        console->print("speedOTG=");
-        console->println(speedOTG);
-        console->print("course=");
-        console->println(course);
-        console->print("fixmode=");
-        console->println(fixmode);
-        console->print("HDOP=");
-        console->println(HDOP);
-        console->print("PDOP=");
-        console->println(PDOP);
-        console->print("VDOP=");
-        console->println(VDOP);
-        console->print("SatInView=");
-        console->println(satellitesinview);
-        console->print("GNSSSatUsed=");
-        console->println(GNSSsatellitesused);
-        console->print("GLONASSatUsed=");
-        console->println(GLONASSsatellitesused);
-        console->print("cn0max=");
-        console->println(cn0max);
-        console->print("HPA=");
-        console->println(HPA);
-        console->print("VPA=");
-        console->println(VPA);
+        console->printVerbose("gnssstatus=" + String(GNSSrunstatus));
+        console->printVerbose("fixstatus=" + String(Fixstatus));
+        console->printVerbose("satsinview=" + String(satellitesinview));
+
+        if(String(Fixstatus) != "0")  {        
+            console->printVerbose("datetime=" + String(UTCdatetime));
+            console->printVerbose("latitude=" + String(latitude));
+            console->printVerbose("logitude=" + String(longitude));
+            console->printVerbose("altitude=" + String(altitude));
+            console->printVerbose("speedotg=" + String(speedOTG));
+            console->printVerbose("course=" + String(course));
+            console->printVerbose("fixmode=" + String(fixmode));
+            console->printVerbose("hdop=" + String(HDOP));
+            console->printVerbose("pdop=" + String(PDOP));
+            console->printVerbose("vdop=" + String(VDOP));
+            console->printVerbose("gnssatused=" + String(GNSSsatellitesused));
+            console->printVerbose("glonassatused=" + String(GLONASSsatellitesused));
+            console->printVerbose("cn0max=" + String(cn0max));
+            console->printVerbose("hpa=" + String(HPA));
+            console->printVerbose("vpa=" + String(VPA));
+        }
     }
 };
 

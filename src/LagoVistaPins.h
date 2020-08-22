@@ -26,6 +26,7 @@
 #define ADC6_CT3 5
 #define ADC2 6
 #define ADC3 1
+#define ADC7 3
 
 #endif
 

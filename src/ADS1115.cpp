@@ -72,9 +72,10 @@ ADS1115::ADS1115(uint8_t i2cAddress)
     @brief  Instantiates a new ADS1115 class w/appropriate properties
 */
 /**************************************************************************/
-ADS1115::ADS1115(TwoWire *twoWire, uint8_t i2cAddress)
+ADS1115::ADS1115(TwoWire *twoWire, uint8_t i2cAddress, uint8_t bank)
 {
   m_wire = twoWire;
+  m_bank = bank;
   m_i2cAddress = i2cAddress;
   m_conversionDelay = ADS1115_CONVERSIONDELAY;
   m_bitShift = 0;
@@ -351,7 +352,14 @@ int16_t ADS1115::getLastConversionResults()
 float ADS1115::readADC_Voltage(uint8_t channel)
 {
   uint16_t raw = readADC_SingleEnded(channel);
-  return ( raw / 26789.0f) * 5.0f;
+
+  float output = 0.0;
+
+  if(raw < 0x8000 && raw > 100) {
+    output = ( raw / 26789.0f) * 5.0f;
+  }  
+
+  return output;
 }
 
 bool ADS1115::isOnline() {

@@ -28,6 +28,7 @@ public:
     float voltage4;
     float voltage5;
     float voltage6;
+    float voltage7;
 
     float temperature1;
     float temperature2;
@@ -64,6 +65,7 @@ public:
     bool hasVoltage4;
     bool hasVoltage5;
     bool hasVoltage6;
+    bool hasVoltage7;
 
     String getJSON();
 };

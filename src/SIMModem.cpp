@@ -818,11 +818,11 @@ void SIMModem::stopGPS()
 GPSData *SIMModem::readGPS()
 {
     exitDataMode();
-
-    while (m_channel->available());
+    while (m_channel->available()) m_channel->readByte();
 
     m_channel->print("AT+CGNSINF\r");
     String echo = m_channel->readStringUntil('\r', 100);
+
     while (!m_channel->available()); m_channel->readByte();
     while (!m_channel->available()); m_channel->readByte();
 
