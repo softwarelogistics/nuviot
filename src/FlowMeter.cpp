@@ -32,6 +32,8 @@ void FlowMeter::toggled(int channel) {
 void FlowMeter::registerPin(uint8_t pin) {
     m_pins[m_channels] = pin;
 
+    pinMode(pin, INPUT);
+
     switch(m_channels++){
         case 0: attachInterrupt(pin, isr1, CHANGE); break;
         case 1: attachInterrupt(pin, isr2, CHANGE); break;
@@ -60,10 +62,11 @@ void FlowMeter::loop() {
     if(millisDelta > SAMPLE_PERIOD) {
         m_lastMillis = millis();
 
-        double factor
+        // we always want the number of counts per 500 ms in each slot.
+        double factor = (double)SAMPLE_PERIOD / (double)millisDelta;
         for(int idx = 0; idx < NUMBER_FLOW_CHANNELS; ++idx)
         {
-            m_rateBuffer[idx][m_slotIndex] = m_channelCounts[idx];
+            m_rateBuffer[idx][m_slotIndex] = (int)(m_channelCounts[idx] * factor);
             m_channelCounts[idx] = 0;
         }
 
@@ -75,15 +78,15 @@ void FlowMeter::loop() {
         }
 
         if(m_firstPassCompleted){
-            for(int idx = 0; idx < m_channels; ++idx)
+            for(int channelIndex = 0; channelIndex < m_channels; ++channelIndex)
             {
                 uint32_t countTotal = 0;
                 for(int slot = 0; slot < FLOW_BUFFER_SIZE; ++slot)
                 {
-                    countTotal += m_rateBuffer[idx][slot];
+                    countTotal += m_rateBuffer[channelIndex][slot];
                 }
 
-                m_flowRates[idx] = countTotal / 3; /* 6 500ms samples or 3 seconds, we want to get counts per second */
+                m_flowRates[channelIndex] = countTotal / 3; /* 6 500ms samples or 3 seconds, we want to get counts per second */
             }    
         }
     }
