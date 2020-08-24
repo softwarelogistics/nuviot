@@ -75,6 +75,7 @@ private:
 
     bool m_anonymous;
     bool m_secureTransport;
+    bool m_paused;
 
     /* These three values use bit masking to signify that the value has
            been initialized in EEPROM, this allows multiple values to be set */
@@ -111,6 +112,7 @@ public:
     void setDebugMode(bool mode);
 
     bool getIsConfigurationModeActive();
+    bool getIsPaused();
 
     String queryState();
     String getRemoteProperties();

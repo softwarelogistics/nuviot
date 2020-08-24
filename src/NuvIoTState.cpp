@@ -1,6 +1,7 @@
 #include "NuvIoTState.h"
 #include "esp_bt_device.h"
 #include "math.h"
+#include <Update.h>
 
 #define IS_CONFIG_LOCATION 0
 
@@ -422,11 +423,15 @@ void NuvIoTState::readFirmware()
         delay(1);
     }
 
+    char progressBar[110];
+
     short blockCount = m_btSerial->read() << 8 | m_btSerial->read();
     byte buffer[512];
 
     m_console->println("Started reading [" + String(blockCount) + "] blocks");
     m_btSerial->print("ok-send:" + String(blockCount) + "\n");
+
+    int blocksReceived = 0;
 
     for (int idx = 0; idx < blockCount; ++idx)
     {
@@ -455,15 +460,77 @@ void NuvIoTState::readFirmware()
         }
 
         byte actualCheckSum = m_btSerial->read();
-        //#define STATE_VERBOSE
-        //#ifdef STATE_VERBOSE
         m_console->printVerbose("Block: (" + String(idx) + "/" + String(blockCount) + ") " + String(blockSize) + " " + calcCheckSum + " " + actualCheckSum + " " + buffer[0] + " " + buffer[1] + "  " + buffer[498] + " " + buffer[499]);
-        m_btSerial->print("ok-recv:" + String(idx) + "\n");
+      
+        if(actualCheckSum != calcCheckSum){
+            m_btSerial->print("fail-checksum:" + String(idx) + "\n");
+            return;
+        }
+        else {
+            m_btSerial->print("ok-recv:" + String(idx) + "\n");
+        }
+
+        blocksReceived++;
+    
+        size_t written = Update.write(buffer, blockSize);
+        if (written > 0)
+        {
+            int percentCommplete = (100 * blocksReceived) / blockCount;
+            String progress = "Progress " + String(percentCommplete);
+            const char *str = progress.c_str();
+            m_console->println(progress);
+            for (int pctIdx = 0; idx < percentCommplete / 10; ++pctIdx)
+            {
+                progressBar[pctIdx] = '.';
+            }
+
+            progressBar[percentCommplete] = 0x00;
+
+            m_display->drawStr("Updating Firmware", str, progressBar);
+        }
+        else
+        {
+            m_console->printError("Could not flash file");
+            m_console->printError("Could not write byte array.");
+            m_display->drawStr("Flashing failed");
+            m_btSerial->print("fail-write:" + String(idx) + "\n");
+            delay(2000);
+            return;
+        }        
+
         delay(5);
-        //#endif
     }
 
     m_btSerial->print("ok-done:" + String(blockCount));
+
+     if (blocksReceived == blockCount)
+    {
+        if (Update.end())
+        {
+#ifdef MQTT_VERBOSE                
+            m_console->println("Success flashing, pausing and then restarting.");            
+#endif            
+            m_display->drawStr("Success flashing", "Restarting");
+            delay(2000);
+            m_console->println("Success flashing, restarting.");
+            m_hal->restart();
+        }
+        else
+        {
+            m_console->printError("Could not flash file");
+            m_console->printError("MD5 Error");
+
+            m_display->drawStr("Flasing Failed", "MD5 Error");
+            delay(2000);
+        }
+    }
+    else
+    {
+        m_console->printError("Could not download file.");
+        m_console->printError("Downloaded: " + String(blocksReceived) + " total:" + String(blockCount));
+
+        m_display->drawStr("Flashing Failed", "Download Error");
+    }
 
     m_console->enableBTOut(true);
 }
@@ -471,6 +538,11 @@ void NuvIoTState::readFirmware()
 bool NuvIoTState::getIsConfigurationModeActive()
 {
     return m_configurationMode;
+}
+
+bool NuvIoTState::getIsPaused()
+{
+    return m_paused;
 }
 
 void NuvIoTState::loop()
@@ -492,6 +564,12 @@ void NuvIoTState::loop()
                 m_display->println("Configuration Mode");
                 m_display->sendBuffer();
                 m_configurationMode = true;
+            }
+            else if(msg == "PAUSE"){
+                m_paused = true;
+            }
+            else if(msg == "CONTINUE"){
+                m_paused = false;
             }
             else if (msg == "FIRMWARE")
             {
@@ -519,22 +597,30 @@ void NuvIoTState::loop()
             }
             else if (msg == "QUERY")
             {
-                m_btSerial->print("0," + m_DeviceId + ";");
-                m_btSerial->print("1," + m_HostName + ";");
-                m_btSerial->print("2,");
-                m_btSerial->print(m_anonymous ? "true;" : "false;");
+                m_btSerial->print("deviceid=" + m_DeviceId + "\n");
+                m_btSerial->print("mqtthost=" + m_HostName + "\n");
+                m_btSerial->print("mqttanonymouse=");
+                m_btSerial->print(m_anonymous ? "true\n" : "false\n");
+
                 if (!m_anonymous)
                 {
-                    m_btSerial->print("3," + m_HostUserName + ";");
-                    m_btSerial->print("4," + m_HostPassword + ";");
+                    m_btSerial->print("mqttuid=" + m_HostUserName + "\n");
+                    m_btSerial->print("mqttpwd=" + m_HostPassword + "\n");
                 }
 
-                m_btSerial->print("5," + m_DeviceAccessKey + ";");
-                m_btSerial->print("6," + m_WiFiSSID + ";");
+                if(m_DeviceAccessKey != NULL && m_DeviceAccessKey.length() > 0){
+                    m_btSerial->print("key=" + m_DeviceAccessKey + "\n");
+                }
 
-                m_btSerial->print("100," + m_firmwareSku + ";");
-                m_btSerial->print("101," + m_firmwareVersion + ";");
-                m_btSerial->println("102,ESP32;");
+                if(m_WiFiSSID != NULL && m_WiFiSSID.length() > 0){
+                    m_btSerial->print("ssid=" + m_WiFiSSID + "\n");
+                    m_btSerial->print("wifipwd=" + m_WiFiPassword + "\n");
+                }
+
+                m_btSerial->print("fwsku=" + m_firmwareSku + "\n");
+                m_btSerial->print("fwversion=" + m_firmwareVersion + "\n");
+                m_btSerial->print("hwversion=2\n");
+                m_btSerial->print("platform=ESP32\n");
             }
             else if (msg == "QUIT")
             {
