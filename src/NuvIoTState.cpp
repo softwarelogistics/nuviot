@@ -542,7 +542,7 @@ void NuvIoTState::readFirmware()
         else
         {
             m_console->printError("Could not flash file");
-   
+
             m_btSerial->print("ok-update:fail\n");
 
             m_display->drawStr("Flasing Failed", "MD5 Error");
@@ -618,21 +618,78 @@ void NuvIoTState::loop()
                 String type = setCommand.substring(0, dashIdx);
                 String key = setCommand.substring(dashIdx + 1, equalsIdx);
                 String value = setCommand.substring(equalsIdx + 1);
+                if (key == "deviceid")
+                {
+                    m_DeviceId = value;
+                    writeString(DEVICEID_START, m_DeviceId);
+                    m_btSerial->println("set-ack:" + key);
+                }
+                else if (key == "srvrhost")
+                {
+                    m_HostName = value;
+                    writeString(SERVER_HOST, m_HostName);
+                    m_btSerial->println("set-ack:" + key);
+                }
+                else if (key == "srvranonymous")
+                {
+                    m_anonymous = value == "true";
+                    EEPROM.writeBool(ANONYOUS_SERVER_CONN_START, m_anonymous);
+                    if (m_anonymous)
+                    {
+                        writeString(SERVER_USER_NAME_START, "");
+                        writeString(SERVER_PASSWORD, "");
+                    }
+                    m_btSerial->println("set-ack:" + key);
+                }
+                else if (key == "srvruid")
+                {
+                    m_HostUserName = value;
+                    writeString(SERVER_USER_NAME_START, m_HostUserName);
+                    m_btSerial->println("set-ack:" + key);
+                }
+                else if (key == "srvrpwd")
+                {
+                    m_HostPassword = value;
+                    writeString(SERVER_PASSWORD, m_HostPassword);
+                    m_btSerial->println("set-ack:" + key);
+                }
+                else if (key == "accesskey")
+                {
+                    m_DeviceAccessKey = value;
+                    writeString(DEVICE_ACCESS_CODE_START, m_DeviceAccessKey);
+                    m_btSerial->println("set-ack:" + key);
+                }
+                else if (key == "ssid")
+                {
+                    m_WiFiSSID = value;
+                    writeString(WIFI_SSID_START, m_WiFiSSID);
+                    m_btSerial->println("set-ack:" + key);
+                }
+                else if (key == "wifipwd")
+                {
+                    m_WiFiPassword = value;
+                    writeString(WIFI_PASSWORD_START, m_WiFiPassword);
+                    m_btSerial->println("set-ack:" + key);
+                }
 
-                Serial.println(type + "] - [" + key + "] - [" + value + "]");
-                updateProperty(type, key, value);
+                else
+                {
+                    Serial.println(type + "] - [" + key + "] - [" + value + "]");
+                    updateProperty(type, key, value);
+                    m_btSerial->println("set-ack:" + key);
+                }
             }
             else if (msg == "QUERY")
             {
                 m_btSerial->print("deviceid=" + m_DeviceId + "\n");
-                m_btSerial->print("mqtthost=" + m_HostName + "\n");
-                m_btSerial->print("mqttanonymouse=");
+                m_btSerial->print("srvrhost=" + m_HostName + "\n");
+                m_btSerial->print("srvranonymous=");
                 m_btSerial->print(m_anonymous ? "true\n" : "false\n");
 
                 if (!m_anonymous)
                 {
-                    m_btSerial->print("mqttuid=" + m_HostUserName + "\n");
-                    m_btSerial->print("mqttpwd=" + m_HostPassword + "\n");
+                    m_btSerial->print("srvruid=" + m_HostUserName + "\n");
+                    m_btSerial->print("srvrpwd=" + m_HostPassword + "\n");
                 }
 
                 if (m_DeviceAccessKey != NULL && m_DeviceAccessKey.length() > 0)
@@ -664,6 +721,7 @@ void NuvIoTState::loop()
             }
             else
             {
+
                 switch (m_messageBuffer[0])
                 {
                 case '0': // Device ID;

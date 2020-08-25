@@ -4,7 +4,7 @@
 
 String MessagePayload::getJSON()
 {
-    const size_t capacity = JSON_OBJECT_SIZE(14);
+    const size_t capacity = JSON_OBJECT_SIZE(20);
     DynamicJsonDocument doc(capacity);
 
     doc["status"] = status;
@@ -31,6 +31,7 @@ String MessagePayload::getJSON()
     if(hasVoltage4) doc["v4"] = voltage4;
     if(hasVoltage5) doc["v5"] = voltage5;
     if(hasVoltage6) doc["v6"] = voltage6;    
+    if(hasVoltage6) doc["v7"] = voltage7;    
     
     String output;
     serializeJson(doc, output);

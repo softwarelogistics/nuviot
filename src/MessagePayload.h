@@ -10,6 +10,31 @@ public:
     {
         status = "ok";
         lastError = "none";
+
+        hasCurrent1 = false;
+        hasCurrent2 = false;
+        hasCurrent3 = false;
+
+        hasTemperature1 = false;
+        hasTemperature2 = false;
+        hasTemperature3 = false;
+        hasTemperature4 = false;
+        hasTemperature5 = false;
+        
+        hasHumidity1 = false;
+        hasHumidity2 = false;
+        hasHumidity3 = false;
+        hasHumidity4 = false;
+        hasHumidity5 = false;
+
+        hasVBatt = false;
+        hasVoltage1 = false;
+        hasVoltage2 = false;
+        hasVoltage3 = false;
+        hasVoltage4 = false;
+        hasVoltage5 = false;
+        hasVoltage6 = false;
+        hasVoltage7 = false;
     }
 
     String timeStamp;

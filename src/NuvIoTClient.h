@@ -22,11 +22,17 @@ class NuvIoTClient {
 
         bool m_gpsEnabled;
 
+        void (*messageReceivedCallback)(String topic, unsigned char buffer[], size_t length) = NULL;
+
     public:
         NuvIoTClient(SIMModem *modem, MQTT *mqtt, Console *console, Display *display, NuvIoTState *state, OtaServices *ota, Hal *hal);
         bool ConnectToAPN(bool transparentMode, bool connectToAPN, unsigned long baudRate);
         bool Connect(bool isReconnect, unsigned long baudRate);
         void messagePublished(String topic, unsigned char *payload, size_t length);
+
+        void setMessageReceivedCallback(void (*callback)(String topic, byte buffer[], size_t buffer_length)) {
+            messageReceivedCallback = callback;
+        }
 
         void enableGPS(bool enabled);
 

@@ -235,11 +235,8 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
     Serial.print(topic);
     Serial.println("] ");
 
-    if (topic.endsWith("testing"))
-    {
-        m_modem->exitDataMode();
-        m_ota->start("http://api.nuviot.com/api/firmware/download/6AEFEA1606BB4C6CB2C5135CB42B4C77");
-        return;
+    if(messageReceivedCallback != NULL){
+        messageReceivedCallback(topic, payload, length);
     }
 
     String parts[10];
