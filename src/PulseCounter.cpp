@@ -30,8 +30,9 @@ void PulseCounter::toggled(int channel) {
     m_channelCounts[channel]++;
 }
 
-void PulseCounter::registerPin(uint8_t pin) {
+void PulseCounter::registerPin(String name, uint8_t pin) {
     m_pins[m_channels] = pin;
+    m_names[m_channels] = name;
 
     pinMode(pin, INPUT);
 
@@ -101,7 +102,7 @@ void PulseCounter::debugPrint() {
     if(m_firstPassCompleted){
         for(int idx = 0; idx < m_channels; ++idx)
         {
-            m_console->printVerbose("COUNTS: " + String(idx) + "," + String(m_pins[idx]) + "," + String(m_pulsePerSecond[idx]) + " per second.");
+            m_console->printVerbose(m_names[idx] + "=" + String(m_pulsePerSecond[idx]));
         }
     }
 }

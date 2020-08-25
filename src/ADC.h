@@ -188,26 +188,16 @@ public:
         m_messagePayload->hasVoltage4 = m_portEnabled[3];
         m_messagePayload->hasVoltage5 = m_portEnabled[4];
         m_messagePayload->hasVoltage6 = m_portEnabled[5];
+        m_messagePayload->hasVoltage7 = m_portEnabled[6];
 
-        /* Bank 2 */
         m_messagePayload->vbatt = m_vbattEnabled ? getVBATT() * m_vbattScaler : -1;
-        delay(20);
         m_messagePayload->voltage1 = m_messagePayload->hasVoltage1 ? getVoltage(ADC1) * m_scalers[0] : -1; // 0
-        delay(20);
         m_messagePayload->voltage2 = m_messagePayload->hasVoltage2 ? getVoltage(ADC2) * m_scalers[1] : -1; // 1
-        delay(20);
         m_messagePayload->voltage3 = m_messagePayload->hasVoltage3 ? getVoltage(ADC3) * m_scalers[2] : -1; // 2
-
-        /* Bank 1 */
-        delay(20);
         m_messagePayload->voltage4 = m_messagePayload->hasVoltage4 ? getVoltage(ADC4_CT1) * m_scalers[3] : -1; // 3
-        delay(20);
         m_messagePayload->voltage5 = m_messagePayload->hasVoltage5 ? getVoltage(ADC5_CT2) * m_scalers[4] : -1; // 4
-        delay(20);        
         m_messagePayload->voltage6 = m_messagePayload->hasVoltage6 ? getVoltage(ADC6_CT3) * m_scalers[5] : -1; // 5
-        delay(20);          
         m_messagePayload->voltage7 = m_messagePayload->hasVoltage7 ? getVoltage(ADC7) * m_scalers[6] : -1; // 5
-        delay(20);          
     }
 
     void debugPrint()

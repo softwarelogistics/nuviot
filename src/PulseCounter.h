@@ -16,15 +16,18 @@ class PulseCounter {
         uint32_t m_lastMillis;
         uint32_t m_channelCounts[NUMBER_FLOW_CHANNELS];
         uint8_t m_pins[NUMBER_FLOW_CHANNELS];
-        double m_pulseBuffer[NUMBER_FLOW_CHANNELS][FLOW_BUFFER_SIZE];
+        String m_names[NUMBER_FLOW_CHANNELS];
         volatile double m_pulsePerSecond[NUMBER_FLOW_CHANNELS];
+
+        double m_pulseBuffer[NUMBER_FLOW_CHANNELS][FLOW_BUFFER_SIZE];
+        
         int m_slotIndex = 0;
         bool m_firstPassCompleted = false;
 
     public:
         PulseCounter(Console *channel);
         void toggled(int channel);
-        void registerPin(uint8_t pin);
+        void registerPin(String name, uint8_t pin);
         void setup();
         void loop();
         void debugPrint();

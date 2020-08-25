@@ -433,6 +433,11 @@ void NuvIoTState::readFirmware()
 
     int blocksReceived = 0;
 
+    if (Update.begin(total, U_FLASH))
+    {
+        
+    }
+
     for (int idx = 0; idx < blockCount; ++idx)
     {
         while (m_btSerial->available() < 2)
@@ -501,10 +506,12 @@ void NuvIoTState::readFirmware()
         delay(5);
     }
 
-    m_btSerial->print("ok-done:" + String(blockCount));
+    m_btSerial->print("ok-recv:all\n");
 
-     if (blocksReceived == blockCount)
+    if (blocksReceived == blockCount)
     {
+        Update.end();
+
         if (Update.end())
         {
 #ifdef MQTT_VERBOSE                
@@ -512,6 +519,11 @@ void NuvIoTState::readFirmware()
 #endif            
             m_display->drawStr("Success flashing", "Restarting");
             delay(2000);
+
+            
+
+            m_btSerial->print("ok-update:success\n");
+
             m_console->println("Success flashing, restarting.");
             m_hal->restart();
         }
@@ -519,6 +531,8 @@ void NuvIoTState::readFirmware()
         {
             m_console->printError("Could not flash file");
             m_console->printError("MD5 Error");
+
+            m_btSerial->print("ok-update:fail - " + String(Update.errorString()) + "\n");
 
             m_display->drawStr("Flasing Failed", "MD5 Error");
             delay(2000);
