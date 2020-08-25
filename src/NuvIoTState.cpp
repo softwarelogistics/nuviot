@@ -418,24 +418,38 @@ void NuvIoTState::readFirmware()
     m_console->println("Start DFU");
     m_btSerial->print("ok-start\n");
 
-    while (m_btSerial->available() < 2)
+    while (m_btSerial->available() < 4)
     {
         delay(1);
     }
 
     char progressBar[110];
 
+    int32_t total = m_btSerial->read() << 24 | m_btSerial->read() << 16 | m_btSerial->read() << 8 | m_btSerial->read();
+
+    m_console->println("Expecting [" + String(total) + "] bytes");
+    m_btSerial->print("ok-size:" + String(total) + "\n");
+
+    while (m_btSerial->available() < 2)
+    {
+        delay(1);
+    }
+
     short blockCount = m_btSerial->read() << 8 | m_btSerial->read();
     byte buffer[512];
 
     m_console->println("Started reading [" + String(blockCount) + "] blocks");
-    m_btSerial->print("ok-send:" + String(blockCount) + "\n");
+    m_btSerial->print("ok-blocks:" + String(blockCount) + "\n");
 
     int blocksReceived = 0;
 
-    if (Update.begin(total, U_FLASH))
+    if (!Update.begin(total, U_FLASH))
     {
-        
+        m_btSerial->print("fail-start\n");
+        m_console->println("Could not start DFU process.");
+        m_display->println("ERR: fail start DFU");
+        delay(2000);
+        return;
     }
 
     for (int idx = 0; idx < blockCount; ++idx)
@@ -466,17 +480,19 @@ void NuvIoTState::readFirmware()
 
         byte actualCheckSum = m_btSerial->read();
         m_console->printVerbose("Block: (" + String(idx) + "/" + String(blockCount) + ") " + String(blockSize) + " " + calcCheckSum + " " + actualCheckSum + " " + buffer[0] + " " + buffer[1] + "  " + buffer[498] + " " + buffer[499]);
-      
-        if(actualCheckSum != calcCheckSum){
+
+        if (actualCheckSum != calcCheckSum)
+        {
             m_btSerial->print("fail-checksum:" + String(idx) + "\n");
             return;
         }
-        else {
+        else
+        {
             m_btSerial->print("ok-recv:" + String(idx) + "\n");
         }
 
         blocksReceived++;
-    
+
         size_t written = Update.write(buffer, blockSize);
         if (written > 0)
         {
@@ -501,7 +517,7 @@ void NuvIoTState::readFirmware()
             m_btSerial->print("fail-write:" + String(idx) + "\n");
             delay(2000);
             return;
-        }        
+        }
 
         delay(5);
     }
@@ -510,17 +526,13 @@ void NuvIoTState::readFirmware()
 
     if (blocksReceived == blockCount)
     {
-        Update.end();
-
         if (Update.end())
         {
-#ifdef MQTT_VERBOSE                
-            m_console->println("Success flashing, pausing and then restarting.");            
-#endif            
+#ifdef MQTT_VERBOSE
+            m_console->println("Success flashing, pausing and then restarting.");
+#endif
             m_display->drawStr("Success flashing", "Restarting");
             delay(2000);
-
-            
 
             m_btSerial->print("ok-update:success\n");
 
@@ -530,9 +542,8 @@ void NuvIoTState::readFirmware()
         else
         {
             m_console->printError("Could not flash file");
-            m_console->printError("MD5 Error");
-
-            m_btSerial->print("ok-update:fail - " + String(Update.errorString()) + "\n");
+   
+            m_btSerial->print("ok-update:fail\n");
 
             m_display->drawStr("Flasing Failed", "MD5 Error");
             delay(2000);
@@ -579,10 +590,12 @@ void NuvIoTState::loop()
                 m_display->sendBuffer();
                 m_configurationMode = true;
             }
-            else if(msg == "PAUSE"){
+            else if (msg == "PAUSE")
+            {
                 m_paused = true;
             }
-            else if(msg == "CONTINUE"){
+            else if (msg == "CONTINUE")
+            {
                 m_paused = false;
             }
             else if (msg == "FIRMWARE")
@@ -622,11 +635,13 @@ void NuvIoTState::loop()
                     m_btSerial->print("mqttpwd=" + m_HostPassword + "\n");
                 }
 
-                if(m_DeviceAccessKey != NULL && m_DeviceAccessKey.length() > 0){
+                if (m_DeviceAccessKey != NULL && m_DeviceAccessKey.length() > 0)
+                {
                     m_btSerial->print("key=" + m_DeviceAccessKey + "\n");
                 }
 
-                if(m_WiFiSSID != NULL && m_WiFiSSID.length() > 0){
+                if (m_WiFiSSID != NULL && m_WiFiSSID.length() > 0)
+                {
                     m_btSerial->print("ssid=" + m_WiFiSSID + "\n");
                     m_btSerial->print("wifipwd=" + m_WiFiPassword + "\n");
                 }
