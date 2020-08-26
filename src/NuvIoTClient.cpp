@@ -222,10 +222,6 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
     sendStatusUpdate("Subscribed to sys msgs", "Ready");
 
-    if(m_gpsEnabled){
-        m_modem->startGPS();
-    }
-
     return true;
 }
 
@@ -279,7 +275,7 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
         if (parts[0] == "nuviot" &&
             parts[1] == "dvcsrvc")
         {
-            /* ok if we were on a micro-controller, I'd probably be less tempted 
+            /* ok if we were on a small micro-controller, I'd probably be less tempted 
              * to take a short cut and use a string...we'll we aren't.
              */
             String action = parts[3];
