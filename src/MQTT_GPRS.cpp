@@ -14,9 +14,7 @@ void MQTT::writeControlField(byte control_field)
 
 void MQTT::writeRemainingLength(unsigned int remainingLength)
 {
-#ifdef MQTT_VERBOSE    
     m_console->printVerbose("Real Length: [" + String(remainingLength) + "] total packet length: [" + String(remainingLength + 2) + "]");
-#endif    
 
     // In the MQTT spec if longer then 127 set bit 8 in the first byte
     // to send over, set the continuation bit
@@ -49,9 +47,7 @@ void MQTT::writeLengthPrefixedString(String str)
     m_channel->enqueueByteArray(lenBuffer, 2);
     m_channel->enqueueString(str);
 
-#ifdef MQTT_VERBOSE    
     m_console->printVerbose("Sending [" + String(str.length() + 2) + "] bytes for [" + str + "]");
-#endif    
 }
 
 void MQTT::writeString(String str)
@@ -64,9 +60,41 @@ void MQTT::writeByteArray(byte *buffer, int length)
     m_channel->enqueueByteArray(buffer, length);
 }
 
-void MQTT::flush()
+bool MQTT::flush()
 {
-    m_channel->flush();
+    if(!m_transparentMode) {
+        uint16_t enqueuedBytes = m_channel->getEnqueuedLength();
+        String sendMessage = "AT+CIPSEND=" + String(enqueuedBytes);
+        m_channel->println(sendMessage);
+
+        String response = m_channel->readStringUntil('\n', 3000);
+        uint8_t ch = 0x00;
+        uint16_t retryCount;
+        while(ch != '>' && retryCount++ < 500)
+        {
+            while(m_channel->available() > 1 && ch != '>') {
+                ch = m_channel->readByte();
+            }
+            delay(1);
+        } 
+
+        if(ch != '>')
+        {
+            m_console->printError("Timeout waiting for > to send data..");
+            return false;
+        }
+    }
+
+    if(!m_channel->flush())
+    {
+        m_console->printError("Could not flush channel.");
+        return false;
+    }
+
+    String response = m_channel->readStringUntil('\n', 3000);
+    response = m_channel->readStringUntil('\n', 3000);
+
+    return true;
 }
 
 int MQTT::readRemainingLength()
@@ -112,18 +140,14 @@ void MQTT::checkForReceivedMessages()
 bool MQTT::readResponse(byte expected)
 {
     int loopCount = 200;
-#ifdef MQTT_VERBOSE        
     m_console->printByte("Waiting for [", expected, "] as response from MQTT Server.");
-#endif    
 
     while (loopCount-- > 0)
     {
         if (m_channel->available() > 0)
         {
             byte responseCode = m_channel->readByte();
-#ifdef MQTT_VERBOSE                
             m_console->printByte("Received [", responseCode, "] from MQTT Server.");
-#endif            
 
             switch (responseCode)
             {
@@ -134,9 +158,7 @@ bool MQTT::readResponse(byte expected)
                 int remainingLength = readRemainingLength();
                 if (remainingLength > 0)
                 {
-#ifdef MQTT_VERBOSE                        
                     m_console->printVerbose("Returned remaining length: " + String(remainingLength));
-#endif                    
                     size_t bytesRead = m_channel->readBytes(m_rxBuffer, remainingLength);
                     if (bytesRead == remainingLength)
                     {
@@ -148,12 +170,10 @@ bool MQTT::readResponse(byte expected)
                         return false;
                     }
                 }
-#ifdef MQTT_VERBOSE                    
                 else
                 {
                     m_console->printVerbose("No payload from message.  ");
                 }
-#endif                
 
                 if (responseCode == expected)
                 {
@@ -213,9 +233,7 @@ bool MQTT::connect(String uid, String pwd, String clientId)
 
     if (readResponse(0x20))
     {
-#ifdef MQTT_VERBOSE            
         m_console->printVerbose("Connected to MQTT");
-#endif        
         return true;
     }
     else
@@ -302,9 +320,7 @@ bool MQTT::subscribe(String topic, byte qos)
     if (readResponse(0x90))
     {
         m_subscriptionId++;
-#ifdef MQTT_VERBOSE            
         m_console->printVerbose("Subscribed to [" + topic + "]");
-#endif        
         /* we previously incremented it so decrement it now */
         return m_subscriptionId - 1;
     }

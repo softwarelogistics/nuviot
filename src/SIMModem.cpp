@@ -29,15 +29,11 @@ bool SIMModem::waitForReply(String expectedReply, int iterations)
         {
             m_channel->readBytes(m_tempBuffer, expectedReply.length());
 
-#ifdef SIM_VERBOSE
             m_console->printByteArray("Original Message: ", m_tempBuffer, expectedReply.length());
-#endif
 
             if (strncmp(expectedReply.c_str(), (char *)m_tempBuffer, expectedReply.length()) == 0)
             {
-#ifdef SIM_VERBOSE
                 m_console->printVerbose("WaitForReply - Match: [" + expectedReply + "] Iteration: " + String(loopCount));
-#endif
                 return true;
             }
         }
@@ -45,9 +41,7 @@ bool SIMModem::waitForReply(String expectedReply, int iterations)
         loopCount++;
         if (iterations != -1 && loopCount > iterations)
         {
-#ifdef SIM_VERBOSE
             m_console->printError("Timed out waiting for: [" + expectedReply + "] Iterations => " + String(iterations));
-#endif
             return false;
         }
 
@@ -72,7 +66,6 @@ bool SIMModem::exitDataMode()
     delay(1000);
 
     bool result = waitForReply("OK", 5);
-#ifdef SIM_VERBOSE
     if (result)
     {
         m_console->println("Enable command mode.");
@@ -81,7 +74,6 @@ bool SIMModem::exitDataMode()
     {
         m_console->printError("Did not enable command mode.");
     }
-#endif
 
     return result;
 }
@@ -90,17 +82,13 @@ long SIMModem::configureForDownload(String url)
 {
     if (sendCommand("AT+HTTPINIT") != S_OK)
     {
-#ifdef SIM_VERBOSE
         m_console->printError("COULD NOT SEND HTTPINIT");
-#endif
         return -1;
     }
 
     if (sendCommand("AT+HTTPPARA=\"CID\",1") != S_OK)
     {
-#ifdef SIM_VERBOSE
         m_console->printError("COULD NOT SEND HTTPPARAM=\"CID\",1");
-#endif
         return -1;
     }
 
@@ -155,9 +143,8 @@ long SIMModem::configureForDownload(String url)
 long SIMModem::downloadContent(long contentSize, unsigned char *buffer)
 {
     long totalBytesRead = 0;
-#ifdef SIM_VERBOSE
-    m_console->print("Expected:");
-#endif
+
+    String logMessage = "Expected:";
 
     while (contentSize > 0)
     {
@@ -167,9 +154,7 @@ long SIMModem::downloadContent(long contentSize, unsigned char *buffer)
 
         if (actualRead != -1)
         {
-#ifdef SIM_VERBOSE
-            m_console->print(" " + String(contentSize));
-#endif
+            logMessage += String(contentSize);
 
             for (int idx = 0; idx < actualRead; ++idx)
             {
@@ -185,9 +170,7 @@ long SIMModem::downloadContent(long contentSize, unsigned char *buffer)
         }
     }
 
-#ifdef SIM_VERBOSE
-    m_console->println(";");
-#endif
+    m_console->println(logMessage +";");
 
     waitForReply("OK", 10);
 
@@ -225,9 +208,7 @@ bool SIMModem::beginDownload(String url)
         return false;
     }
 
-#ifdef SIM_VERBOSE
-    m_console->println("Received content size of [" + String(contentSize) + "].");
-#endif
+    m_console->printVerbose("Received content size of [" + String(contentSize) + "].");
 
     long bytesread = downloadContent(contentSize, m_rxBuffer);
 
@@ -246,9 +227,7 @@ bool SIMModem::beginDownload(String url)
 
         int chunks = (fullFileSize / DOWNLOAD_BUFFER_SIZE) + 1;
 
-#ifdef SIM_VERBOSE
-        m_console->println("String full content size to download [" + String(fullFileSize) + "], broken into " + String(chunks) + " chunks.");
-#endif
+        m_console->printVerbose("String full content size to download [" + String(fullFileSize) + "], broken into " + String(chunks) + " chunks.");
 
         if (Update.begin(fullFileSize, U_FLASH))
         {
@@ -261,9 +240,7 @@ bool SIMModem::beginDownload(String url)
                     downloadChunkSize = DOWNLOAD_BUFFER_SIZE;
 
                 String downloadQueryString = "?start=" + String(start) + "&length=" + String(downloadChunkSize);
-#ifdef SIM_VERBOSE
-                m_console->println("Query String: " + downloadQueryString + "  " + String(chunkIndex + 1) + " of " + String(chunks) + " chunks in file size of " + fullFileSize + "].");
-#endif
+                m_console->printVerbose("Query String: " + downloadQueryString + "  " + String(chunkIndex + 1) + " of " + String(chunks) + " chunks in file size of " + fullFileSize + "].");
                 m_display->drawStr("Downloading firmware", String("Total: " + String(fullFileSize) + " bytes").c_str(), String("Part " + String(chunkIndex) + " of " + String(chunks)).c_str());
 
                 contentSize = configureForDownload(url + downloadQueryString);
@@ -375,38 +352,28 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
             {
                 if (msg == expectedReply)
                 {
-#ifdef SIM_VERBOSE
                     m_console->printVerbose(String(m_cmdIdx) + " [" + msg + "] - ok");
-#endif
                     m_cmdIdx++;
                     return S_OK;
                 }
                 else if (msg == S_OK && expectedReply == "")
                 {
-#ifdef SIM_VERBOSE
                     m_console->printVerbose(String(m_cmdIdx) + " Will return value of [" + returnValue + "] - ok");
-#endif
                     m_cmdIdx++;
                     return returnValue;
                 }
                 else if (msg == S_ERROR)
                 {
-#ifdef SIM_VERBOSE
                     m_console->printVerbose(String(m_cmdIdx) + " [" + msg + "] - ok");
-#endif
                     return S_ERROR;
                 }
                 else if (msg == cmd)
                 {
-#ifdef SIM_VERBOSE
                     m_console->printVerbose(String(m_cmdIdx) + " Returned original -> " + msg);
-#endif
                 }
                 else if (msg == S_SMS_READY)
                 {
-#ifdef SIM_VERBOSE
                     m_console->printVerbose(String(m_cmdIdx) + " Returned -> " + msg);
-#endif
                     if (waitForReply(S_CALL_READY, 5))
                     {
                         return S_RESET;
@@ -414,9 +381,7 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
                 }
                 else if (msg == S_CALL_READY)
                 {
-#ifdef SIM_VERBOSE
                     m_console->printVerbose(String(m_cmdIdx) + " Returned -> " + msg);
-#endif
 
                     if (waitForReply(S_SMS_READY, 5))
                     {
@@ -427,9 +392,7 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
                 {
                     if (returnAny)
                     {
-#ifdef SIM_VERBOSE
                         m_console->printVerbose(String(m_cmdIdx) + " Returning result [" + msg + "]");
-#endif
                         return msg;
                     }
                     else
@@ -438,16 +401,12 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
                         if (isString(m_tempBuffer, msg.length()))
                         {
                             returnValue = msg;
-#ifdef SIM_VERBOSE
                             m_console->printVerbose(String(m_cmdIdx) + " pending return value [" + msg + "]");
-#endif
                         }
                         else
                         {
                             returnValue = "";
-#ifdef SIM_VERBOSE
                             m_console->printByteArray("Binary Response - Length: " + String(msg.length()) + " Values: ", m_tempBuffer, msg.length());
-#endif
                         }
                     }
                 }
@@ -646,9 +605,7 @@ bool SIMModem::getCGREG()
 
 bool SIMModem::init()
 {
-#ifdef SIM_VERBOSE
     m_console->printVerbose("Initialization of SIM Modem Started.");
-#endif
 
     if (!setBand())
     {
@@ -678,9 +635,7 @@ bool SIMModem::init()
         return false;
     }
 
-#ifdef SIM_VERBOSE
     m_console->printVerbose("Initialization of SIM Modem Completed.");
-#endif
 
     return true;
 }
@@ -753,8 +708,13 @@ bool SIMModem::connectServer(String hostName, String port)
     }
 
     String connect = "AT+CIPSTART=\"TCP\",\"" + hostName + "\",\"" + port + "\"";
-    if (sendCommand(connect, S_CONNECT, 0, 5000, false) != S_OK)
-    {
+    //if (sendCommand(connect, S_CONNECT, 0, 5000, false) != S_OK)
+
+    String response = sendCommand(connect, "CONNECT OK",0, 5000, false);
+
+    if (response != S_OK)
+    {        
+        m_console->println("EXPECTED [CONNECT OK] received " + response);
         return false;
     }
 
@@ -770,7 +730,7 @@ bool SIMModem::setBaudRate(unsigned long baudRate)
 
 bool SIMModem::initGPS()
 {
-    if (sendCommand("AT+CGNSPWR=1", S_OK, 0, 1500, false) != S_OK)
+    if (sendCommand("AT+CGNSPWR=1", "OK", 0, 1500, false) != S_OK)
     {
         m_console->printError("Could not power up GPS");
         return false;
@@ -784,27 +744,7 @@ bool SIMModem::initGPS()
 
 void SIMModem::startGPS()
 {
-    m_console->println("Starting GPS Auto Send");
-    
-    exitDataMode();
-
     initGPS();
-
-   /* if (sendCommand("AT+CGNSURC=1", S_OK, 0, 1500, false) != S_OK)
-    {
-        m_console->printError("Could not set GPS auto send mode.");
-    }
-    else {
-        m_console->println("Started GPS Auto Send");
-    }*/
-
-    if (sendCommand("ATO", S_CONNECT, 0, 1500, false) != S_OK)
-    {
-        m_console->printError("Could not switch back to data mode.");
-    }
-    else {
-        m_console->println("Switched back to data mode");
-    }
 }
 
 void SIMModem::stopGPS()
@@ -817,9 +757,6 @@ void SIMModem::stopGPS()
 
 GPSData *SIMModem::readGPS()
 {
-    exitDataMode();
-    while (m_channel->available()) m_channel->readByte();
-
     m_channel->print("AT+CGNSINF\r");
     String echo = m_channel->readStringUntil('\r', 100);
 
@@ -834,12 +771,9 @@ GPSData *SIMModem::readGPS()
 
     String ok = m_channel->readStringUntil('\r', 100);
     while (!m_channel->available()); m_channel->readByte();
-
-    if (sendCommand("ATO", S_CONNECT, 0, 1500, false) != S_OK)
-    {
-        m_console->printError("Could not switch back to data mode.");
-    }
     
+    Serial.println(gpsData);
+
     if (ok == "OK")
     {
         m_gpsData->parse(gpsData + "\r");
@@ -870,9 +804,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
         m_simId = getSIMId();
 
         start = millis();
-#ifdef SIM_VERBOSE
         m_console->printVerbose("Connect to cell service.");
-#endif
         while (!getCGREG())
         {
             m_console->printWarning("Not connect to cell service.");
@@ -886,9 +818,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
         }
 
         m_network = getNetwork();
-#ifdef SIM_VERBOSE
         m_console->printVerbose("Connected to network: " + m_network);
-#endif
 
         int signalStrength = findRSSI();
         while (signalStrength < 1)
@@ -896,9 +826,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
             signalStrength = findRSSI();
         }
 
-#ifdef SIM_VERBOSE
         m_console->printVerbose("Signal strength: " + String(signalStrength));
-#endif
 
         setAPN();
 
@@ -927,9 +855,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
             start = millis();
             while (!isGPRSConnected)
             {
-#ifdef SIM_VERBOSE
                 m_console->printVerbose("GPRS Not Connected - Connecting.");
-#endif
                 delay(500);
 
                 isGPRSConnected = connectGPRS();
@@ -945,16 +871,12 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
             m_console->printVerbose("GRPS Now connected.");
 
             m_ipAddress = parseIPAddress();
-#ifdef SIM_VERBOSE
             m_console->printVerbose("Now Connected IP Address is " + m_ipAddress);
-#endif
         }
-#ifdef SIM_VERBOSE
         else
         {
             m_console->printVerbose("Already Connected IP Address is " + m_ipAddress);
         }
-#endif
 
         connected = true;
     }

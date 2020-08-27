@@ -26,8 +26,10 @@ public:
 
     void setBaudRate(unsigned long baudRate);
 
-    void flush();
+    bool flush();
     
+    uint16_t getEnqueuedLength(); 
+
     String readStringUntil(char ch, int timeout);
 
     size_t available();
