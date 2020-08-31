@@ -92,30 +92,51 @@ void Channel::enqueueByteArray(uint8_t buffer[], size_t len)
     }
 }
 
-void Channel::flush() {
-     int sendLength = m_txTail - m_txHead;
+uint16_t Channel::getEnqueuedLength(){
+    if (m_txTail < m_txHead)
+    {
+        return m_txTail + (TX_BUFFER_SIZE - m_txHead);
+    }
+    else 
+    {
+        return m_txTail - m_txHead;
+    }    
+}
+
+bool Channel::flush() {
+    uint16_t sendLength;
+    uint16_t bytesWritten = 0;
 
     if (m_txTail < m_txHead)
     {
         for (int idx = m_txHead; idx < TX_BUFFER_SIZE; ++idx)
         {
-            m_stream->write(m_txBuffer[idx]);
+            bytesWritten += m_stream->write(m_txBuffer[idx]);
         }
 
         for (int idx = 0; idx < m_txTail; ++idx)
         {
-            m_stream->write(m_txBuffer[idx]);
+            bytesWritten += m_stream->write(m_txBuffer[idx]);
         }
 
-        int sendLength = m_txTail + (TX_BUFFER_SIZE - m_txHead);
+        sendLength = m_txTail + (TX_BUFFER_SIZE - m_txHead);
     }
     else
     {
+        sendLength = m_txTail - m_txHead;
         for (int idx = m_txHead; idx < m_txTail; ++idx)
         {
-            m_stream->write(m_txBuffer[idx]);
+            bytesWritten += m_stream->write(m_txBuffer[idx]);
         }
     }
 
     m_txHead = m_txTail;
+
+    if(sendLength != bytesWritten)
+    {
+        m_console->printError("Mismatch: " + String(sendLength) + " sent; " + String(bytesWritten) + " written");
+        return false;
+    }
+
+    return true;
 }

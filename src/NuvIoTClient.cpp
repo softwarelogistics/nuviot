@@ -62,7 +62,7 @@ void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction)
 
 bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, unsigned long baudRate)
 {
-    m_console->setVerboseLogging(m_state->getVerboseLogging());
+    //m_console->setVerboseLogging(m_state->getVerboseLogging());
     sendStatusUpdate("Ready", "Connecting to Modem");
     delay(1000);
 
@@ -163,7 +163,9 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
 bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 {
-    if (!ConnectToAPN(true, true, baudRate))
+    bool transparentMode = false;
+
+    if (!ConnectToAPN(transparentMode, true, baudRate))
     {
         return false;
     }
@@ -186,6 +188,8 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
     retryCount = 0;
 
     sendStatusUpdate("Connected to MQTT", "Auth MQTT");
+
+    m_mqtt->setTransparentMode(transparentMode);
 
     while (!m_mqtt->connect(m_state->getHostUserName(), m_state->getHostPassword(), m_state->getDeviceId()) && retryCount < 10)
     {
@@ -227,9 +231,9 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
 void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t length)
 {
-    Serial.print("Message arrived [");
-    Serial.print(topic);
-    Serial.println("] ");
+    m_console->print("Message arrived [");
+    m_console->print(topic);
+    m_console->println("] ");
 
     if(messageReceivedCallback != NULL){
         messageReceivedCallback(topic, payload, length);
@@ -246,7 +250,6 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
         case '/':
             topic[idx] = 0x00;
             String segment = String(&topic[start]);
-            Serial.println(segment);
             parts[partIdx++] = segment;
 
             start = idx + 1;
@@ -254,21 +257,14 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
         }
     }
 
-    String segment = String(&topic[start]);
-    Serial.println(segment);
-    parts[partIdx++] = segment;
+    // Stick the final part where it belongs.
+    String finalSegement = String(&topic[start]);
+    parts[partIdx++] = finalSegement;
 
-    for (int idx = 0; idx < partIdx; ++idx)
+    for(int idx = 0; idx < partIdx; ++idx)
     {
-        Serial1.println(parts[idx]);
+        m_console->printVerbose(parts[idx]);
     }
-
-    for (int i = 0; i < length; i++)
-    {
-        Serial.print((char)payload[i]);
-    }
-
-    Serial.println();
 
     if (partIdx >= 4)
     {

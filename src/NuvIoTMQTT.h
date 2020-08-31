@@ -30,6 +30,7 @@ class NuvIoTMQTT {
         WiFiClient *m_client;
         WiFiConnectionHelper *m_wifi;
         String m_subscriptions[MAX_SUBSCRIPTION_COUNT];
+        bool m_transparentMode = true;
         int m_subscrptionCount;
 
         void connect();

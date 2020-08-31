@@ -145,10 +145,7 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
         {
         case '/':
             topic[idx] = 0x00;
-            String segment = String(&topic[start]);
-            
-        
-            
+            String segment = String(&topic[start]);            
             parts[partIdx++] = segment;
 
             start = idx + 1;
@@ -240,8 +237,6 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
     if(m_callback != NULL) {
         m_callback(strTopic, strPayload);
     }
-
-    Serial.println();
 }
 
 void NuvIoTMQTT::addSubscriptions(String subscription)

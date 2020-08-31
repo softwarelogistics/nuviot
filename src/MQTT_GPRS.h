@@ -27,6 +27,10 @@ public:
     void setErrorCallback(void (*callback)(String error));      
     void loop();
 
+    void setTransparentMode(bool transparentMode) {
+        m_transparentMode = transparentMode;
+    }
+
     String getLastError();
 
 private:
@@ -51,6 +55,8 @@ private:
 
     Stream *m_stream;
 
+    bool m_transparentMode;
+
     void writeString(String string);
     void writeLengthPrefixedString(String str);
     void writeControlField(byte control_field);
@@ -61,7 +67,7 @@ private:
 
     void checkForReceivedMessages();
 
-    void flush();
+    bool flush();
 
     bool readResponse(byte expected);
 };
