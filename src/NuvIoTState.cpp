@@ -91,7 +91,7 @@
     960 - 20 x 1 byte value BOOL
  */
 
-NuvIoTState::NuvIoTState(Display *display, BluetoothSerial *btSerial, Hal *hal, Console *console)
+NuvIoTState::NuvIoTState(Display *display, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console)
 {
     m_display = display;
     m_hal = hal;
@@ -104,7 +104,15 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     m_firmwareSku = firmwareSku;
     m_firmwareVersion = firmwareVersion;
 
-    EEPROM.begin(2048);
+    if(!EEPROM.begin(2048))
+    {
+        m_display->println("Could not initialize EEPROM");
+        m_console->println("Could not initialize EEPROM") ;  
+    }
+    else 
+    {
+        m_console->printVerbose("initialized EEPROM");
+    }
 
     // are we fully ready to be online?
     m_isCommissioned = EEPROM.readUShort(IS_CONFIG_LOCATION) == COMMISSIONED_ID;
@@ -405,7 +413,6 @@ String NuvIoTState::getRemoteProperties()
         pNext = pNext->pNext;
     }
 
-    state += ";";
     return state;
 }
 

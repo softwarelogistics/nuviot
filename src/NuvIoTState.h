@@ -7,6 +7,7 @@
 #include "Display.h"
 #include "Hal.h"
 #include "Console.h"
+#include <FS.h>
 
 enum Storage_DataTypes
 {
@@ -24,6 +25,7 @@ private:
     float m_fltDefault;
     bool m_boolDefault;
     const char *m_key;
+ 
 
 public:
     Param(const char *key, int value) { m_key = key; m_intDefault = value; }
@@ -53,6 +55,7 @@ private:
     bool m_isCommissioned = false;
     bool m_debugMode = false;
     bool m_verboseLogging = false;
+    FS *m_fs;
 
     String readString(int add, int maxLength);
     String m_deviceAddress;
@@ -92,7 +95,7 @@ private:
     void createDefaults();
 
 public:
-    NuvIoTState(Display *display, BluetoothSerial *btSerial, Hal *hal, Console *console);
+    NuvIoTState(Display *display, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console);
     void init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t deviceConfigVersion);
     bool isValid();
     void loop();
