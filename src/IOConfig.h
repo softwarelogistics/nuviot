@@ -188,78 +188,77 @@ class IOConfig {
 
         deserializeJson(doc, str);
 
-        ADC1Config = atoi((const char *)doc["adc1c"]);
-        ADC2Config = atoi((const char *)doc["adc2c"]);
-        ADC3Config = atoi((const char *)doc["adc3c"]);
-        ADC4Config = atoi((const char *)doc["adc4c"]);
-        ADC5Config = atoi((const char *)doc["adc5c"]);
-        ADC6Config = atoi((const char *)doc["adc6c"]);
-        ADC7Config = atoi((const char *)doc["adc7c"]);
-        ADC8Config = atoi((const char *)doc["adc8c"]);
+        ADC1Config = doc["adc1c"].as<uint8_t>();
+        ADC2Config = doc["adc2c"].as<uint8_t>();
+        ADC3Config = doc["adc3c"].as<uint8_t>();
+        ADC4Config = doc["adc4c"].as<uint8_t>();
+        ADC5Config = doc["adc5c"].as<uint8_t>();
+        ADC6Config = doc["adc6c"].as<uint8_t>();
+        ADC7Config = doc["adc7c"].as<uint8_t>();
+        ADC8Config = doc["adc8c"].as<uint8_t>();
 
-        ADC1Label = String((const char *)doc["adc1l"]);
-        ADC2Label = String((const char *)doc["adc2l"]);
-        ADC3Label = String((const char *)doc["adc3l"]);
-        ADC4Label = String((const char *)doc["adc4l"]);
-        ADC5Label = String((const char *)doc["adc5l"]);
-        ADC6Label = String((const char *)doc["adc6l"]);
-        ADC7Label = String((const char *)doc["adc7l"]);
-        ADC8Label = String((const char *)doc["adc8l"]);
+        ADC1Label = doc["adc1l"].as<String>();
+        ADC2Label = doc["adc2l"].as<String>();
+        ADC3Label = doc["adc3l"].as<String>();
+        ADC4Label = doc["adc4l"].as<String>();
+        ADC5Label = doc["adc5l"].as<String>();
+        ADC6Label = doc["adc6l"].as<String>();
+        ADC7Label = doc["adc7l"].as<String>();
+        ADC8Label = doc["adc8l"].as<String>();
 
-        ADC1Name = String((const char *)doc["adc1n"]);
-        ADC2Name = String((const char *)doc["adc2n"]);
-        ADC3Name = String((const char *)doc["adc3n"]);
-        ADC4Name = String((const char *)doc["adc4n"]);
-        ADC5Name = String((const char *)doc["adc5n"]);
-        ADC6Name = String((const char *)doc["adc6n"]);
-        ADC7Name = String((const char *)doc["adc7n"]);
-        ADC8Name = String((const char *)doc["adc8n"]);
+        ADC1Name = doc["adc1n"].as<String>();
+        ADC2Name = doc["adc2n"].as<String>();
+        ADC3Name = doc["adc3n"].as<String>();
+        ADC4Name = doc["adc4n"].as<String>();
+        ADC5Name = doc["adc5n"].as<String>();
+        ADC6Name = doc["adc6n"].as<String>();
+        ADC7Name = doc["adc7n"].as<String>();
+        ADC8Name = doc["adc8n"].as<String>();
     
-        ADC1Scaler = atof((const char *)doc["adc1s"]);
-        ADC2Scaler = atof((const char *)doc["adc2s"]);
-        ADC3Scaler = atof((const char *)doc["adc3s"]);
-        ADC4Scaler = atof((const char *)doc["adc4s"]);
-        ADC5Scaler = atof((const char *)doc["adc5s"]);
-        ADC6Scaler = atof((const char *)doc["adc6s"]);
-        ADC7Scaler = atof((const char *)doc["adc7s"]);
-        ADC8Scaler = atof((const char *)doc["adc8s"]);
+        ADC1Scaler = doc["adc1s"].as<float>();
+        ADC2Scaler = doc["adc2s"].as<float>();
+        ADC3Scaler = doc["adc3s"].as<float>();
+        ADC4Scaler = doc["adc4s"].as<float>();
+        ADC5Scaler = doc["adc5s"].as<float>();
+        ADC6Scaler = doc["adc6s"].as<float>();
+        ADC7Scaler = doc["adc7s"].as<float>();
+        ADC8Scaler = doc["adc8s"].as<float>();
 
+        GPIO1Config = doc["io1c"].as<uint8_t>();
+        GPIO2Config = doc["io2c"].as<uint8_t>();
+        GPIO3Config = doc["io3c"].as<uint8_t>();
+        GPIO4Config = doc["io4c"].as<uint8_t>();
+        GPIO5Config = doc["io5c"].as<uint8_t>();
+        GPIO6Config = doc["io6c"].as<uint8_t>();
+        GPIO7Config = doc["io7c"].as<uint8_t>();
+        GPIO8Config = doc["io8c"].as<uint8_t>();
 
-        GPIO1Config = atoi((const char *)doc["io1c"]);
-        GPIO2Config = atoi((const char *)doc["io2c"]);
-        GPIO3Config = atoi((const char *)doc["io3c"]);
-        GPIO4Config = atoi((const char *)doc["io4c"]);
-        GPIO5Config = atoi((const char *)doc["io5c"]);
-        GPIO6Config = atoi((const char *)doc["io6c"]);
-        GPIO7Config = atoi((const char *)doc["io7c"]);
-        GPIO8Config = atoi((const char *)doc["io8c"]);
+        GPIO1Label = doc["io1l"].as<String>();
+        GPIO2Label = doc["io2l"].as<String>();
+        GPIO3Label = doc["io3l"].as<String>();
+        GPIO4Label = doc["io4l"].as<String>();
+        GPIO5Label = doc["io5l"].as<String>();
+        GPIO6Label = doc["io6l"].as<String>();
+        GPIO7Label = doc["io7l"].as<String>();
+        GPIO8Label = doc["io8l"].as<String>();
 
-        GPIO1Label = String((const char *)doc["io1l"]);
-        GPIO2Label = String((const char *)doc["io2l"]);
-        GPIO3Label = String((const char *)doc["io3l"]);
-        GPIO4Label = String((const char *)doc["io4l"]);
-        GPIO5Label = String((const char *)doc["io5l"]);
-        GPIO6Label = String((const char *)doc["io6l"]);
-        GPIO7Label = String((const char *)doc["io7l"]);
-        GPIO8Label = String((const char *)doc["io8l"]);
+        GPIO1Name = doc["io1n"].as<String>();
+        GPIO2Name = doc["io2n"].as<String>();
+        GPIO3Name = doc["io3n"].as<String>();
+        GPIO4Name = doc["io4n"].as<String>();
+        GPIO5Name = doc["io5n"].as<String>();
+        GPIO6Name = doc["io6n"].as<String>();
+        GPIO7Name = doc["io7n"].as<String>();
+        GPIO8Name = doc["io8n"].as<String>();
 
-        GPIO1Name = String((const char *)doc["io1n"]);
-        GPIO2Name = String((const char *)doc["io2n"]);
-        GPIO3Name = String((const char *)doc["io3n"]);
-        GPIO4Name = String((const char *)doc["io4n"]);
-        GPIO5Name = String((const char *)doc["io5n"]);
-        GPIO6Name = String((const char *)doc["io6n"]);
-        GPIO7Name = String((const char *)doc["io7n"]);
-        GPIO8Name = String((const char *)doc["io8n"]);
-
-        GPIO1Scaler = atof((const char *)doc["io1s"]);
-        GPIO2Scaler = atof((const char *)doc["io2s"]);
-        GPIO3Scaler = atof((const char *)doc["io3s"]);
-        GPIO4Scaler = atof((const char *)doc["io4s"]);
-        GPIO5Scaler = atof((const char *)doc["io5s"]);
-        GPIO6Scaler = atof((const char *)doc["io6s"]);
-        GPIO7Scaler = atof((const char *)doc["io7s"]);
-        GPIO8Scaler = atof((const char *)doc["io8s"]);
+        GPIO1Scaler = doc["io1s"].as<float>();
+        GPIO2Scaler = doc["io2s"].as<float>();
+        GPIO3Scaler = doc["io3s"].as<float>();
+        GPIO4Scaler = doc["io4s"].as<float>();
+        GPIO5Scaler = doc["io5s"].as<float>();
+        GPIO6Scaler = doc["io6s"].as<float>();
+        GPIO7Scaler = doc["io7s"].as<float>();
+        GPIO8Scaler = doc["io8s"].as<float>();
     }
 
     void setDefaults(){
