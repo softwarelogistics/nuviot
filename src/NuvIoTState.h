@@ -7,6 +7,7 @@
 #include "Display.h"
 #include "Hal.h"
 #include "Console.h"
+#include "IOConfig.h"
 #include <FS.h>
 
 enum Storage_DataTypes
@@ -50,6 +51,7 @@ private:
     Hal *m_hal;
     Console *m_console;
     bool m_configurationMode = false;
+    IOConfig *m_ioConfig;
 
     bool m_isInitialized = false;
     bool m_isCommissioned = false;
@@ -57,10 +59,12 @@ private:
     bool m_verboseLogging = false;
     FS *m_fs;
 
+    String m_jsonBuffer;
+
     String readString(int add, int maxLength);
     String m_deviceAddress;
     void writeString(int add, String data);
-    char m_messageBuffer[128];
+    char m_messageBuffer[512];
     char m_btAddress[20];
     int m_messageBufferTail = 0;
     int byteCount = 0;
@@ -95,7 +99,7 @@ private:
     void createDefaults();
 
 public:
-    NuvIoTState(Display *display, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console);
+    NuvIoTState(Display *display, IOConfig *ioConfig, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console);
     void init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t deviceConfigVersion);
     bool isValid();
     void loop();

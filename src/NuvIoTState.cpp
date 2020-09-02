@@ -91,12 +91,13 @@
     960 - 20 x 1 byte value BOOL
  */
 
-NuvIoTState::NuvIoTState(Display *display, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console)
+NuvIoTState::NuvIoTState(Display *display, IOConfig *config, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console)
 {
     m_display = display;
     m_hal = hal;
     m_console = console;
     m_btSerial = btSerial;
+    m_ioConfig = config;
 }
 
 void NuvIoTState::init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t structureVersion)
@@ -606,7 +607,7 @@ void NuvIoTState::loop()
                 m_paused = false;
             }
             else if (msg == "FIRMWARE")
-            {
+            {                
                 readFirmware();
             }
             else if (msg == "REBOOT")
@@ -617,6 +618,35 @@ void NuvIoTState::loop()
             {
                 m_btSerial->println(getRemoteProperties());
             }
+            else if(msg == "IOCONFIG-SEND") {
+                String json = m_ioConfig->toJSON();
+                uint16_t remaining = json.length();
+                uint16_t chunkSize = 100;
+                uint16_t chunkIndex = 0;
+                while(remaining > 0) {
+                    int start = chunkIndex * 100;
+                    int end = min((uint16_t)(start + chunkSize), (uint16_t)json.length());
+                    remaining = json.length() - end;
+                    m_btSerial->print(json.substring(chunkIndex * 100, end));                    
+                    m_btSerial->flush();
+                    delay(100);
+                    chunkIndex++;
+                }
+
+                m_btSerial->println();
+            }
+            else if(msg.substring(0, 19) == "IOCONFIG-RECV-START") {
+                m_jsonBuffer.clear();
+            }
+            else if(msg.substring(0, 14) == "IOCONFIG-RECV:") {
+                m_jsonBuffer += msg.substring(14); 
+                Serial.println(msg);
+                Serial.println(m_jsonBuffer);
+            }
+            else if(msg.substring(0, 17) == "IOCONFIG-RECV-END") {
+                m_ioConfig->parseJSON(m_jsonBuffer);
+                m_jsonBuffer.clear();
+            }            
             else if (msg.substring(0, 3) == "SET")
             {
                 String setCommand = String(&m_messageBuffer[4]);

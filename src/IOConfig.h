@@ -99,7 +99,7 @@ class IOConfig {
     float GPIO8Scaler;
 
     String toJSON() {
-        const size_t capacity = JSON_OBJECT_SIZE(64);
+        const size_t capacity = JSON_OBJECT_SIZE(1024);
         DynamicJsonDocument doc(capacity);
         doc["adc1c"] = ADC1Config;
         doc["adc2c"] = ADC2Config;
@@ -181,7 +181,7 @@ class IOConfig {
     }
 
     void parseJSON(String json) {
-        const size_t capacity = JSON_OBJECT_SIZE(64);
+        const size_t capacity = JSON_OBJECT_SIZE(1024);
         DynamicJsonDocument doc(capacity);
 
         const char *str = json.c_str();

@@ -1,5 +1,8 @@
 #ifndef PINS_CONFIG_H
 #define PINS_CONFIG_H
+
+#include <Arduino.h>
+
 #ifdef GPIO_BRD_V2
 #define K4_CTL 13
 #define K3_CTL 12
