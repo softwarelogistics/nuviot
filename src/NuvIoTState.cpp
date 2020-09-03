@@ -635,18 +635,51 @@ void NuvIoTState::loop()
 
                 m_btSerial->println();
             }
-            else if(msg.substring(0, 19) == "IOCONFIG-RECV-START") {
+            else if(msg.substring(0) == "IOCONFIG-RECV-START") {
                 m_jsonBuffer.clear();
             }
-            else if(msg.substring(0, 14) == "IOCONFIG-RECV:") {
-                m_jsonBuffer += msg.substring(14); 
-                Serial.println(msg);
-                Serial.println(m_jsonBuffer);
-            }
-            else if(msg.substring(0, 17) == "IOCONFIG-RECV-END") {
+            else if(msg.substring(0) == "IOCONFIG-RECV-END") {
                 m_ioConfig->parseJSON(m_jsonBuffer);
                 m_jsonBuffer.clear();
+                m_ioConfig->write();
+            }                        
+            else if(msg.substring(0, 13) == "IOCONFIG-RECV") {
+                // format is 
+                // ICONFIG-RECV:XX,CRC,[CONTENTS]
+                Serial.println("----------------------");
+                char hexBuffer[3];
+                msg.toCharArray(hexBuffer, 3, 14);
+                Serial.println(hexBuffer);
+                uint8_t rowIndex = strtol(hexBuffer, NULL, 16);
+
+                msg.toCharArray(hexBuffer, 3, 17);
+                uint8_t crc = strtol(hexBuffer, NULL, 16);
+                Serial.println(hexBuffer);
+                uint8_t calcCRC = 0x00;
+
+                for(int idx = 20; idx < msg.length(); ++idx)
+                {
+                    calcCRC += (uint8_t)msg[idx];
+                }
+
+                Serial.println("RESULT: " + String(rowIndex) + " " + String(crc) + " " + String(calcCRC));
+                Serial.println("----------------------");
+
+                m_jsonBuffer += msg.substring(20); 
+
+                if(crc == calcCRC) {
+                    m_btSerial->println("IOCONFIG-RECV-OK:" + String(rowIndex));
+                }
+                else {
+                    m_btSerial->println("IOCONFIG-RECV-CRC-ERR:" + String(rowIndex));
+                }
             }            
+            else if(msg == "RESET-STATE")
+            {
+                m_ioConfig->setDefaults();
+                m_ioConfig->write();
+                m_hal->restart();
+            }
             else if (msg.substring(0, 3) == "SET")
             {
                 String setCommand = String(&m_messageBuffer[4]);

@@ -16,6 +16,10 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
+#include <SPIFFS.h>
+
+#define SETTINGS_FN "/ioconfig.json"
+
 class IOConfig {
     public:
     uint8_t ADC1Config;
@@ -178,6 +182,46 @@ class IOConfig {
         serializeJson(doc, output);
 
         return output;    
+    }
+
+    void load() {
+        File file = SPIFFS.open(SETTINGS_FN, FILE_READ);
+        if(file) {
+            
+            String json = file.readString();
+
+            Serial.println("File " + String(SETTINGS_FN) + " exists, file size: " + String(json.length()));
+
+            if(json.length() == 0)
+            {
+                file.close();
+                setDefaults();
+                write();
+            }
+            {
+            parseJSON(json);
+                file.close();
+                }
+        }
+        else {
+            setDefaults();
+            write();
+            Serial.println("FILE DIDN'T EXIST WRITE DEFAULTS.");
+        }
+    }
+
+    void write() {
+        File file = SPIFFS.open(SETTINGS_FN, FILE_WRITE);
+        if(!file)
+        {
+            Serial.println("Could not open " + String(SETTINGS_FN) + " file to write.");    
+        }
+
+        size_t bytesWritten = file.print(toJSON());
+        file.flush();
+        file.close();
+
+        Serial.println("Write " + String(bytesWritten) + " to " + String(SETTINGS_FN));
     }
 
     void parseJSON(String json) {
