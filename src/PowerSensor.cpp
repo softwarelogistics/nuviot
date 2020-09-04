@@ -90,6 +90,14 @@ void PowerSensor::loop()
     m_payload->current3 = m_channelEnabled[2] ? m_channelAmps[2] : -1;
 }
 
+
+void PowerSensor::configure(IOConfig *ioConfig)
+{
+    if(ioConfig->ADC1Config == ADC_CONFIG_CT) enableChannel(0, true);
+    if(ioConfig->ADC2Config == ADC_CONFIG_CT) enableChannel(1, true);
+    if(ioConfig->ADC3Config == ADC_CONFIG_CT) enableChannel(2, true);
+}
+
 void PowerSensor::debugPrint()
 {
     for (int idx = 0; idx < 3; ++idx) {
@@ -105,9 +113,11 @@ void PowerSensor::setChannelVoltage(uint8_t channel, uint16_t voltage)
     m_voltage[channel] = voltage;
 }
 
-void PowerSensor::enableChannel(uint8_t channel, bool isEnabled)
+void PowerSensor::enableChannel(String name, uint8_t channel)
 {
-    m_channelEnabled[channel] = isEnabled;
+    m_names[channel] = name;
+    m_channelEnabled[channel] = true;
+    m_adc->enableADC(channel, true);
 }
 
 float PowerSensor::readAmps(uint8_t channel)

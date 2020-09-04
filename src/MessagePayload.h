@@ -27,7 +27,6 @@ public:
         hasHumidity4 = false;
         hasHumidity5 = false;
 
-        hasVBatt = false;
         hasVoltage1 = false;
         hasVoltage2 = false;
         hasVoltage3 = false;
@@ -35,6 +34,7 @@ public:
         hasVoltage5 = false;
         hasVoltage6 = false;
         hasVoltage7 = false;
+        hasVoltage8 = false;
     }
 
     String timeStamp;
@@ -46,7 +46,6 @@ public:
     float current2;
     float current3;
 
-    float vbatt;
     float voltage1;
     float voltage2;
     float voltage3;
@@ -54,6 +53,7 @@ public:
     float voltage5;
     float voltage6;
     float voltage7;
+    float voltage8;
 
     float temperature1;
     float temperature2;
@@ -83,7 +83,6 @@ public:
     bool hasCurrent2;
     bool hasCurrent3;
 
-    bool hasVBatt;
     bool hasVoltage1;
     bool hasVoltage2;
     bool hasVoltage3;
@@ -91,7 +90,8 @@ public:
     bool hasVoltage5;
     bool hasVoltage6;
     bool hasVoltage7;
-
+    bool hasVoltage8;
+    
     String getJSON();
 };
 #endif

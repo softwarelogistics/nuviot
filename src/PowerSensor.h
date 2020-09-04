@@ -6,6 +6,9 @@
 #include "ADC.h"
 #include "AbstractSensor.h"
 #include "Console.h"
+#include "IOConfig.h"
+
+#define NUMBER_CTS 3
 
 class PowerSensor: public AbstractSensor {
     public:
@@ -14,11 +17,13 @@ class PowerSensor: public AbstractSensor {
         void loop();
         void debugPrint();
 
-        void enableChannel(uint8_t channel, bool isEnabled);
+        void enableChannel(String name, uint8_t channel);
         void disableChannel(uint8_t channel);
         float readAmps(uint8_t channel);
         float readWatts(uint8_t channel);        
         void setChannelVoltage(uint8_t channel, uint16_t voltage);
+
+        void configure(IOConfig *ioConfig);
 
     private:
         uint8_t m_adcChannels[3];
@@ -26,10 +31,11 @@ class PowerSensor: public AbstractSensor {
         bool m_isHealthy = false;
         String m_lastError = "";
 
-        bool m_channelEnabled[3];
-        float m_channelAmps[3];
-        double m_ctRatioFactor[3];
-        uint16_t m_voltage[3];
+        String m_names[NUMBER_CTS];
+        bool m_channelEnabled[NUMBER_CTS];
+        float m_channelAmps[NUMBER_CTS];
+        double m_ctRatioFactor[NUMBER_CTS];
+        uint16_t m_voltage[NUMBER_CTS];
 
         ADC *m_adc;
         Console *m_console;
