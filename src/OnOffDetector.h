@@ -23,7 +23,9 @@ class OnOffDetector {
             m_configPins = configPins;
         }
 
-        void setup() { }
+        void setup(IOConfig *config) { 
+            configure(config);
+        }
 
         void registerOnOffDetector(String name, uint8_t pin) {
             m_channelNames[m_registeredChannels] = name;

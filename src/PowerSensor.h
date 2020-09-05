@@ -13,11 +13,11 @@
 class PowerSensor: public AbstractSensor {
     public:
         PowerSensor(ADC *adc, Console *console, MessagePayload *payload, NuvIoTState *state);
-        void setup();
+        void setup(IOConfig *ioConfig);
         void loop();
         void debugPrint();
 
-        void enableChannel(String name, uint8_t channel);
+        void enableChannel(uint8_t channel, String name, float scaler);
         void disableChannel(uint8_t channel);
         float readAmps(uint8_t channel);
         float readWatts(uint8_t channel);        
@@ -26,8 +26,6 @@ class PowerSensor: public AbstractSensor {
         void configure(IOConfig *ioConfig);
 
     private:
-        uint8_t m_adcChannels[3];
-
         bool m_isHealthy = false;
         String m_lastError = "";
 

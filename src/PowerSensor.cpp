@@ -8,23 +8,13 @@ PowerSensor::PowerSensor(ADC *adc, Console *console, MessagePayload *payload, Nu
     m_state = state;
 }
 
-void PowerSensor::setup()
+void PowerSensor::setup(IOConfig *config)
 {
-    m_channelEnabled[0] = false;
-    m_channelEnabled[1] = false;
-    m_channelEnabled[2] = false;
+    m_voltage[0] = 0;
+    m_voltage[1] = 0;
+    m_voltage[2] = 0;
 
-    m_voltage[0] = 120;
-    m_voltage[1] = 120;
-    m_voltage[2] = 120;
-
-    m_ctRatioFactor[0] = 100;
-    m_ctRatioFactor[1] = 100;
-    m_ctRatioFactor[2] = 100;
-
-    m_adcChannels[0] = 2; /* ADCMOD1 - 2 */
-    m_adcChannels[1] = 4; /* ADCMOD2 - 0 */
-    m_adcChannels[2] = 5; /* ADCMOD2 - 1 */
+    configure(config);
 }
 
 void PowerSensor::loop()
@@ -90,12 +80,19 @@ void PowerSensor::loop()
     m_payload->current3 = m_channelEnabled[2] ? m_channelAmps[2] : -1;
 }
 
+void PowerSensor::configure(IOConfig *config) {
+    if(config->ADC1Config == ADC_CONFIG_CT) enableChannel(0, config->ADC1Name, config->ADC1Scaler);
+    if(config->ADC2Config == ADC_CONFIG_CT) enableChannel(1, config->ADC1Name, config->ADC2Scaler);
+    if(config->ADC3Config == ADC_CONFIG_CT) enableChannel(2, config->ADC1Name, config->ADC3Scaler);
+}
 
-void PowerSensor::configure(IOConfig *ioConfig)
+void PowerSensor::enableChannel(uint8_t channel, String name, float scaler)
 {
-    if(ioConfig->ADC1Config == ADC_CONFIG_CT) enableChannel(0, true);
-    if(ioConfig->ADC2Config == ADC_CONFIG_CT) enableChannel(1, true);
-    if(ioConfig->ADC3Config == ADC_CONFIG_CT) enableChannel(2, true);
+    m_names[channel] = name;
+    m_channelEnabled[channel] = true;
+    
+    m_adc->enableADC(name, channel, true);
+    m_ctRatioFactor[channel] = (scaler);
 }
 
 void PowerSensor::debugPrint()
@@ -111,13 +108,6 @@ void PowerSensor::debugPrint()
 void PowerSensor::setChannelVoltage(uint8_t channel, uint16_t voltage)
 {
     m_voltage[channel] = voltage;
-}
-
-void PowerSensor::enableChannel(String name, uint8_t channel)
-{
-    m_names[channel] = name;
-    m_channelEnabled[channel] = true;
-    m_adc->enableADC(channel, true);
 }
 
 float PowerSensor::readAmps(uint8_t channel)
