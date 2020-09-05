@@ -1,11 +1,12 @@
 #include "PowerSensor.h"
 
-PowerSensor::PowerSensor(ADC *adc, Console *console, MessagePayload *payload, NuvIoTState *state)
+PowerSensor::PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, MessagePayload *payload, NuvIoTState *state)
 {
     m_adc = adc;
     m_console = console;
     m_payload = payload;
     m_state = state;
+    m_configPins = configPins;
 }
 
 void PowerSensor::setup(IOConfig *config)
@@ -19,8 +20,16 @@ void PowerSensor::setup(IOConfig *config)
 
 void PowerSensor::loop()
 {
+    uint8_t adcChannel;
+
     for (int idx = 0; idx < 3; ++idx)
     {
+        switch(idx){
+            case 0: adcChannel = m_configPins->CTChannel1; break;
+            case 1: adcChannel = m_configPins->CTChannel2; break;
+            case 2: adcChannel = m_configPins->CTChannel3; break;
+        }
+
         if (m_channelEnabled[idx])
         {
             float avereageTotal = 0;
@@ -33,7 +42,7 @@ void PowerSensor::loop()
             // sample once every 10ms or collect values over 30 samples
             for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
             {
-                float voltage = m_adc->getVoltage(m_adcChannels[idx]);
+                float voltage = m_adc->getVoltage(adcChannel);
                 avereageTotal += voltage;
                 delay(10);
             }
@@ -48,7 +57,7 @@ void PowerSensor::loop()
 
             for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
             {
-                float voltage = m_adc->getVoltage(m_adcChannels[idx]);
+                float voltage = m_adc->getVoltage(adcChannel);
                 if (voltage < min)
                     min = voltage;
 

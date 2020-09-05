@@ -66,7 +66,7 @@ void PulseCounter::registerPin(String name, uint8_t pin) {
     }
 }
 
-void PulseCounter::setup() {
+void PulseCounter::setup(IOConfig *ioConfig) {
     for(int idx = 0; idx < NUMBER_PULSE_COUNTER_CHANNELS; ++idx) {
         m_pulsePerSecond[idx] = 0;
         m_channelCounts[idx] = 0;
@@ -79,6 +79,8 @@ void PulseCounter::setup() {
     for(int slot = 0; slot < PULSE_COUNTER_AVERAGING_BUFFER_SIZE; ++slot){
         m_pins[slot] = -1;
     }
+
+    configure(ioConfig);
 }
 
 void PulseCounter::loop() {

@@ -36,6 +36,8 @@ class NuvIoTClient {
 
         void enableGPS(bool enabled);
 
+        void commonDisplay();
+
     private:
         void sendStatusUpdate(String msg, String nextAction);
         void sendStatusUpdate(String msg, String nextAction, String title, int delay);

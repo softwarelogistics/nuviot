@@ -5,12 +5,13 @@
 #include "Console.h"
 #include "IOConfig.h"
 #include "ConfigPins.h"
+#include "AbstractSensor.h"
 
 #define NUMBER_PULSE_COUNTER_CHANNELS 8
 #define PULSE_COUNTER_AVERAGING_BUFFER_SIZE 6
 #define SAMPLE_PERIOD 500
 
-class PulseCounter {
+class PulseCounter : public AbstractSensor {
     private:
         Console *m_console;
         ConfigPins *m_configPins;
@@ -31,7 +32,7 @@ class PulseCounter {
         void toggled(int channel);
         void registerPin(String name, uint8_t pin);
         void configure(IOConfig *config);
-        void setup();
+        void setup(IOConfig *config);
         void loop();
         void debugPrint();
         int countsPerSecond(uint8_t channel);

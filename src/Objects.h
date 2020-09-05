@@ -22,10 +22,11 @@
 #include "IOConfig.h"
 #include "SysConfig.h"
 #include "BluetoothSerial.h"
-
+#include "ConfigPins.h"
 
 IOConfig ioConfig;
 SysConfig sysConfig;
+ConfigPins configPins(1);
 
 Hal hal;
 BluetoothSerial btSerial;
@@ -37,10 +38,6 @@ NuvIoTState state(&display, &ioConfig, &btSerial, &SPIFFS, &hal, &console);
 TwoWire twoWire(1);
 
 MessagePayload *payload = new MessagePayload();
-
-ADC adc(&twoWire, &console, payload);
-TemperatureProbes probes(&console, payload);
-
 GPSData *gps = NULL;
 
 Channel channel(&gprsPort, &console);
@@ -48,14 +45,15 @@ MQTT mqtt(&channel, &console);
 SIMModem modem(&display, &channel, &console);
 
 OtaServices ota(&display, &console, &modem, &hal);
-
 NuvIoTClient client(&modem, &mqtt, &console, &display, &state, &ota, &hal);
 
-PulseCounter pulseCounter(&console);
 Telemetry telemetry(&btSerial);
 
-RelayManager relayManager(&console);
+PulseCounter pulseCounter(&console, &configPins);
+ADC adc(&twoWire, &configPins, &console, payload);
+TemperatureProbes probes(&console, &configPins, payload);
 
-OnOffDetector onOffDetector(&console);
+RelayManager relayManager(&console, &configPins);
+OnOffDetector onOffDetector(&console, &configPins);
 
 #endif

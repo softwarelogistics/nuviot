@@ -50,6 +50,10 @@ public:
     uint8_t Scl1 = GP0O1_BRD_V2_SCL1;
     uint8_t Sda1 = GP0O1_BRD_V2_SDA1;
 
+    uint8_t CTChannel1 = GP0O1_BRD_V2_ADC1;
+    uint8_t CTChannel2 = GP0O1_BRD_V2_ADC2;
+    uint8_t CTChannel3 = GP0O1_BRD_V2_ADC3;
+
     uint8_t ADCChannel1 = GP0O1_BRD_V2_ADC1;
     uint8_t ADCChannel2 = GP0O1_BRD_V2_ADC2;
     uint8_t ADCChannel3 = GP0O1_BRD_V2_ADC3;

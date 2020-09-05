@@ -5,10 +5,11 @@
 #include "Console.h"
 #include "IOConfig.h"
 #include "ConfigPins.h"
+#include "AbstractSensor.h"
 
 #define MAX_ON_OFF_CHANNELS 8
 
-class OnOffDetector {    
+class OnOffDetector : public AbstractSensor {    
     private: 
         Console *m_console;
         uint8_t m_registeredChannels = 0;

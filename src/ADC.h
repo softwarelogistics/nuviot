@@ -68,16 +68,10 @@ public:
          * 
          */
 
-        m_vbattScaler = 1.0;
         for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
         {
             m_scalers[idx] = 1.0;
         }
-    }
-
-    float setVBattScaler(float scaler)
-    {
-        m_vbattScaler = scaler;
     }
 
     float setScaler(uint8_t channel, float scaler)
@@ -158,8 +152,9 @@ public:
         m_names[port] = name;
     }
 
-    void setup()
+    void setup(IOConfig *ioConfig)
     {
+        configure(ioConfig);
     }
 
     void loop()

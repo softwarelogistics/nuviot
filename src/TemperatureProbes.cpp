@@ -2,33 +2,21 @@
 
 #define SL_BOARD_TYPE
 
-#ifdef SL_BOARD_TYPE
-#define PROBE0_PIN 17
-#define PROBE1_PIN 5
-#define PROBE2_PIN 16
-#define PROBE3_PIN 4
-#define PROBE4_PIN 27
-#else
-#define PROBE0_PIN 17
-#define PROBE1_PIN 13
-#define PROBE2_PIN 14
-#define PROBE3_PIN 2 
-#define PROBE4_PIN -1
-#endif
-
-TemperatureProbes::TemperatureProbes(Console *console, MessagePayload *payload)
+TemperatureProbes::TemperatureProbes(Console *console, ConfigPins *configPins, MessagePayload *payload)
 {
     m_payload = payload;
     m_console = console;
+    m_configPins = configPins;
 }
 
-TemperatureProbes::TemperatureProbes(Console *console)
+TemperatureProbes::TemperatureProbes(Console *console, ConfigPins *configPins)
 {
     m_payload = NULL;
     m_console = console;
+    m_configPins = configPins;
 }
 
-void TemperatureProbes::setup()
+void TemperatureProbes::setup(IOConfig *iOConfig)
 {
     for (int idx = 0; idx < PROBECOUNT; ++idx)
     {
@@ -37,6 +25,17 @@ void TemperatureProbes::setup()
         m_oneWires[idx] = NULL;
         m_dhts[idx] = NULL;
     }
+}
+
+void TemperatureProbes::configure(IOConfig *ioConfig){
+    this->configureProbe(0, ioConfig->GPIO1Name, ioConfig->GPIO1Config);
+    this->configureProbe(1, ioConfig->GPIO2Name, ioConfig->GPIO2Config);
+    this->configureProbe(2, ioConfig->GPIO3Name, ioConfig->GPIO3Config);
+    this->configureProbe(3, ioConfig->GPIO4Name, ioConfig->GPIO4Config);
+    this->configureProbe(4, ioConfig->GPIO5Name, ioConfig->GPIO5Config);
+    this->configureProbe(5, ioConfig->GPIO6Name, ioConfig->GPIO6Config);
+    this->configureProbe(6, ioConfig->GPIO7Name, ioConfig->GPIO7Config);
+    this->configureProbe(7, ioConfig->GPIO8Name, ioConfig->GPIO8Config);
 }
 
 #define MIN_VALUE -9999
@@ -173,25 +172,40 @@ void TemperatureProbes::debugPrint()
     }
 }
 
-byte TemperatureProbes::resolvePinIndex(int idx)
+uint8_t TemperatureProbes::resolvePinIndex(uint8_t idx)
 {
     if (idx == 0)
-        return PROBE0_PIN;
+        return m_configPins->Gpio0;
     if (idx == 1)
-        return PROBE1_PIN;
+        return m_configPins->Gpio1;
     if (idx == 2)
-        return PROBE2_PIN;
+        return m_configPins->Gpio2;
     if (idx == 3)
-        return PROBE3_PIN;
+        return m_configPins->Gpio3;
     if (idx == 4)
-        return PROBE4_PIN;
+        return m_configPins->Gpio4;
+    if (idx == 5)
+        return m_configPins->Gpio5;
+    if (idx == 6)
+        return m_configPins->Gpio6;
+    if (idx == 7)
+        return m_configPins->Gpio7;
 
     return -1;
 }
 
-void TemperatureProbes::configureProbe(int idx, SensorConfigs config)
+void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting)
 {
-    byte pin = resolvePinIndex(idx);
+    SensorConfigs config = None;
+    if(setting == GPIO_CONFIG_DBS18) config =  DS18B20;
+    if(setting == GPIO_CONFIG_DHT11) config =  Dht11;
+    if(setting == GPIO_CONFIG_DHT22) config =  Dht22;
+
+    if(config != None) {
+        m_names[idx] = name;
+    }
+
+    uint8_t pin = resolvePinIndex(idx);
     if (pin == -1)
     {
         m_console->printVerbose("Invalid pin on configure probe.");

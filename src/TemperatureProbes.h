@@ -8,8 +8,10 @@
 #include "NuvIoTState.h"
 #include "Console.h"
 #include "AbstractSensor.h"
+#include "ConfigPins.h"
+#include "IOConfig.h"
 
-#define PROBECOUNT 5
+#define PROBECOUNT 8
 
 enum SensorConfigs {
     None,
@@ -24,30 +26,36 @@ enum SensorConfigs {
 
 class TemperatureProbes: public AbstractSensor{
     public:
-        TemperatureProbes(Console *console, MessagePayload *payload);
-        TemperatureProbes(Console *console);
+        TemperatureProbes(Console *console, ConfigPins *configPins,  MessagePayload *payload);
+        TemperatureProbes(Console *console, ConfigPins *configPins);
 
-        void setup();
+        void setup(IOConfig *ioConfig);
+        void configure(IOConfig *ioConfig);
         void debugPrint();
         void loop();
 
         float getTemperature(int idx);
         float getHumidity(int idx);
 
-        void configureProbe(int idx, SensorConfigs config);
+        void configureProbe(uint8_t idx, String name, uint8_t config);
 
     private:
         float m_temperatures[PROBECOUNT];
         float m_humidities[PROBECOUNT];
         bool m_initialized;
+        IOConfig *m_ioConfig;
+        ConfigPins *m_configPins;
 
-        byte resolvePinIndex(int idx);
+        uint8_t resolvePinIndex(uint8_t idx);
 
         SensorConfigs m_sensorConfigurations[PROBECOUNT];
 
+
+
         OneWire *m_oneWires[PROBECOUNT];
         DallasTemperature *m_probes[PROBECOUNT];
-        DHT *m_dhts[PROBECOUNT]; 
+        DHT *m_dhts[PROBECOUNT];
+        String m_names[PROBECOUNT]; 
         
         MessagePayload* m_payload = NULL;
         Console* m_console;

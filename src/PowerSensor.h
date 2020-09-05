@@ -7,13 +7,13 @@
 #include "AbstractSensor.h"
 #include "Console.h"
 #include "IOConfig.h"
+#include "ConfigPins.h"
 
 #define NUMBER_CTS 3
 
 class PowerSensor: public AbstractSensor {
     public:
-        PowerSensor(ADC *adc, Console *console, MessagePayload *payload, NuvIoTState *state);
-        void setup(IOConfig *ioConfig);
+        PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, MessagePayload *payload, NuvIoTState *state);
         void loop();
         void debugPrint();
 
@@ -23,6 +23,7 @@ class PowerSensor: public AbstractSensor {
         float readWatts(uint8_t channel);        
         void setChannelVoltage(uint8_t channel, uint16_t voltage);
 
+        void setup(IOConfig *ioConfig);
         void configure(IOConfig *ioConfig);
 
     private:
@@ -35,6 +36,7 @@ class PowerSensor: public AbstractSensor {
         double m_ctRatioFactor[NUMBER_CTS];
         uint16_t m_voltage[NUMBER_CTS];
 
+        ConfigPins *m_configPins;
         ADC *m_adc;
         Console *m_console;
         NuvIoTState *m_state;

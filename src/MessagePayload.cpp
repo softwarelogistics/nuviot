@@ -24,14 +24,14 @@ String MessagePayload::getJSON()
     if(temperature3) doc["t3"] = temperature3;
     if(temperature4) doc["t4"] = temperature4;
 
-    if(hasVBatt) doc["vb"] = vbatt;
     if(hasVoltage1) doc["v1"] = voltage1;
     if(hasVoltage2) doc["v2"] = voltage2;
     if(hasVoltage3) doc["v3"] = voltage3;
     if(hasVoltage4) doc["v4"] = voltage4;
     if(hasVoltage5) doc["v5"] = voltage5;
     if(hasVoltage6) doc["v6"] = voltage6;    
-    if(hasVoltage6) doc["v7"] = voltage7;    
+    if(hasVoltage7) doc["v7"] = voltage7;    
+    if(hasVoltage8) doc["v7"] = voltage8;    
     
     String output;
     serializeJson(doc, output);
