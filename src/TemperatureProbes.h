@@ -42,6 +42,7 @@ class TemperatureProbes: public AbstractSensor{
     private:
         float m_temperatures[PROBECOUNT];
         float m_humidities[PROBECOUNT];
+        
         bool m_initialized;
         IOConfig *m_ioConfig;
         ConfigPins *m_configPins;
@@ -50,13 +51,11 @@ class TemperatureProbes: public AbstractSensor{
 
         SensorConfigs m_sensorConfigurations[PROBECOUNT];
 
-
-
         OneWire *m_oneWires[PROBECOUNT];
         DallasTemperature *m_probes[PROBECOUNT];
         DHT *m_dhts[PROBECOUNT];
         String m_names[PROBECOUNT]; 
-        
+        uint8_t m_pins[PROBECOUNT];
         MessagePayload* m_payload = NULL;
         Console* m_console;
 

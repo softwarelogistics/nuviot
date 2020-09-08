@@ -14,14 +14,14 @@
 #define GP0O1_BRD_V2_SCL1 22
 #define GP0O1_BRD_V2_SDA1 21
 
-#define GP0O1_BRD_V2_IO1 1
-#define GP0O1_BRD_V2_IO2 2
-#define GP0O1_BRD_V2_IO3 3
-#define GP0O1_BRD_V2_IO4 4
-#define GP0O1_BRD_V2_IO5 5
-#define GP0O1_BRD_V2_IO6 6
-#define GP0O1_BRD_V2_IO7 7
-#define GP0O1_BRD_V2_IO8 8
+#define GP0O1_BRD_V2_IO1 17
+#define GP0O1_BRD_V2_IO2 5
+#define GP0O1_BRD_V2_IO3 34
+#define GP0O1_BRD_V2_IO4 18
+#define GP0O1_BRD_V2_IO5 38
+#define GP0O1_BRD_V2_IO6 37
+#define GP0O1_BRD_V2_IO7 25
+#define GP0O1_BRD_V2_IO8 18
 
 #define GP0O1_BRD_V2_ADC1 7
 #define GP0O1_BRD_V2_ADC2 6
@@ -73,7 +73,11 @@ public:
     uint8_t Gpio7 = GP0O1_BRD_V2_IO2;
 
 public:
-    ConfigPins(int hardwareId)
+    ConfigPins()
+    {
+    }
+
+    void init(uint8_t boardType)
     {
         K1Ctl = GP0O1_BRD_V2_K4_CTL;
         K2Ctl = GP0O1_BRD_V2_K3_CTL;
@@ -97,12 +101,12 @@ public:
 
         Gpio0 = GP0O1_BRD_V2_IO1;
         Gpio1 = GP0O1_BRD_V2_IO2;
-        Gpio2 = GP0O1_BRD_V2_IO2;
-        Gpio3 = GP0O1_BRD_V2_IO2;
-        Gpio4 = GP0O1_BRD_V2_IO2;
-        Gpio5 = GP0O1_BRD_V2_IO2;
-        Gpio6 = GP0O1_BRD_V2_IO2;
-        Gpio7 = GP0O1_BRD_V2_IO2;
+        Gpio2 = GP0O1_BRD_V2_IO3;
+        Gpio3 = GP0O1_BRD_V2_IO4;
+        Gpio4 = GP0O1_BRD_V2_IO5;
+        Gpio5 = GP0O1_BRD_V2_IO6;
+        Gpio6 = GP0O1_BRD_V2_IO7;
+        Gpio7 = GP0O1_BRD_V2_IO8;
     }
 };
 

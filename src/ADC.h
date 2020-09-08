@@ -197,13 +197,13 @@ public:
         setBankEnabled(2, true);
 
         enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config > 0);
-        enableADC(ioConfig->ADC1Name, 1, ioConfig->ADC2Config > 0);
-        enableADC(ioConfig->ADC1Name, 2, ioConfig->ADC3Config > 0);
-        enableADC(ioConfig->ADC1Name, 3, ioConfig->ADC4Config > 0);
-        enableADC(ioConfig->ADC1Name, 4, ioConfig->ADC5Config > 0);
-        enableADC(ioConfig->ADC1Name, 5, ioConfig->ADC6Config > 0);
-        enableADC(ioConfig->ADC1Name, 6, ioConfig->ADC7Config > 0);
-        enableADC(ioConfig->ADC1Name, 7, ioConfig->ADC8Config > 0);
+        enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config > 0);
+        enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config > 0);
+        enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config > 0);
+        enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config > 0);
+        enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config > 0);
+        enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config > 0);
+        enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config > 0);
     
         setScaler(0, ioConfig->ADC1Scaler);
         setScaler(1, ioConfig->ADC2Scaler);
@@ -219,7 +219,7 @@ public:
     {
         for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
             if (m_portEnabled[idx])
-                m_console->printVerbose(m_names[idx] + String(idx + 1) + "=" + String(getADC(idx)));
+                m_console->printVerbose(m_names[idx] + "=" + String(getADC(idx)));
     }
 
     bool setBankEnabled(int bank, bool enabled)

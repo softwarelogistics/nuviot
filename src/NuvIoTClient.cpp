@@ -62,7 +62,7 @@ void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction)
 
 bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, unsigned long baudRate)
 {
-    //m_console->setVerboseLogging(m_state->getVerboseLogging());
+    m_console->setVerboseLogging(m_state->getVerboseLogging());
     sendStatusUpdate("Ready", "Connecting to Modem");
     delay(1000);
 

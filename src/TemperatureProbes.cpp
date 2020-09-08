@@ -16,7 +16,7 @@ TemperatureProbes::TemperatureProbes(Console *console, ConfigPins *configPins)
     m_configPins = configPins;
 }
 
-void TemperatureProbes::setup(IOConfig *iOConfig)
+void TemperatureProbes::setup(IOConfig *ioConfig)
 {
     for (int idx = 0; idx < PROBECOUNT; ++idx)
     {
@@ -25,6 +25,8 @@ void TemperatureProbes::setup(IOConfig *iOConfig)
         m_oneWires[idx] = NULL;
         m_dhts[idx] = NULL;
     }
+
+    configure(ioConfig);
 }
 
 void TemperatureProbes::configure(IOConfig *ioConfig){
@@ -56,14 +58,14 @@ void TemperatureProbes::readTemperatures()
             bool success = false;
             int retryCount = 0;
          
-            while (!success && retryCount++ < 1)
+            while (!success && retryCount++ < 2)
             {
                 m_probes[idx]->requestTemperatures();
                 temperature = m_probes[idx]->getTempFByIndex(0);
                 if (temperature < -100 || temperature > 175)
                 {
                     delay(500);
-                    m_console->printError("ERR DS18B20- " + String(idx) + " Attempt: " + String(retryCount));
+                    m_console->printError("ERR DS18B20- " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
                 }
                 else
                 {
@@ -80,8 +82,21 @@ void TemperatureProbes::readTemperatures()
         break;
         case Dht11:
         case Dht22:
-            humidity = m_dhts[idx]->readHumidity();
-            temperature = 32.0f + round(m_dhts[idx]->readTemperature() * 18.0f) / 10.0f;
+            bool success = false;
+            int retryCount = 0;
+            while(!success && retryCount++ < 2){
+                humidity = m_dhts[idx]->readHumidity();
+                temperature = 32.0f + round(m_dhts[idx]->readTemperature() * 18.0f) / 10.0f;
+                if(isnan(humidity) || isnan(temperature)){
+                    delay(500);
+                    m_console->printError("ERR DHT- " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
+                }
+                else {
+                    success = true;
+                }
+            }
+
+
             break;
         }
 
@@ -159,15 +174,15 @@ void TemperatureProbes::debugPrint()
 {
     for (int idx = 0; idx < PROBECOUNT; ++idx)
     {
-        if (m_sensorConfigurations[idx] != None)
+        if (m_sensorConfigurations[idx] == DS18B20)
         {
-            m_console->printVerbose("temperature" + String(idx) + "=" + String(getTemperature(idx)));
+            m_console->printVerbose(m_names[idx] + "=" + String(getTemperature(idx)));
         }
-
-        if (m_sensorConfigurations[idx] == Dht11 ||
+        else if (m_sensorConfigurations[idx] == Dht11 ||
             m_sensorConfigurations[idx] == Dht22)
         {
-            m_console->printVerbose("humidity" + String(idx) + "=" + String(getHumidity(idx)));
+            m_console->printVerbose(m_names[idx] + "_t=" + String(getTemperature(idx)));
+            m_console->printVerbose(m_names[idx] + "_h=" + String(getHumidity(idx)));
         }
     }
 }
@@ -201,15 +216,19 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
     if(setting == GPIO_CONFIG_DHT11) config =  Dht11;
     if(setting == GPIO_CONFIG_DHT22) config =  Dht22;
 
-    if(config != None) {
-        m_names[idx] = name;
-    }
-
     uint8_t pin = resolvePinIndex(idx);
     if (pin == -1)
     {
         m_console->printVerbose("Invalid pin on configure probe.");
         return;
+    }
+
+    if(config != None) {
+        m_names[idx] = name;
+        m_pins[idx] = resolvePinIndex(idx); 
+    }
+    else {
+        m_names[idx] = "n/a";
     }
 
     switch (config)

@@ -103,7 +103,7 @@ class IOConfig {
     float GPIO8Scaler;
 
     String toJSON() {
-        const size_t capacity = JSON_OBJECT_SIZE(1024);
+        const size_t capacity = JSON_OBJECT_SIZE(120);
         DynamicJsonDocument doc(capacity);
         doc["adc1c"] = ADC1Config;
         doc["adc2c"] = ADC2Config;
@@ -224,86 +224,93 @@ class IOConfig {
         Serial.println("Write " + String(bytesWritten) + " to " + String(SETTINGS_FN));
     }
 
-    void parseJSON(String json) {
-        const size_t capacity = JSON_OBJECT_SIZE(1024);
+    bool parseJSON(const char *str)
+    {
+        const size_t capacity = JSON_OBJECT_SIZE(120);
         DynamicJsonDocument doc(capacity);
+        
+        DeserializationError result = deserializeJson(doc, str);
+        if(result.code() == DeserializationError::Code::Ok) {
+            ADC1Config = doc["adc1c"].as<uint8_t>();
+            ADC2Config = doc["adc2c"].as<uint8_t>();
+            ADC3Config = doc["adc3c"].as<uint8_t>();
+            ADC4Config = doc["adc4c"].as<uint8_t>();
+            ADC5Config = doc["adc5c"].as<uint8_t>();
+            ADC6Config = doc["adc6c"].as<uint8_t>();
+            ADC7Config = doc["adc7c"].as<uint8_t>();
+            ADC8Config = doc["adc8c"].as<uint8_t>();
 
-        const char *str = json.c_str();
+            ADC1Label = doc["adc1l"].as<String>();
+            ADC2Label = doc["adc2l"].as<String>();
+            ADC3Label = doc["adc3l"].as<String>();
+            ADC4Label = doc["adc4l"].as<String>();
+            ADC5Label = doc["adc5l"].as<String>();
+            ADC6Label = doc["adc6l"].as<String>();
+            ADC7Label = doc["adc7l"].as<String>();
+            ADC8Label = doc["adc8l"].as<String>();
 
-        deserializeJson(doc, str);
+            ADC1Name = doc["adc1n"].as<String>();
+            ADC2Name = doc["adc2n"].as<String>();
+            ADC3Name = doc["adc3n"].as<String>();
+            ADC4Name = doc["adc4n"].as<String>();
+            ADC5Name = doc["adc5n"].as<String>();
+            ADC6Name = doc["adc6n"].as<String>();
+            ADC7Name = doc["adc7n"].as<String>();
+            ADC8Name = doc["adc8n"].as<String>();
+        
+            ADC1Scaler = doc["adc1s"].as<float>();
+            ADC2Scaler = doc["adc2s"].as<float>();
+            ADC3Scaler = doc["adc3s"].as<float>();
+            ADC4Scaler = doc["adc4s"].as<float>();
+            ADC5Scaler = doc["adc5s"].as<float>();
+            ADC6Scaler = doc["adc6s"].as<float>();
+            ADC7Scaler = doc["adc7s"].as<float>();
+            ADC8Scaler = doc["adc8s"].as<float>();
 
-        ADC1Config = doc["adc1c"].as<uint8_t>();
-        ADC2Config = doc["adc2c"].as<uint8_t>();
-        ADC3Config = doc["adc3c"].as<uint8_t>();
-        ADC4Config = doc["adc4c"].as<uint8_t>();
-        ADC5Config = doc["adc5c"].as<uint8_t>();
-        ADC6Config = doc["adc6c"].as<uint8_t>();
-        ADC7Config = doc["adc7c"].as<uint8_t>();
-        ADC8Config = doc["adc8c"].as<uint8_t>();
+            GPIO1Config = doc["io1c"].as<uint8_t>();
+            GPIO2Config = doc["io2c"].as<uint8_t>();
+            GPIO3Config = doc["io3c"].as<uint8_t>();
+            GPIO4Config = doc["io4c"].as<uint8_t>();
+            GPIO5Config = doc["io5c"].as<uint8_t>();
+            GPIO6Config = doc["io6c"].as<uint8_t>();
+            GPIO7Config = doc["io7c"].as<uint8_t>();
+            GPIO8Config = doc["io8c"].as<uint8_t>();
 
-        ADC1Label = doc["adc1l"].as<String>();
-        ADC2Label = doc["adc2l"].as<String>();
-        ADC3Label = doc["adc3l"].as<String>();
-        ADC4Label = doc["adc4l"].as<String>();
-        ADC5Label = doc["adc5l"].as<String>();
-        ADC6Label = doc["adc6l"].as<String>();
-        ADC7Label = doc["adc7l"].as<String>();
-        ADC8Label = doc["adc8l"].as<String>();
+            GPIO1Label = doc["io1l"].as<String>();
+            GPIO2Label = doc["io2l"].as<String>();
+            GPIO3Label = doc["io3l"].as<String>();
+            GPIO4Label = doc["io4l"].as<String>();
+            GPIO5Label = doc["io5l"].as<String>();
+            GPIO6Label = doc["io6l"].as<String>();
+            GPIO7Label = doc["io7l"].as<String>();
+            GPIO8Label = doc["io8l"].as<String>();
 
-        ADC1Name = doc["adc1n"].as<String>();
-        ADC2Name = doc["adc2n"].as<String>();
-        ADC3Name = doc["adc3n"].as<String>();
-        ADC4Name = doc["adc4n"].as<String>();
-        ADC5Name = doc["adc5n"].as<String>();
-        ADC6Name = doc["adc6n"].as<String>();
-        ADC7Name = doc["adc7n"].as<String>();
-        ADC8Name = doc["adc8n"].as<String>();
-    
-        ADC1Scaler = doc["adc1s"].as<float>();
-        ADC2Scaler = doc["adc2s"].as<float>();
-        ADC3Scaler = doc["adc3s"].as<float>();
-        ADC4Scaler = doc["adc4s"].as<float>();
-        ADC5Scaler = doc["adc5s"].as<float>();
-        ADC6Scaler = doc["adc6s"].as<float>();
-        ADC7Scaler = doc["adc7s"].as<float>();
-        ADC8Scaler = doc["adc8s"].as<float>();
+            GPIO1Name = doc["io1n"].as<String>();
+            GPIO2Name = doc["io2n"].as<String>();
+            GPIO3Name = doc["io3n"].as<String>();
+            GPIO4Name = doc["io4n"].as<String>();
+            GPIO5Name = doc["io5n"].as<String>();
+            GPIO6Name = doc["io6n"].as<String>();
+            GPIO7Name = doc["io7n"].as<String>();
+            GPIO8Name = doc["io8n"].as<String>();
 
-        GPIO1Config = doc["io1c"].as<uint8_t>();
-        GPIO2Config = doc["io2c"].as<uint8_t>();
-        GPIO3Config = doc["io3c"].as<uint8_t>();
-        GPIO4Config = doc["io4c"].as<uint8_t>();
-        GPIO5Config = doc["io5c"].as<uint8_t>();
-        GPIO6Config = doc["io6c"].as<uint8_t>();
-        GPIO7Config = doc["io7c"].as<uint8_t>();
-        GPIO8Config = doc["io8c"].as<uint8_t>();
+            GPIO1Scaler = doc["io1s"].as<float>();
+            GPIO2Scaler = doc["io2s"].as<float>();
+            GPIO3Scaler = doc["io3s"].as<float>();
+            GPIO4Scaler = doc["io4s"].as<float>();
+            GPIO5Scaler = doc["io5s"].as<float>();
+            GPIO6Scaler = doc["io6s"].as<float>();
+            GPIO7Scaler = doc["io7s"].as<float>();
+            GPIO8Scaler = doc["io8s"].as<float>();
+            return true;
+        }
 
-        GPIO1Label = doc["io1l"].as<String>();
-        GPIO2Label = doc["io2l"].as<String>();
-        GPIO3Label = doc["io3l"].as<String>();
-        GPIO4Label = doc["io4l"].as<String>();
-        GPIO5Label = doc["io5l"].as<String>();
-        GPIO6Label = doc["io6l"].as<String>();
-        GPIO7Label = doc["io7l"].as<String>();
-        GPIO8Label = doc["io8l"].as<String>();
-
-        GPIO1Name = doc["io1n"].as<String>();
-        GPIO2Name = doc["io2n"].as<String>();
-        GPIO3Name = doc["io3n"].as<String>();
-        GPIO4Name = doc["io4n"].as<String>();
-        GPIO5Name = doc["io5n"].as<String>();
-        GPIO6Name = doc["io6n"].as<String>();
-        GPIO7Name = doc["io7n"].as<String>();
-        GPIO8Name = doc["io8n"].as<String>();
-
-        GPIO1Scaler = doc["io1s"].as<float>();
-        GPIO2Scaler = doc["io2s"].as<float>();
-        GPIO3Scaler = doc["io3s"].as<float>();
-        GPIO4Scaler = doc["io4s"].as<float>();
-        GPIO5Scaler = doc["io5s"].as<float>();
-        GPIO6Scaler = doc["io6s"].as<float>();
-        GPIO7Scaler = doc["io7s"].as<float>();
-        GPIO8Scaler = doc["io8s"].as<float>();
+        return false;
     }
+
+    void parseJSON(String json) {
+        parseJSON(json.c_str());
+   }
 
     void setDefaults(){
         ADC1Config = ADC_CONFIG_NONE;

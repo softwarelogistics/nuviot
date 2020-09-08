@@ -91,13 +91,14 @@
     960 - 20 x 1 byte value BOOL
  */
 
-NuvIoTState::NuvIoTState(Display *display, IOConfig *config, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console)
+NuvIoTState::NuvIoTState(Display *display, IOConfig *config, SysConfig *sysConfig, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console)
 {
     m_display = display;
     m_hal = hal;
     m_console = console;
     m_btSerial = btSerial;
     m_ioConfig = config;
+    m_sysConfig = sysConfig;
 }
 
 void NuvIoTState::init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t structureVersion)
@@ -580,15 +581,25 @@ bool NuvIoTState::getIsPaused()
 
 void NuvIoTState::loop()
 {
-    while (m_btSerial->available() > 0)
-    {
+    // if we don't receive any inputs for the pause timeout period assume we should restart.
+    if(m_paused && m_pauseTimeout < millis()) {
+        m_paused = false;
+        m_btSerial->println("DISCONNECTED");
+        m_pauseTimeout = 0;
+    }
+
+    while (m_btSerial->available() > 0){
+        if(m_paused) {
+            m_pauseTimeout = millis() + (30 * 1000);
+        }
+       
         int ch = m_btSerial->read();
 
         if (ch == '\n')
         {
             m_messageBuffer[m_messageBufferTail++] = 0x00;
             String msg = String(m_messageBuffer);
-            Serial.println(msg);
+            Serial.println("RECEIVE LINE: " + msg);
 
             if (msg == "HELLO")
             {
@@ -600,6 +611,7 @@ void NuvIoTState::loop()
             }
             else if (msg == "PAUSE")
             {
+                m_pauseTimeout = millis() + (30 * 1000);
                 m_paused = true;
             }
             else if (msg == "CONTINUE")
@@ -635,13 +647,92 @@ void NuvIoTState::loop()
 
                 m_btSerial->println();
             }
+            else if(msg == "SYSCONFIG-SEND") {
+                String json = m_sysConfig->toJSON();
+                uint16_t remaining = json.length();
+                uint16_t chunkSize = 100;
+                uint16_t chunkIndex = 0;
+                while(remaining > 0) {
+                    int start = chunkIndex * 100;
+                    int end = min((uint16_t)(start + chunkSize), (uint16_t)json.length());
+                    remaining = json.length() - end;
+                    m_btSerial->print(json.substring(chunkIndex * 100, end));                    
+                    m_btSerial->flush();
+                    delay(100);
+                    chunkIndex++;
+                }
+
+                m_btSerial->println();
+            }
+            else if(msg.substring(0) == "SYSCONFIG-RECV-START") {
+                m_jsonBufferTail = 0x00;
+            }
+            else if(msg.substring(0) == "SYSCONFIG-RECV-END") {
+                m_jsonBuffer[m_jsonBufferTail] = 0x00;
+                Serial.println(m_jsonBuffer);
+                m_jsonBufferTail = 0;
+
+                if(m_sysConfig->parseJSON(m_jsonBuffer)){
+                    m_sysConfig->write();
+                    m_btSerial->println("SYSCONFIG-RECV-END:OK");
+                }
+                else {
+                    m_btSerial->println("SYSCONFIG-RECV-END:FAIL");
+                }
+            }                        
+            else if(msg.substring(0, 14) == "SYSCONFIG-RECV") {
+                // format is 
+                // ICONFIG-RECV:XX,CRC,[CONTENTS]
+                Serial.println("----------------------");
+                char hexBuffer[3];
+                msg.toCharArray(hexBuffer, 3, 15);
+                Serial.println(hexBuffer);
+                uint8_t rowIndex = strtol(hexBuffer, NULL, 16);
+
+                msg.toCharArray(hexBuffer, 3, 18);
+                uint8_t crc = strtol(hexBuffer, NULL, 16);
+                Serial.println(hexBuffer);
+                uint8_t calcCRC = 0x00;
+
+                for(int idx = 21; idx < msg.length(); ++idx)
+                {
+                    calcCRC += (uint8_t)msg[idx];
+                }
+
+                Serial.println("RESULT: " + String(rowIndex) + " " + String(crc) + " " + String(calcCRC));
+                Serial.println("----------------------");
+
+                if(crc == calcCRC) {
+                    m_btSerial->println("SYSCONFIG-RECV-OK:" + String(rowIndex));
+
+                    if(rowIndex == 0) {
+                        m_jsonBufferTail = 0;
+                    }
+
+                    for(int idx = 21; idx < msg.length(); ++idx)
+                    {
+                        m_jsonBuffer[m_jsonBufferTail++] = msg[idx];
+                    }
+                }
+                else {
+                    m_btSerial->println("SYSCONFIG-RECV-CRC-ERR:" + String(rowIndex));
+                }
+            }            
             else if(msg.substring(0) == "IOCONFIG-RECV-START") {
-                m_jsonBuffer.clear();
+                m_jsonBufferTail = 0;
             }
             else if(msg.substring(0) == "IOCONFIG-RECV-END") {
-                m_ioConfig->parseJSON(m_jsonBuffer);
-                m_jsonBuffer.clear();
-                m_ioConfig->write();
+                m_jsonBuffer[m_jsonBufferTail] = 0x00;
+                Serial.println(m_jsonBuffer);
+                m_jsonBufferTail = 0;
+
+                if(m_ioConfig->parseJSON(m_jsonBuffer)){
+                    m_ioConfig->write();
+                    m_btSerial->println("IOCONFIG-RECV-END:OK");
+                }
+                else {
+                    m_btSerial->println("IOCONFIG-RECV-END:FAIL");
+                }
             }                        
             else if(msg.substring(0, 13) == "IOCONFIG-RECV") {
                 // format is 
@@ -665,10 +756,17 @@ void NuvIoTState::loop()
                 Serial.println("RESULT: " + String(rowIndex) + " " + String(crc) + " " + String(calcCRC));
                 Serial.println("----------------------");
 
-                m_jsonBuffer += msg.substring(20); 
-
                 if(crc == calcCRC) {
                     m_btSerial->println("IOCONFIG-RECV-OK:" + String(rowIndex));
+                    
+                    if(rowIndex == 0) {
+                        m_jsonBufferTail = 0;
+                    }
+                
+                    for(int idx = 20; idx < msg.length(); ++idx)
+                    {
+                        m_jsonBuffer[m_jsonBufferTail++] = msg[idx];
+                    }
                 }
                 else {
                     m_btSerial->println("IOCONFIG-RECV-CRC-ERR:" + String(rowIndex));
