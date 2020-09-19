@@ -11,6 +11,7 @@
 #include "Hal.h"
 #include "Display.h"
 #include "Console.h"
+#include "SysConfig.h"
 
 #define MAX_SUBSCRIPTION_COUNT 10
 
@@ -21,6 +22,7 @@ class NuvIoTMQTT {
 
         void (*m_callback)(String, String) = NULL;
 
+        SysConfig *m_sysConfig = NULL;
         Console *m_console = NULL;
         NuvIoTState *m_state = NULL;
         PubSubClient *m_mqtt = NULL;
@@ -37,7 +39,7 @@ class NuvIoTMQTT {
         String resolveConnectFail();        
 
     public:
-        NuvIoTMQTT(WiFiConnectionHelper *wifiHelper, Console *console,  WiFiClient *client, Display *u8g2, OtaServices *ota, Hal *hal, NuvIoTState *m_state);
+        NuvIoTMQTT(WiFiConnectionHelper *wifiHelper, Console *console,  WiFiClient *client, Display *u8g2, OtaServices *ota, Hal *hal, NuvIoTState *state, SysConfig *sysConfig);
         
         void setup();
         void loop();

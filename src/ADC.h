@@ -1,8 +1,6 @@
 #ifndef ADC_H
 #define ADC_H
 
-#define GPIO_BRD_V2
-
 #include <Wire.h>
 #include "ADS1115.h"
 #include "MessagePayload.h"
@@ -74,9 +72,10 @@ public:
         }
     }
 
-    float setScaler(uint8_t channel, float scaler)
+    void setScaler(uint8_t channel, float scaler)
     {
         m_scalers[channel] = scaler;
+
     }
 
     ~ADC()
@@ -233,6 +232,8 @@ public:
             m_bank2Enabled = enabled;
             break;
         }
+
+        return true;
     }
 
     bool isBankOneOnline()

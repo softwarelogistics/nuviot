@@ -21,7 +21,7 @@ public:
     bool disconnect();
     bool publish(String topic, String payload, byte qos);
     bool publish(String topic, byte qos);
-    bool subscribe(String topic, byte qos);
+    byte subscribe(String topic, byte qos);
     bool ping();
     void setMessageReceivedCallback(void (*callback)(String topic, byte buffer[], size_t buffer_length));
     void setErrorCallback(void (*callback)(String error));      
@@ -51,7 +51,7 @@ private:
     int m_txBufferTail = 0;
 
     int m_packetId = 0;
-    int m_subscriptionId = 0;
+    byte m_subscriptionId = 0;
 
     Stream *m_stream;
 

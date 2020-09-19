@@ -20,14 +20,18 @@ void PowerSensor::setup(IOConfig *config)
 
 void PowerSensor::loop()
 {
-    uint8_t adcChannel;
+    uint8_t adcChannel = -1;
 
     for (int idx = 0; idx < 3; ++idx)
     {
         switch(idx){
             case 0: adcChannel = m_configPins->CTChannel1; break;
             case 1: adcChannel = m_configPins->CTChannel2; break;
-            case 2: adcChannel = m_configPins->CTChannel3; break;
+            case 2: adcChannel = m_configPins->CTChannel3; break;            
+        }
+
+        if(adcChannel == -1) {
+            return;
         }
 
         if (m_channelEnabled[idx])
@@ -72,7 +76,8 @@ void PowerSensor::loop()
             float avgLevel = (levelTotal / (float)iterations);
 
             // i = E / R, burden resistor = 33.0
-            double current = avgLevel / 33.0f;
+            // TODO: may need to adjust this with different burden resistor settings.            
+            //double current = avgLevel / 33.0f;
 
             // we are using a 100A : 0.050MA CT, with the burden resistor it's
             // a factor of 100.  If the CT ratio changes, we may need to consider
@@ -122,6 +127,7 @@ void PowerSensor::setChannelVoltage(uint8_t channel, uint16_t voltage)
 float PowerSensor::readAmps(uint8_t channel)
 {
     m_channelAmps[channel] = channel;
+    return m_channelAmps[channel];
 }
 
 /* P = I * E */

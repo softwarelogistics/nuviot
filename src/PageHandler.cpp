@@ -22,13 +22,11 @@ PageHandler::PageHandler(WebServer *webServer)
 void PageHandler::setup()
 {
     m_webServer->on("/", HTTP_GET, [this]() {
-        Serial.println("got first.");
         m_webServer->sendHeader("Connection", "close");
         m_webServer->send(200, "text/html", LOGIN_PAGE);
     });
 
     m_webServer->on("/sensor", HTTP_GET, [this]() {
-        Serial.println("got second.");
         m_webServer->sendHeader("Connection", "close");
         m_webServer->send(200, "text/html", LOGIN_PAGE);
     });

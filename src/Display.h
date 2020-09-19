@@ -12,9 +12,9 @@ class Display
 {
 private:
     byte m_displayType;
-
+    bool m_enabled = false;
     int m_top;
-    int m_textSize; 
+    int m_textSize;
 
     U8G2_SSD1306_128X64_NONAME_F_SW_I2C *u8g2;
 
@@ -23,7 +23,7 @@ public:
     {
         m_displayType = displayType;
 
-        if(m_displayType == DISPLAY_U8G)
+        if (m_displayType == DISPLAY_U8G)
         {
             u8g2 = new U8G2_SSD1306_128X64_NONAME_F_SW_I2C(U8G2_R0, /* clock=*/15, /* data=*/4, /* reset=*/16);
         }
@@ -37,8 +37,18 @@ public:
         }
     }
 
+    void enable(bool enabled)
+    {
+        m_enabled = enabled;
+    }
+
     void prepare()
     {
+        if (!m_enabled)
+        {
+            return;
+        }
+
         if (m_displayType == DISPLAY_U8G)
         {
             u8g2->begin();
@@ -63,6 +73,11 @@ public:
 
     void clearBuffer(unsigned long color)
     {
+        if (!m_enabled)
+        {
+            return;
+        }
+
         if (m_displayType == DISPLAY_U8G)
         {
             u8g2->clearBuffer();
@@ -73,6 +88,11 @@ public:
 
     void clearBuffer()
     {
+        if (!m_enabled)
+        {
+            return;
+        }
+
         if (m_displayType == DISPLAY_U8G)
         {
             u8g2->clearBuffer();
@@ -91,17 +111,33 @@ public:
 
     void println(String msg)
     {
-        drawString(5, m_top, msg.c_str());
-        switch(m_textSize)
+        if (!m_enabled)
         {
-            case 1: m_top += 15; break;
-            case 2: m_top += 25; break;
-            default: m_top += 15; break;
+            return;
+        }
+
+        drawString(5, m_top, msg.c_str());
+        switch (m_textSize)
+        {
+        case 1:
+            m_top += 15;
+            break;
+        case 2:
+            m_top += 25;
+            break;
+        default:
+            m_top += 15;
+            break;
         }
     }
 
     void drawStr(const char *str1)
     {
+        if (!m_enabled)
+        {
+            return;
+        }
+
         clearBuffer();
         drawString(0, 0, str1);
         sendBuffer();
@@ -109,6 +145,11 @@ public:
 
     void drawStr(const char *str1, const char *str2)
     {
+        if (!m_enabled)
+        {
+            return;
+        }
+
         clearBuffer();
         drawString(0, 0, str1);
         drawString(0, 32, str2);
@@ -117,6 +158,10 @@ public:
 
     void drawStr(const char *str1, const char *str2, const char *str3)
     {
+        if (!m_enabled)
+        {
+            return;
+        }
         clearBuffer();
         drawString(0, 0, str1);
         drawString(0, 16, str2);
@@ -126,6 +171,10 @@ public:
 
     void drawStr(const char *str1, const char *str2, const char *str3, const char *str4)
     {
+        if (!m_enabled)
+        {
+            return;
+        }
         clearBuffer();
         drawString(0, 0, str1);
         drawString(0, 16, str2);
@@ -136,11 +185,19 @@ public:
 
     void drawString(int x, int y, String str)
     {
+        if (!m_enabled)
+        {
+            return;
+        }
         drawString(x, y, str.c_str());
     }
 
     void drawString(int x, int y, const char *str)
     {
+        if (!m_enabled)
+        {
+            return;
+        }
         if (m_displayType == DISPLAY_U8G)
         {
             u8g2->drawStr((u8g2_uint_t)x, (u8g2_uint_t)y, str);

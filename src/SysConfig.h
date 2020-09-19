@@ -33,7 +33,7 @@ public:
     uint32_t PingRate;
     uint32_t SendUpdateRate;
     uint32_t GPSUpdateRate;
-    uint64_t GPRSModemBaudRate;
+    uint32_t GPRSModemBaudRate;
 
     String toJSON()
     {
@@ -52,6 +52,7 @@ public:
         doc["verboseLogging"] = VerboseLogging;
         doc["sendUpdateRate"] = SendUpdateRate;
         doc["gpsUpdateRate"] = GPSUpdateRate;
+        doc["gpsEnabled"] = GPSEnabled;
         doc["wifiEnabled"] = WiFiEnabled;
         doc["cellEnabled"] = CellEnabled;
         String output;
@@ -68,11 +69,8 @@ public:
             String json = file.readString();
             file.close();
             
-            Serial.println("File " + String(SYSCONFIG_FN) + " exists, file size: " + String(json.length()));
-
             if (json.length() == 0)
             {
-                Serial.println("File was empty, creating defaults.");
                 file.close();
                 setDefaults();
           
@@ -81,12 +79,8 @@ public:
             else
             {
                 if(!parseJSON(json)) {
-                    Serial.println("Could not parse SysConfig JSON.");    
                     setDefaults();
                     write();
-                }
-                else {
-                    Serial.println("SUCCESS OPENING FILE");
                 }
             }
         }
@@ -94,23 +88,16 @@ public:
         {
             setDefaults();
             write();
-            Serial.println("FILE DIDN'T EXIST WRITE DEFAULTS.");
         }
     }
 
     void write()
     {
         File file = SPIFFS.open(SYSCONFIG_FN, FILE_WRITE);
-        if (!file)
-        {
-            Serial.println("Could not open " + String(SYSCONFIG_FN) + " file to write.");
-        }
 
-        size_t bytesWritten = file.print(toJSON());
+        file.print(toJSON());
         file.flush();
         file.close();
-
-        Serial.println("Write " + String((int)bytesWritten) + " to " + String(SYSCONFIG_FN));
     }
 
     void setDefaults()
@@ -164,12 +151,13 @@ public:
             GPSEnabled = doc["gpsEnabled"].as<bool>();
             SendUpdateRate = doc["sendUpdateRate"].as<uint32_t>();
             GPSUpdateRate = doc["gpsUpdateRate"].as<uint32_t>();
-            GPRSModemBaudRate = doc["baud"].as<uint64_t>();       
+            GPRSModemBaudRate = doc["baud"].as<uint32_t>();       
             return true;
         }
         else {
-            Serial.println("ERROR SYSCONFIG JSON");
-            Serial.println(str);
+            // TODO: Add back in error handling.
+            //Serial.println("ERROR SYSCONFIG JSON");
+            //Serial.println(str);
             return false;
         }
     }

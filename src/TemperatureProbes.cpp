@@ -319,6 +319,8 @@ float TemperatureProbes::getTemperature(int idx)
     case Dht11:
     case Dht22:
         return m_temperatures[idx];
+    default:
+        return 0.0;        
     }
 
     return 0.0f;
@@ -332,6 +334,8 @@ float TemperatureProbes::getHumidity(int idx)
     case Dht22:
         return m_humidities[idx];
         break;
+    default:
+        return 0.0;
     }
 
     return 0.0f;

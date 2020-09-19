@@ -1,10 +1,11 @@
 #include "WiFiConnectionHelper.h"
 
-WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state)
+WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state, SysConfig *sysConfig)
 {
     m_display = display;
-    m_State = state;
+    m_sysConfig = sysConfig;
     m_client = client;
+    m_state = state;
 }
 
 void WiFiConnectionHelper::loop()
@@ -22,30 +23,25 @@ void WiFiConnectionHelper::connect(bool isReconnect)
     int attempt = 0;
     int idx = 0;
 
-    WiFi.begin(m_State->getWiFiSSID().c_str(), m_State->getWiFiPassword().c_str());
-    Serial.println(m_State->getWiFiSSID() + " " + m_State->getWiFiPassword());
+    WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
+    Serial.println(m_sysConfig->WiFiSSID + " " + m_sysConfig->WiFiPWD.c_str());
 
     while (status != WL_CONNECTED)
     {
         attempt++;
-
-        if (attempt % 20 == 0)
-        {
-            WiFi.disconnect();
-            Serial.println(m_State->getWiFiSSID() + " " + m_State->getWiFiPassword());
-            WiFi.begin(m_State->getWiFiSSID().c_str(), m_State->getWiFiPassword().c_str());
-        }
+        WiFi.disconnect();
+        Serial.println(m_sysConfig->WiFiSSID + " " + m_sysConfig->WiFiPWD.c_str());
+        WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
 
         delay(500);
 
-        m_State->loop();
+        m_state->loop();
 
         m_display->clearBuffer();
         m_display->drawString(0, 0, "NuvIoT");
         m_display->drawString(0, 16, isReconnect ? "Reconnecting WiFi" : "Connecting WiFi");
-        m_display->drawString(0, 32, m_State->getWiFiSSID().c_str());
-
-        delay(2500);
+        m_display->drawString(0, 32, m_sysConfig->WiFiSSID.c_str());
+        m_display->sendBuffer();
 
         if (idx == 0)
             m_display->drawString(90, 0, "/");
@@ -59,6 +55,8 @@ void WiFiConnectionHelper::connect(bool isReconnect)
         idx++;
         if (idx == 3)
             idx = 0;
+
+        delay(500);
 
         status = WiFi.status();
         switch (status)
@@ -94,7 +92,7 @@ void WiFiConnectionHelper::connect(bool isReconnect)
 
     m_display->clearBuffer();
     m_display->drawString(0, 0, "Connected to:");
-    m_display->drawString(80, 0, m_State->getWiFiSSID().c_str());
+    m_display->drawString(80, 0, m_sysConfig->WiFiSSID.c_str());
     m_display->sendBuffer();
     Serial.println("Connected to WiFi");
 }

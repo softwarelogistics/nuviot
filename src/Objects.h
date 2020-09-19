@@ -26,6 +26,21 @@
 #include "RelayManager.h"
 #include "BluetoothSerial.h"
 #include "ConfigPins.h"
+#include "LedManager.h"
+#include "NuvIoTMQTT.h"
+#include <PubSubClient.h>
+
+#ifdef PROD_BRD_V1
+HardwareSerial gprsPort(0);
+HardwareSerial consoleSerial(1);
+#endif
+
+#ifdef GPIO_BRD_V2
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+#endif
+
+
 
 IOConfig ioConfig;
 SysConfig sysConfig;
@@ -33,26 +48,29 @@ ConfigPins configPins;
 
 Hal hal;
 BluetoothSerial btSerial;
-Console console(&btSerial, &Serial);
+Console console(&btSerial, &consoleSerial);
 
-HardwareSerial gprsPort(1);
 Display display(DISPLAY_U8G);
-NuvIoTState state(&display, &ioConfig, &sysConfig, &btSerial, &SPIFFS, &hal, &console);
+LedManager ledManager(&console, &configPins);
+NuvIoTState state(&display, &ioConfig, &sysConfig, &ledManager, &btSerial, &SPIFFS, &hal, &console);
 TwoWire twoWire(1);
 
 MessagePayload *payload = new MessagePayload();
 GPSData *gps = NULL;
 
 Channel channel(&gprsPort, &console);
+
 MQTT mqtt(&channel, &console);
 SIMModem modem(&display, &channel, &console);
 
 WiFiClient wifiClient;
 
-WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state);
+WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &sysConfig);
 
 OtaServices ota(&display, &console, &modem, &hal);
-NuvIoTClient client(&modem, &mqtt, &console, &display, &state, &ota, &hal);
+NuvIoTClient client(&modem, &mqtt, &console, &display, &state, &sysConfig, &ota, &hal);
+
+NuvIoTMQTT wifiMqtt(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
 
 Telemetry telemetry(&btSerial);
 
@@ -62,5 +80,7 @@ TemperatureProbes probes(&console, &configPins, payload);
 
 RelayManager relayManager(&console, &configPins);
 OnOffDetector onOffDetector(&console, &configPins);
+
+
 
 #endif

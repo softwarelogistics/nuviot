@@ -91,7 +91,7 @@
     960 - 20 x 1 byte value BOOL
  */
 
-NuvIoTState::NuvIoTState(Display *display, IOConfig *config, SysConfig *sysConfig, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console)
+NuvIoTState::NuvIoTState(Display *display, IOConfig *config, SysConfig *sysConfig, LedManager *ledManager, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console)
 {
     m_display = display;
     m_hal = hal;
@@ -99,12 +99,20 @@ NuvIoTState::NuvIoTState(Display *display, IOConfig *config, SysConfig *sysConfi
     m_btSerial = btSerial;
     m_ioConfig = config;
     m_sysConfig = sysConfig;
+    m_ledManager = ledManager;
 }
 
 void NuvIoTState::init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t structureVersion)
 {
     m_firmwareSku = firmwareSku;
     m_firmwareVersion = firmwareVersion;
+
+    m_DeviceId = m_sysConfig->DeviceId;
+    String btSerialName = "NuvIoT - " + (m_sysConfig->DeviceId == "?" ? firmwareSku : m_DeviceId);
+    m_btSerial->begin(btSerialName); //Name of your Bluetooth Signal
+
+    /*
+    return true;
 
     if(!EEPROM.begin(2048))
     {
@@ -117,8 +125,8 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     }
 
     // are we fully ready to be online?
-    m_isCommissioned = EEPROM.readUShort(IS_CONFIG_LOCATION) == COMMISSIONED_ID;
-    if (m_isCommissioned)
+    //m_isCommissioned = EEPROM.readUShort(IS_CONFIG_LOCATION) == COMMISSIONED_ID;
+    if (m_sysConfig->Commissioned)
     {
         // if so we must be initialized.
         m_isInitialized = true;
@@ -130,9 +138,7 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
         m_isInitialized = EEPROM.readUShort(IS_CONFIG_LOCATION) == INITIALIZED_ID;
     }
 
-    m_DeviceId = (!m_isInitialized) ? "?" : readString(DEVICEID_START, DEVICEID_LEN);
-    String btSerialName = "NuvIoT - " + (m_isInitialized ? m_DeviceId : firmwareSku);
-    m_btSerial->begin(btSerialName); //Name of your Bluetooth Signal
+    //m_DeviceId = (!m_isInitialized) ? "?" : readString(DEVICEID_START, DEVICEID_LEN);
 
     const uint8_t *bt_addr = esp_bt_dev_get_address();
 
@@ -178,6 +184,8 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
         writeString(WIFI_PASSWORD_START, m_WiFiPassword);
         EEPROM.writeUShort(IS_CONFIG_LOCATION, INITIALIZED_ID);
         short initValue = EEPROM.readUShort(IS_CONFIG_LOCATION);
+
+        m_console->printVerbose("WROTE INITI");
     }
     else
     {
@@ -196,7 +204,11 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
         m_WiFiPassword = readString(WIFI_PASSWORD_START, WIFI_PASSWORD_LEN);
     }
 
+    m_console->printVerbose("HERE");
+
     createDefaults();
+
+    m_console->printVerbose("CREATED DEFAULTS");
 
     Param *pNode = m_pIntParamHead;
     while (pNode != NULL)
@@ -205,13 +217,14 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
         pNode = pNode->pNext;
     }
 
-    if (!m_isCommissioned)
+    if (!m_sysConfig->Commissioned)
     {
         m_display->clearBuffer();
         if (m_DeviceId != "?")
         {
             m_display->println(m_DeviceId.c_str());
         }
+
         m_display->println("Please Config");
         m_display->println("BT Addr:");
         m_display->println(m_btAddress);
@@ -219,11 +232,14 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     }
 
     EEPROM.commit();
+    m_console->printVerbose("COMMIT EEPROM");
+
+    delay(2500);*/
 }
 
 bool NuvIoTState::isValid()
 {
-    return m_isCommissioned;
+    return m_sysConfig->Commissioned;
 }
 
 bool NuvIoTState::getVerboseLogging()
@@ -251,16 +267,6 @@ String NuvIoTState::getWiFiPassword()
     return m_WiFiPassword;
 }
 
-String NuvIoTState::getDeviceId()
-{
-    return m_DeviceId;
-}
-
-String NuvIoTState::getHostName()
-{
-    return m_HostName;
-}
-
 String NuvIoTState::getDeviceAccessKey()
 {
     return m_DeviceAccessKey;
@@ -276,16 +282,6 @@ bool NuvIoTState::getSecureTransport()
     return m_secureTransport;
 }
 
-String NuvIoTState::getHostUserName()
-{
-    return m_anonymous ? "" : m_HostUserName;
-}
-
-String NuvIoTState::getHostPassword()
-{
-    return m_anonymous ? "" : m_HostPassword;
-}
-
 void NuvIoTState::createDefaults()
 {
     Param *pNext = m_pFloatParamHead;
@@ -294,15 +290,11 @@ void NuvIoTState::createDefaults()
         uint64_t fieldMask = (uint64_t)pow(2, pNext->getIndex());
         if ((m_fltSetValueMask & fieldMask) == fieldMask)
         {
-#ifdef STATE_VERBOSE
             m_console->printVerbose("Flt [" + String(pNext->getKey()) + "] set at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif
         }
         else
         {
-#ifdef STATE_VERBOSE
             m_console->printVerbose("Flt [" + String(pNext->getKey()) + "] not set, default: " + String(pNext->getFltDefault()) + " at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif
             EEPROM.writeFloat(FLT_BLOCK_START + pNext->getIndex() * sizeof(float), pNext->getFltDefault());
             m_fltSetValueMask = m_fltSetValueMask | fieldMask;
         }
@@ -315,15 +307,11 @@ void NuvIoTState::createDefaults()
         uint64_t fieldMask = (uint64_t)pow(2, pNext->getIndex());
         if ((m_intSetValueMask & fieldMask) == fieldMask)
         {
-#ifdef STATE_VERBOSE
             m_console->printVerbose("Int [" + String(pNext->getKey()) + "] at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif
         }
         else
         {
-#ifdef STATE_VERBOSE
             m_console->printVerbose("Int [" + String(pNext->getKey()) + "] not set, default: " + String(pNext->getIntDefault()) + " at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif
             EEPROM.writeInt(INT_BLOCK_START + pNext->getIndex() * sizeof(int), pNext->getIntDefault());
 
             m_intSetValueMask = m_intSetValueMask | fieldMask;
@@ -337,15 +325,11 @@ void NuvIoTState::createDefaults()
         uint64_t fieldMask = (uint64_t)pow(2, pNext->getIndex());
         if ((m_boolSetValueMask & fieldMask) == fieldMask)
         {
-#ifdef STATE_VERBOSE
             m_console->printVerbose("Bool [" + String(pNext->getKey()) + "] at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif
         }
         else
         {
-#ifdef STATE_VERBOSE
             m_console->printVerbose("Bool [" + String(pNext->getKey()) + "] not set, default: " + String(pNext->getBoolDefault()) + " at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-#endif
             EEPROM.writeInt(BOOL_BLOCK_START + pNext->getIndex() * sizeof(bool), pNext->getBoolDefault());
             m_boolSetValueMask = m_boolSetValueMask | fieldMask;
         }
@@ -357,12 +341,14 @@ void NuvIoTState::createDefaults()
     EEPROM.writeLong64(BOOL_BLOCK_START, m_boolSetValueMask);
 }
 
-String NuvIoTState::queryState()
+String NuvIoTState::queryFirmwareVersion()
 {
     String state =
         "firmwareSku=" + m_firmwareSku + ", " +
-        "firmwareVersion=" + m_firmwareVersion;
+        "firmwareVersion=" + m_firmwareVersion + ";";
 
+    return state;
+    /*
     Param *pNext = m_pBoolParamHead;
     while (pNext != NULL)
     {
@@ -385,8 +371,11 @@ String NuvIoTState::queryState()
     }
 
     state += ";";
-    return state;
+    return state;*/
 }
+
+#define DFU_TIMEOUT 10000
+
 
 String NuvIoTState::getRemoteProperties()
 {
@@ -422,13 +411,26 @@ int _lstSend = 0;
 
 void NuvIoTState::readFirmware()
 {
-    m_console->enableBTOut(false);
+    long timeout;
 
+    m_console->enableBTOut(false);
+    m_ledManager->setOnlineFlashRate(2);
     m_console->println("Start DFU");
     m_btSerial->print("ok-start\n");
 
+    timeout = millis() + 10000;
     while (m_btSerial->available() < 4)
     {
+        if (millis() > timeout)
+        {
+            m_console->printError("ERROR WAITING FOR DFU SIZE");
+            m_ledManager->setErrFlashRate(4);
+            delay(5000);
+            m_ledManager->setErrFlashRate(0);
+            m_console->enableBTOut(true);
+            m_paused = false;
+            return;
+        }
         delay(1);
     }
 
@@ -439,8 +441,20 @@ void NuvIoTState::readFirmware()
     m_console->println("Expecting [" + String(total) + "] bytes");
     m_btSerial->print("ok-size:" + String(total) + "\n");
 
+    timeout = millis() + 10000;
+
     while (m_btSerial->available() < 2)
     {
+        if (millis() > timeout)
+        {
+            m_console->printError("ERROR WAITING FOR BLOCK COUNT");
+            m_ledManager->setErrFlashRate(4);
+            delay(5000);
+            m_ledManager->setErrFlashRate(0);
+            m_console->enableBTOut(true);
+            m_paused = false;
+            return;
+        }
         delay(1);
     }
 
@@ -458,16 +472,38 @@ void NuvIoTState::readFirmware()
         m_console->println("Could not start DFU process.");
         m_display->println("ERR: fail start DFU");
         delay(2000);
+        m_paused = false;
         return;
     }
 
+    m_console->println("Begining Download for DFU");
+
     for (int idx = 0; idx < blockCount; ++idx)
     {
+        m_ledManager->setOnlineFlashRate(1);
+
+        timeout = millis() + 10000;
         while (m_btSerial->available() < 2)
+        {
+            if (millis() > timeout)
+            {
+                m_console->printError("ERROR WAITING FOR BLOCK SIZE");
+                m_ledManager->setErrFlashRate(4);
+                delay(5000);
+                m_ledManager->setErrFlashRate(0);
+                m_console->enableBTOut(true);
+                m_paused = false;
+                Update.abort();
+                return;
+            }
+
             delay(1);
+        }
 
         short blockSize = m_btSerial->read() << 8 | m_btSerial->read();
-        Serial.println("Expecting block size of " + String(blockSize));
+        m_console->println("Expecting block size of " + String(blockSize));
+
+        timeout = millis() + 10000;
 
         while (m_btSerial->available() < blockSize + 1)
         {
@@ -476,6 +512,18 @@ void NuvIoTState::readFirmware()
                 _lstSend = millis();
                 m_console->println("Bytes in hopper [" + String(m_btSerial->available()) + "].");
             }
+
+            if (millis() > timeout)
+            {
+                m_console->printError("ERROR BLOCK BYTES " + String(m_btSerial->available()) + " of " + String(blockSize));
+                m_ledManager->setErrFlashRate(4);
+                delay(5000);
+                m_ledManager->setErrFlashRate(0);
+                m_console->enableBTOut(true);
+                m_paused = true;
+                return;
+            }
+                    
             delay(1);
         }
 
@@ -488,7 +536,7 @@ void NuvIoTState::readFirmware()
         }
 
         byte actualCheckSum = m_btSerial->read();
-        m_console->printVerbose("Block: (" + String(idx) + "/" + String(blockCount) + ") " + String(blockSize) + " " + calcCheckSum + " " + actualCheckSum + " " + buffer[0] + " " + buffer[1] + "  " + buffer[498] + " " + buffer[499]);
+        m_console->println("Block: (" + String(idx) + "/" + String(blockCount) + ") " + String(blockSize) + " " + calcCheckSum + " " + actualCheckSum + " " + buffer[0] + " " + buffer[1] + "  " + buffer[498] + " " + buffer[499]);
 
         if (actualCheckSum != calcCheckSum)
         {
@@ -582,17 +630,20 @@ bool NuvIoTState::getIsPaused()
 void NuvIoTState::loop()
 {
     // if we don't receive any inputs for the pause timeout period assume we should restart.
-    if(m_paused && m_pauseTimeout < millis()) {
+    if (m_paused && m_pauseTimeout < millis())
+    {
         m_paused = false;
         m_btSerial->println("DISCONNECTED");
         m_pauseTimeout = 0;
     }
 
-    while (m_btSerial->available() > 0){
-        if(m_paused) {
+    while (m_btSerial->available() > 0)
+    {
+        if (m_paused)
+        {
             m_pauseTimeout = millis() + (30 * 1000);
         }
-       
+
         int ch = m_btSerial->read();
 
         if (ch == '\n')
@@ -611,7 +662,8 @@ void NuvIoTState::loop()
             }
             else if (msg == "PAUSE")
             {
-                m_pauseTimeout = millis() + (30 * 1000);
+                m_ledManager->setOnlineFlashRate(8);
+                m_pauseTimeout = millis() + (60 * 1000);
                 m_paused = true;
             }
             else if (msg == "CONTINUE")
@@ -619,7 +671,7 @@ void NuvIoTState::loop()
                 m_paused = false;
             }
             else if (msg == "FIRMWARE")
-            {                
+            {
                 readFirmware();
             }
             else if (msg == "REBOOT")
@@ -630,16 +682,22 @@ void NuvIoTState::loop()
             {
                 m_btSerial->println(getRemoteProperties());
             }
-            else if(msg == "IOCONFIG-SEND") {
+            else if (msg == "VERSION")
+            {
+                m_btSerial->println(queryFirmwareVersion());
+            }
+            else if (msg == "IOCONFIG-SEND")
+            {
                 String json = m_ioConfig->toJSON();
                 uint16_t remaining = json.length();
                 uint16_t chunkSize = 100;
                 uint16_t chunkIndex = 0;
-                while(remaining > 0) {
+                while (remaining > 0)
+                {
                     int start = chunkIndex * 100;
                     int end = min((uint16_t)(start + chunkSize), (uint16_t)json.length());
                     remaining = json.length() - end;
-                    m_btSerial->print(json.substring(chunkIndex * 100, end));                    
+                    m_btSerial->print(json.substring(chunkIndex * 100, end));
                     m_btSerial->flush();
                     delay(100);
                     chunkIndex++;
@@ -647,16 +705,18 @@ void NuvIoTState::loop()
 
                 m_btSerial->println();
             }
-            else if(msg == "SYSCONFIG-SEND") {
+            else if (msg == "SYSCONFIG-SEND")
+            {
                 String json = m_sysConfig->toJSON();
                 uint16_t remaining = json.length();
                 uint16_t chunkSize = 100;
                 uint16_t chunkIndex = 0;
-                while(remaining > 0) {
+                while (remaining > 0)
+                {
                     int start = chunkIndex * 100;
                     int end = min((uint16_t)(start + chunkSize), (uint16_t)json.length());
                     remaining = json.length() - end;
-                    m_btSerial->print(json.substring(chunkIndex * 100, end));                    
+                    m_btSerial->print(json.substring(chunkIndex * 100, end));
                     m_btSerial->flush();
                     delay(100);
                     chunkIndex++;
@@ -664,24 +724,29 @@ void NuvIoTState::loop()
 
                 m_btSerial->println();
             }
-            else if(msg.substring(0) == "SYSCONFIG-RECV-START") {
+            else if (msg.substring(0) == "SYSCONFIG-RECV-START")
+            {
                 m_jsonBufferTail = 0x00;
             }
-            else if(msg.substring(0) == "SYSCONFIG-RECV-END") {
+            else if (msg.substring(0) == "SYSCONFIG-RECV-END")
+            {
                 m_jsonBuffer[m_jsonBufferTail] = 0x00;
                 Serial.println(m_jsonBuffer);
                 m_jsonBufferTail = 0;
 
-                if(m_sysConfig->parseJSON(m_jsonBuffer)){
+                if (m_sysConfig->parseJSON(m_jsonBuffer))
+                {
                     m_sysConfig->write();
                     m_btSerial->println("SYSCONFIG-RECV-END:OK");
                 }
-                else {
+                else
+                {
                     m_btSerial->println("SYSCONFIG-RECV-END:FAIL");
                 }
-            }                        
-            else if(msg.substring(0, 14) == "SYSCONFIG-RECV") {
-                // format is 
+            }
+            else if (msg.substring(0, 14) == "SYSCONFIG-RECV")
+            {
+                // format is
                 // ICONFIG-RECV:XX,CRC,[CONTENTS]
                 Serial.println("----------------------");
                 char hexBuffer[3];
@@ -694,7 +759,7 @@ void NuvIoTState::loop()
                 Serial.println(hexBuffer);
                 uint8_t calcCRC = 0x00;
 
-                for(int idx = 21; idx < msg.length(); ++idx)
+                for (int idx = 21; idx < msg.length(); ++idx)
                 {
                     calcCRC += (uint8_t)msg[idx];
                 }
@@ -702,40 +767,48 @@ void NuvIoTState::loop()
                 Serial.println("RESULT: " + String(rowIndex) + " " + String(crc) + " " + String(calcCRC));
                 Serial.println("----------------------");
 
-                if(crc == calcCRC) {
+                if (crc == calcCRC)
+                {
                     m_btSerial->println("SYSCONFIG-RECV-OK:" + String(rowIndex));
 
-                    if(rowIndex == 0) {
+                    if (rowIndex == 0)
+                    {
                         m_jsonBufferTail = 0;
                     }
 
-                    for(int idx = 21; idx < msg.length(); ++idx)
+                    for (int idx = 21; idx < msg.length(); ++idx)
                     {
                         m_jsonBuffer[m_jsonBufferTail++] = msg[idx];
                     }
                 }
-                else {
+                else
+                {
                     m_btSerial->println("SYSCONFIG-RECV-CRC-ERR:" + String(rowIndex));
                 }
-            }            
-            else if(msg.substring(0) == "IOCONFIG-RECV-START") {
+            }
+            else if (msg.substring(0) == "IOCONFIG-RECV-START")
+            {
                 m_jsonBufferTail = 0;
             }
-            else if(msg.substring(0) == "IOCONFIG-RECV-END") {
+            else if (msg.substring(0) == "IOCONFIG-RECV-END")
+            {
                 m_jsonBuffer[m_jsonBufferTail] = 0x00;
                 Serial.println(m_jsonBuffer);
                 m_jsonBufferTail = 0;
 
-                if(m_ioConfig->parseJSON(m_jsonBuffer)){
+                if (m_ioConfig->parseJSON(m_jsonBuffer))
+                {
                     m_ioConfig->write();
                     m_btSerial->println("IOCONFIG-RECV-END:OK");
                 }
-                else {
+                else
+                {
                     m_btSerial->println("IOCONFIG-RECV-END:FAIL");
                 }
-            }                        
-            else if(msg.substring(0, 13) == "IOCONFIG-RECV") {
-                // format is 
+            }
+            else if (msg.substring(0, 13) == "IOCONFIG-RECV")
+            {
+                // format is
                 // ICONFIG-RECV:XX,CRC,[CONTENTS]
                 Serial.println("----------------------");
                 char hexBuffer[3];
@@ -748,7 +821,7 @@ void NuvIoTState::loop()
                 Serial.println(hexBuffer);
                 uint8_t calcCRC = 0x00;
 
-                for(int idx = 20; idx < msg.length(); ++idx)
+                for (int idx = 20; idx < msg.length(); ++idx)
                 {
                     calcCRC += (uint8_t)msg[idx];
                 }
@@ -756,23 +829,26 @@ void NuvIoTState::loop()
                 Serial.println("RESULT: " + String(rowIndex) + " " + String(crc) + " " + String(calcCRC));
                 Serial.println("----------------------");
 
-                if(crc == calcCRC) {
+                if (crc == calcCRC)
+                {
                     m_btSerial->println("IOCONFIG-RECV-OK:" + String(rowIndex));
-                    
-                    if(rowIndex == 0) {
+
+                    if (rowIndex == 0)
+                    {
                         m_jsonBufferTail = 0;
                     }
-                
-                    for(int idx = 20; idx < msg.length(); ++idx)
+
+                    for (int idx = 20; idx < msg.length(); ++idx)
                     {
                         m_jsonBuffer[m_jsonBufferTail++] = msg[idx];
                     }
                 }
-                else {
+                else
+                {
                     m_btSerial->println("IOCONFIG-RECV-CRC-ERR:" + String(rowIndex));
                 }
-            }            
-            else if(msg == "RESET-STATE")
+            }
+            else if (msg == "RESET-STATE")
             {
                 m_ioConfig->setDefaults();
                 m_ioConfig->write();
@@ -839,10 +915,8 @@ void NuvIoTState::loop()
                     writeString(WIFI_PASSWORD_START, m_WiFiPassword);
                     m_btSerial->println("set-ack:" + key);
                 }
-
                 else
                 {
-                    Serial.println(type + "] - [" + key + "] - [" + value + "]");
                     updateProperty(type, key, value);
                     m_btSerial->println("set-ack:" + key);
                 }
@@ -882,6 +956,8 @@ void NuvIoTState::loop()
             }
             else if (msg == "COMMISSION")
             {
+                m_sysConfig->Commissioned = true;
+                m_sysConfig->write();
                 EEPROM.writeUShort(IS_CONFIG_LOCATION, COMMISSIONED_ID);
                 EEPROM.commit();
                 m_btSerial->println("999,ACK\n");
@@ -1070,8 +1146,6 @@ void NuvIoTState::setFloat(int idx, float value)
 
 void NuvIoTState::writeString(int adddr, String data)
 {
-    Serial.println("Write " + data + " " + String(adddr));
-
     int _size = data.length();
     for (int i = 0; i < _size; i++)
     {
@@ -1083,7 +1157,6 @@ void NuvIoTState::writeString(int adddr, String data)
 
 String NuvIoTState::readString(int addr, int maxLength)
 {
-    int i;
     char data[100]; //Max 100 Bytes
     int len = 0;
     unsigned char k;
@@ -1121,6 +1194,8 @@ Param *NuvIoTState::appendValue(Param *pHead, Param *pNode)
             ++idx;
         }
     }
+
+    return NULL;
 }
 
 void NuvIoTState::registerInt(const char *key, int defaultValue)

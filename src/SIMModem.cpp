@@ -47,6 +47,8 @@ bool SIMModem::waitForReply(String expectedReply, int iterations)
 
         delay(250);
     }
+
+    return false;
 }
 
 bool SIMModem::enableTransparentMode()
@@ -314,6 +316,8 @@ bool SIMModem::beginDownload(String url)
             ESP.restart();
         }
     }
+
+    return true;
 }
 
 String SIMModem::sendCommand(String cmd)
@@ -417,6 +421,8 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
             delay(1);
         }
     }
+
+    return S_ERROR;
 }
 
 String SIMModem::getNetwork()
@@ -724,7 +730,6 @@ bool SIMModem::connectServer(String hostName, String port)
 bool SIMModem::setBaudRate(unsigned long baudRate)
 {
     String baudRateCmd = "AT+IPR=" + String(baudRate);
-    Serial.println(baudRateCmd);
     return sendCommand(baudRateCmd);
 }
 
@@ -772,8 +777,6 @@ GPSData *SIMModem::readGPS()
     String ok = m_channel->readStringUntil('\r', 100);
     while (!m_channel->available()); m_channel->readByte();
     
-    Serial.println(gpsData);
-
     if (ok == "OK")
     {
         m_gpsData->parse(gpsData + "\r");
@@ -878,6 +881,8 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
             m_console->printVerbose("Already Connected IP Address is " + m_ipAddress);
         }
 
-        connected = true;
+        connected = true;        
     }
+
+    return connected;
 }

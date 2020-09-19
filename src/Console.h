@@ -8,6 +8,7 @@ class Console
 {
 private:
     bool m_btEnabled = true;
+    bool m_serialEnabled = true;
 
 public:
     Console(Stream *stream);
@@ -32,6 +33,7 @@ public:
     void setVerboseLogging(bool verbose);
 
     void enableBTOut(bool enabled);
+    void enableSerialOut(bool enabled);
 
 private:
     BluetoothSerial *m_btSerial = NULL;

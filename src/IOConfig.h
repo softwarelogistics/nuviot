@@ -190,8 +190,6 @@ class IOConfig {
             
             String json = file.readString();
 
-            Serial.println("File " + String(SETTINGS_FN) + " exists, file size: " + String(json.length()));
-
             if(json.length() == 0)
             {
                 file.close();
@@ -206,22 +204,14 @@ class IOConfig {
         else {
             setDefaults();
             write();
-            Serial.println("FILE DIDN'T EXIST WRITE DEFAULTS.");
         }
     }
 
     void write() {
         File file = SPIFFS.open(SETTINGS_FN, FILE_WRITE);
-        if(!file)
-        {
-            Serial.println("Could not open " + String(SETTINGS_FN) + " file to write.");    
-        }
-
-        size_t bytesWritten = file.print(toJSON());
+        file.print(toJSON());
         file.flush();
         file.close();
-
-        Serial.println("Write " + String(bytesWritten) + " to " + String(SETTINGS_FN));
     }
 
     bool parseJSON(const char *str)

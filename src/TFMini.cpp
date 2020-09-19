@@ -203,8 +203,8 @@ int TFMini::takeMeasurement() {
   // Step 3: Interpret frame
   uint16_t dist = (frame[1] << 8) + frame[0];
   uint16_t st = (frame[3] << 8) + frame[2];
-  uint8_t reserved = frame[4];
-  uint8_t originalSignalQuality = frame[5];
+  //uint8_t reserved = frame[4];
+  //uint8_t originalSignalQuality = frame[5];
 
 
   // Step 4: Store values

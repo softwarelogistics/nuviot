@@ -10,10 +10,11 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     mqttInstance->handleMqttCallback(topic, payload, length);
 }
 
-NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, Console *console, WiFiClient *client, Display *display, OtaServices *ota, Hal *hal, NuvIoTState *state)
+NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, Console *console, WiFiClient *client, Display *display, OtaServices *ota, Hal *hal, NuvIoTState *state, SysConfig *sysConfig)
 {
     m_console = console;
     m_client = client;
+    m_sysConfig = sysConfig;
     m_mqtt = new PubSubClient(*client);
     m_wifi = wifiConnection;
     m_display = display;
@@ -38,7 +39,7 @@ void NuvIoTMQTT::connect()
 
         m_display->clearBuffer();
         m_display->drawString(0, 0, "Connecting MQTT");
-        m_display->drawString(0, 16, m_state->getHostName().c_str());
+        m_display->drawString(0, 16, m_sysConfig->SrvrHostName.c_str());
         m_display->drawString(0, 32, "Attempt");
         m_display->drawString(90, 32, String(attempt).c_str());
         m_display->drawString(0, 48, resolveConnectFail().c_str());
@@ -65,32 +66,32 @@ void NuvIoTMQTT::connect()
         m_mqtt->loop();
 
         IPAddress remote_addr;
-        (WiFi.hostByName(m_state->getHostName().c_str(), remote_addr));
-        m_console->println(m_state->getHostName() + "=" + remote_addr.toString() + " with device id: " + m_state->getDeviceId());
+        (WiFi.hostByName(m_sysConfig->SrvrHostName.c_str(), remote_addr));
+        m_console->println(m_sysConfig->SrvrHostName + "=" + remote_addr.toString() + " with device id: " + m_sysConfig->DeviceId);
 
         //m_mqtt->setServer(m_state->getHostName().c_str(), 1883);
         m_mqtt->setServer(remote_addr, 1883);
         bool connectResult;
         if (m_state->getIsAnonymous())
         {
-            connectResult = m_mqtt->connect(m_state->getDeviceId().c_str());
+            connectResult = m_mqtt->connect(m_sysConfig->DeviceId.c_str());
         }
         else
         {
-            m_console->println(m_state->getHostName() + " " + m_state->getDeviceId() + " " + remote_addr.toString() + " " + m_state->getHostUserName() + " " + m_state->getHostPassword());
-            connectResult = m_mqtt->connect(m_state->getDeviceId().c_str(), m_state->getHostUserName().c_str(), m_state->getHostPassword().c_str());
+            m_console->println(m_sysConfig->DeviceId + " " + m_sysConfig->SrvrHostName + " " + remote_addr.toString() + " " + m_sysConfig->SrvrUID + " " + m_sysConfig->SrvrPWD);
+            connectResult = m_mqtt->connect(m_sysConfig->DeviceId.c_str(), m_sysConfig->SrvrUID.c_str(), m_sysConfig->SrvrPWD.c_str());
         }
 
         m_mqtt->loop();
 
         if (m_client->connected())
         {
-            publish("nuviot/srvr/dvcsrvc/" + m_state->getDeviceId() + "/online", "{'firmwareversion':'" + m_state->getFirmwareVersion() + "','firmwareSku':'" + m_state->getFirmwareSKU() + "'}");
-            m_console->println("Success connecting to MQTT server " + m_state->getHostName() + ".");
+            publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", "{'firmwareversion':'" + m_state->getFirmwareVersion() + "','firmwareSku':'" + m_state->getFirmwareSKU() + "'}");
+            m_console->println("Success connecting to MQTT server " + m_sysConfig->SrvrHostName + ".");
         }
         else
         {
-            m_console->printError("Could not connect to MQTT server " + m_state->getHostName() + ".");
+            m_console->printError("Could not connect to MQTT server " + m_sysConfig->SrvrHostName + ".");
         }
 
         if (connectResult)
@@ -105,7 +106,7 @@ void NuvIoTMQTT::connect()
 
             m_display->clearBuffer();
             m_display->drawString(0, 0, "Success");
-            m_display->drawString(0, 16, m_state->getHostName().c_str());
+            m_display->drawString(0, 16, m_sysConfig->SrvrHostName.c_str());
             m_display->drawString(0, 32, "Connected MQTT");
             m_display->sendBuffer();
             delay(1500);
@@ -211,9 +212,8 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
                 if(partIdx >= 5){
                     if(parts[3] == "properties" &&
                        parts[4] == "query") {
-                           String payload = m_state->queryState();
-                           Serial.println(payload);
-                           String topic = "nuviot/srvr/dvcsrvc/" + m_state->getDeviceId() + "/state";
+                           String payload = m_state->queryFirmwareVersion();
+                           String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/state";
                            m_mqtt->publish_P(topic.c_str(), (uint8_t *)payload.c_str(), payload.length(), false);
                        }
                 }
@@ -225,10 +225,10 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
             else if(action == "update") {
                 if(partIdx >= 4) {
                     String url = "http://api.nuviot.com/api/firmware/download/" + parts[4];
-                    publish(String("nuviot/srvr/dvcsrvc/" + m_state->getDeviceId() + "/fwupdate/start"), String("{'url':'" + url + "'}") );                    
+                    publish(String("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/fwupdate/start"), String("{'url':'" + url + "'}") );                    
                     m_ota->start(url);
                     /* if we succeed we automatically restart, if we got here it was a failure. */
-                    publish(String("nuviot/srvr/dvcsrvc/" + m_state->getDeviceId() + "/fwupdate/fail"), String("{'url':'" + url + "'}" ));                    
+                    publish(String("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/fwupdate/fail"), String("{'url':'" + url + "'}" ));                    
                 }
             }
         }
@@ -293,7 +293,6 @@ void NuvIoTMQTT::loop()
 {
     if (!m_mqtt->connected())
     {
-        Serial.println("Attempting MQTT connection...");
         m_display->clearBuffer();
         m_display->drawString(0, 0, "MQTT Not Connected");
         m_display->drawString(0, 16, resolveConnectFail().c_str());

@@ -3,12 +3,14 @@
 
 #include <WiFi.h>
 #include "Display.h"
+#include "SysConfig.h"
+#include "NuvIoTState.h"
 #include "NuvIoTState.h"
 
 class WiFiConnectionHelper {
     public:
         WiFiConnectionHelper();
-        WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state);
+        WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state, SysConfig *sysConfig);
         void setup();
         void disconnect();
         void loop();
@@ -19,9 +21,10 @@ class WiFiConnectionHelper {
           
     private:
         void connect(bool isReconnecting);
-        NuvIoTState *m_State;
         Display *m_display;
         WiFiClient *m_client;
+        NuvIoTState *m_state;
+        SysConfig *m_sysConfig;
 };
 
 #endif

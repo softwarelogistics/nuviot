@@ -28,7 +28,7 @@ void MQTT::writeRemainingLength(unsigned int remainingLength)
     //
     if (remainingLength > 0x7F)
     {
-        byte lsb = remainingLength & 0x7F | 0x80;
+        byte lsb = ((remainingLength & 0x7F) | 0x80);
         m_channel->enqueueByte(lsb);
         byte msb = ((remainingLength >> 7) & 0xFF);
         m_channel->enqueueByte(msb);
@@ -63,17 +63,23 @@ void MQTT::writeByteArray(byte *buffer, int length)
 bool MQTT::flush()
 {
     if(!m_transparentMode) {
+        m_console->printVerbose("NOT TRANSPARENT MODE - CIPSEND");
+
         uint16_t enqueuedBytes = m_channel->getEnqueuedLength();
         String sendMessage = "AT+CIPSEND=" + String(enqueuedBytes);
         m_channel->println(sendMessage);
 
         String response = m_channel->readStringUntil('\n', 3000);
+
+        m_console->printVerbose("AT+CIPSEND= response: " + response);
+
         uint8_t ch = 0x00;
-        uint16_t retryCount;
+        uint16_t retryCount = 0;
         while(ch != '>' && retryCount++ < 500)
         {
             while(m_channel->available() > 1 && ch != '>') {
                 ch = m_channel->readByte();
+                m_console->printVerbose("UNEXPECTED RESPONSE: [" + String(ch) + "]");
             }
             delay(1);
         } 
@@ -83,6 +89,11 @@ bool MQTT::flush()
             m_console->printError("Timeout waiting for > to send data..");
             return false;
         }
+
+        m_console->printVerbose("RECEIVED: [" + String(ch) + "] CONTINUE");
+    }
+    else {
+        m_console->printVerbose("TRANSPARENT MODE - NO CIPSEND");
     }
 
     if(!m_channel->flush())
@@ -245,6 +256,7 @@ bool MQTT::connect(String uid, String pwd, String clientId)
 
 bool MQTT::disconnect()
 {
+    return true;
 }
 
 bool MQTT::publish(String topic, String payload, byte qos)
@@ -298,7 +310,7 @@ bool MQTT::publish(String topic, byte qos)
     return (qos > QOS0) ? readResponse(0x40) : true;
 }
 
-bool MQTT::subscribe(String topic, byte qos)
+byte MQTT::subscribe(String topic, byte qos)
 {
     byte payloadLen = 2 + 2 + topic.length() + 1;
 

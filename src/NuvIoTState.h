@@ -5,6 +5,7 @@
 #include <EEPROM.h>
 #include <BluetoothSerial.h>
 #include "Display.h"
+#include "LedManager.h"
 #include "Hal.h"
 #include "Console.h"
 #include "IOConfig.h"
@@ -49,6 +50,7 @@ class NuvIoTState
 private:
     BluetoothSerial *m_btSerial;
     Display *m_display;
+    LedManager *m_ledManager;
     Hal *m_hal;
     Console *m_console;
     bool m_configurationMode = false;
@@ -58,7 +60,6 @@ private:
     long m_pauseTimeout = 0;
 
     bool m_isInitialized = false;
-    bool m_isCommissioned = false;
     bool m_debugMode = false;
     bool m_verboseLogging = false;
     FS *m_fs;
@@ -104,16 +105,13 @@ private:
     void createDefaults();
 
 public:
-    NuvIoTState(Display *display, IOConfig *ioConfig, SysConfig *sysConfig, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console);
+    NuvIoTState(Display *display, IOConfig *ioConfig, SysConfig *sysConfig, LedManager *ledManager, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console);
     void init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t deviceConfigVersion);
     bool isValid();
     void loop();
 
     String getDeviceId();
     String getDeviceAccessKey();
-    String getHostName();
-    String getHostUserName();
-    String getHostPassword();
     String getWiFiSSID();
     String getWiFiPassword();
     String getFirmwareVersion();
@@ -126,7 +124,7 @@ public:
     bool getIsConfigurationModeActive();
     bool getIsPaused();
 
-    String queryState();
+    String queryFirmwareVersion();
     String getRemoteProperties();
 
     bool getSecureTransport();

@@ -24,21 +24,11 @@ OtaServices::~OtaServices()
 
 bool OtaServices::downloadWithModem(String url)
 {
-    int downloaded = 0;
-    int written = 0;
-    int total = 1;
-    int len = 1;
-    uint8_t buff[1024] = {0};
-    size_t size = sizeof(buff);
-    int ret = 0;
-
-    char progressBar[110];
-
     m_display->clearBuffer();
     m_display->drawStr("Updating Firmare");
     m_display->sendBuffer();
 
-    m_modem->beginDownload(url);
+    return m_modem->beginDownload(url);
 }
 
 bool OtaServices::start(String url)
@@ -161,7 +151,7 @@ bool OtaServices::downloadOverWiFi(String url)
         m_console->printError("HTTP Code " + String(httpCode));
 
         m_display->drawStr("HTTP Get Failed");
-        ret - 1;
+        ret = -1;
     }
 
     http.end();
