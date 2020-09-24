@@ -68,7 +68,7 @@ WiFiClient wifiClient;
 WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &sysConfig);
 
 OtaServices ota(&display, &console, &modem, &hal);
-NuvIoTClient client(&modem, &mqtt, &console, &display, &state, &sysConfig, &ota, &hal);
+NuvIoTClient client(&modem, &mqtt, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
 
 NuvIoTMQTT wifiMqtt(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
 

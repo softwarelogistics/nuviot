@@ -9,6 +9,7 @@
 #include "MQTT_GPRS.h"
 #include "OtaServices.h"
 #include "SysConfig.h"
+#include "LedManager.h"
 
 class NuvIoTClient {
     private:
@@ -21,13 +22,20 @@ class NuvIoTClient {
         String m_lastMsg;
         OtaServices *m_ota;
         SysConfig *m_sysConfig;
+        LedManager *m_ledManager;
+        String m_lastWarning;
+        String m_lastError;
 
         bool m_gpsEnabled;
 
         void (*messageReceivedCallback)(String topic, unsigned char buffer[], size_t length) = NULL;
 
+        void handleError(String errorCode, String message);
+        void handleWarning(String errorCode, String message, int retryCount);
+        void delayAndCheckState(long ms);
+
     public:
-        NuvIoTClient(SIMModem *modem, MQTT *mqtt, Console *console, Display *display, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal);
+        NuvIoTClient(SIMModem *modem, MQTT *mqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal);
         bool ConnectToAPN(bool transparentMode, bool connectToAPN, unsigned long baudRate);
         bool Connect(bool isReconnect, unsigned long baudRate);
         void messagePublished(String topic, unsigned char *payload, size_t length);

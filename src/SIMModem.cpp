@@ -523,10 +523,22 @@ bool SIMModem::setPDPContext()
 
 bool SIMModem::setBand()
 {
-    if (sendCommand("AT+CBAND=\"ALL_MODE\"") == S_OK)
-        return true;
+    int retry = 0;
+    while(retry < 5) {
+        if (sendCommand("AT+CBAND=\"ALL_MODE\"") == S_OK) {
+            m_console->setVerboseLogging(false);
+            return true;
+        }
 
-    m_lastError = "COMMS016";
+        m_console->printError("ERROR SET BAND, Retry Count " + String(retry));
+        m_console->setVerboseLogging(true);
+
+        delay(1500);
+
+        m_lastError = "COMMS016";
+    }
+
+    m_console->printError("ERROR SET BAND, WONT RETRY");
 
     return false;
 }
