@@ -40,8 +40,6 @@ HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
 #endif
 
-
-
 IOConfig ioConfig;
 SysConfig sysConfig;
 ConfigPins configPins;
@@ -61,10 +59,10 @@ GPSData *gps = NULL;
 Channel channel(&gprsPort, &console);
 
 MQTT mqtt(&channel, &console);
+
 SIMModem modem(&display, &channel, &console);
 
 WiFiClient wifiClient;
-
 WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &sysConfig);
 
 OtaServices ota(&display, &console, &modem, &hal);
@@ -74,6 +72,7 @@ NuvIoTMQTT wifiMqtt(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &stat
 
 Telemetry telemetry(&btSerial);
 
+// drivers
 PulseCounter pulseCounter(&console, &configPins);
 ADC adc(&twoWire, &configPins, &console, payload);
 TemperatureProbes probes(&console, &configPins, payload);
@@ -81,6 +80,6 @@ TemperatureProbes probes(&console, &configPins, payload);
 RelayManager relayManager(&console, &configPins);
 OnOffDetector onOffDetector(&console, &configPins);
 
-
+PowerSensor powerSensor(&adc, &configPins, &console, payload, &state);
 
 #endif
