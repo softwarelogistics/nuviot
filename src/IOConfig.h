@@ -22,82 +22,81 @@
 
 class IOConfig {
     public:
-    uint8_t ADC1Config;
+    uint8_t ADC1Config = ADC_CONFIG_NONE;
     String ADC1Name;
     String ADC1Label;
     float ADC1Scaler;
 
-    uint8_t ADC2Config;
+    uint8_t ADC2Config = ADC_CONFIG_NONE;
     String ADC2Name;
     String ADC2Label;
     float ADC2Scaler;
-
     uint8_t ADC3Config;
     String ADC3Name;
     String ADC3Label;
     float ADC3Scaler;
 
-    uint8_t ADC4Config;
+    uint8_t ADC4Config = ADC_CONFIG_NONE;
     String ADC4Name;
     String ADC4Label;
     float ADC4Scaler;
 
-    uint8_t ADC5Config;
+    uint8_t ADC5Config = ADC_CONFIG_NONE;
     String ADC5Name;
     String ADC5Label;
     float ADC5Scaler;
 
-    uint8_t ADC6Config;
+    uint8_t ADC6Config = ADC_CONFIG_NONE;
     String ADC6Name;
     String ADC6Label;
     float ADC6Scaler;
 
-    uint8_t ADC7Config;
+    uint8_t ADC7Config = ADC_CONFIG_NONE;
     String ADC7Name;
     String ADC7Label;
     float ADC7Scaler;
 
-    uint8_t ADC8Config;
+    uint8_t ADC8Config = ADC_CONFIG_NONE;
     String ADC8Name;
     String ADC8Label;
     float ADC8Scaler;
 
-    uint8_t GPIO1Config;
+    uint8_t GPIO1Config = GPIO_CONFIG_NONE;
     String GPIO1Name;
     String GPIO1Label;
     float GPIO1Scaler;
 
-    uint8_t GPIO2Config;
+    uint8_t GPIO2Config = GPIO_CONFIG_NONE;
     String GPIO2Name;
     String GPIO2Label;
     float GPIO2Scaler;
 
-    uint8_t GPIO3Config;
+    uint8_t GPIO3Config = GPIO_CONFIG_NONE;
     String GPIO3Name;
     String GPIO3Label;
     float GPIO3Scaler;
 
-    uint8_t GPIO4Config;
+    uint8_t GPIO4Config = GPIO_CONFIG_NONE;
     String GPIO4Name;
     String GPIO4Label;
     float GPIO4Scaler;
     
-    uint8_t GPIO5Config;
+    uint8_t GPIO5Config = GPIO_CONFIG_NONE;
     String GPIO5Name;
     String GPIO5Label;
     float GPIO5Scaler;
 
-    uint8_t GPIO6Config;
+    uint8_t GPIO6Config = GPIO_CONFIG_NONE;
     String GPIO6Name;
     String GPIO6Label;
     float GPIO6Scaler;
 
-    uint8_t GPIO7Config;
+    uint8_t GPIO7Config = GPIO_CONFIG_NONE;
     String GPIO7Name;
     String GPIO7Label;
     float GPIO7Scaler;
     
-    uint8_t GPIO8Config;
+    uint8_t GPIO8Config = GPIO_CONFIG_NONE;
     String GPIO8Name;
     String GPIO8Label;
     float GPIO8Scaler;

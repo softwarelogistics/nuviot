@@ -144,15 +144,20 @@ public:
         return -1;
     }
 
-    void enableADC(String name, int port, bool enabled)
+    void enableADC(String name, int index, bool enabled)
     {
-        if (port > 7)
+        if (index > 7)
         {
             m_console->printError("ADC > 7");
         }
 
-        m_portEnabled[port] = enabled;
-        m_names[port] = name;
+        if(enabled)
+        {
+            m_console->println("adc" + String(index) + "=enabled,port=" + String(m_configPins->ADCChannel4) + ";");
+        }
+
+        m_portEnabled[index] = enabled;
+        m_names[index] = name;
     }
 
     void setup(IOConfig *ioConfig)

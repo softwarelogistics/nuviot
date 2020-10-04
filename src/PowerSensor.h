@@ -10,6 +10,7 @@
 #include "ConfigPins.h"
 
 #define NUMBER_CTS 3
+#define MAX_SAMPLE_COUNT 200
 
 class PowerSensor: public AbstractSensor {
     public:
@@ -35,6 +36,8 @@ class PowerSensor: public AbstractSensor {
         float m_channelAmps[NUMBER_CTS];
         double m_ctRatioFactor[NUMBER_CTS];
         uint16_t m_voltage[NUMBER_CTS];
+
+        float m_sampleBuffer[MAX_SAMPLE_COUNT];
 
         ConfigPins *m_configPins;
         ADC *m_adc;

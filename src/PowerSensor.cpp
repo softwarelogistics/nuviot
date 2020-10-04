@@ -45,64 +45,40 @@ void PowerSensor::loop()
 
         if (m_channelEnabled[idx])
         {
-            float avereageTotal = 0;
             int iterations = 33;
 
             int samplePeriodMS = 333; // 333 MS or 1/3 a second, or 20 cycles.
 
-            float min = 500;
-            float max = -1;
-
             long startAvg = millis();
             iterations = 0;
+
             // Assuming 60 hz
             // sample once every 10ms or collect values over 30 samples
-            /*while (millis() - startAvg < samplePeriodMS)
-            //for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
+            while (millis() - startAvg < samplePeriodMS)
             {
-                //long start = millis();
-                avereageTotal += m_adc->getVoltage(adcChannel);
+                m_sampleBuffer[iterations] = m_adc->getVoltage(adcChannel);
                 iterations++;
-
-                //while((millis() - start) < 5) {
-                //  delayMicroseconds(250);
-                //}
-            }*/
-
-            // over the course of exactly 30 (or very close to it) since we are measuring
-            // an absolute voltage via a sine wave, the center should be right at zero
-            // this will establishe our baseline (which for our circuit should be very close
-            // to 2.5 volts).
-            //float offset = avereageTotal / iterations;
-            float offset = 2.5;
-
-            float levelTotal = 0;
-
-            long startSample = millis();
-            iterations = 0;
-
-            //for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
-            while (millis() - startSample < samplePeriodMS)
-            {
-                //long start = millis();
-                float voltage = m_adc->getVoltage(adcChannel);
-                if (voltage < min)
-                    min = voltage;
-
-                if (voltage > max)
-                    max = voltage;
-
-                /* start collecting the sum of the voltages */
-                levelTotal += voltage > offset ? voltage - offset : -(voltage - offset);
-                iterations++;
-                //while((millis() - start) < 5) {
-                //  delayMicroseconds(250);
-                //}
             }
 
-            long samplePeriod = millis() - startSample;
+            float baselineTotal = 0;
+            float absTotal = 0;
 
-            float avgLevel = (levelTotal / (float)iterations);
+            for (int idx = 0; idx < iterations; ++idx)
+            {
+                baselineTotal += m_sampleBuffer[idx];
+            }
+
+            float baseline = baselineTotal / (float)iterations;
+
+
+            for (int idx = 0; idx < iterations; ++idx)
+            {
+                float voltage = m_sampleBuffer[idx];
+                absTotal += (voltage > baseline ? voltage - baseline : -(voltage - baseline));
+            }
+
+            float avgLevel = absTotal / (float)iterations;
+            m_channelAmps[idx] = avgLevel * m_ctRatioFactor[idx];
 
             // i = E / R, burden resistor = 33.0
             // TODO: may need to adjust this with different burden resistor settings.
@@ -112,6 +88,9 @@ void PowerSensor::loop()
             // a factor of 100.  If the CT ratio changes, we may need to consider
             // adjusting this as well.  This should probably be pulled from a setting.
             m_channelAmps[idx] = avgLevel * m_ctRatioFactor[idx];
+
+         //   m_console->println("BASELINE: " + String(baseline) + ",  " + String(absTotal) + ",  "  + String(avgLevel) + ",  " + String(iterations) + ",  " + String(m_channelAmps[idx]));
+
         }
     }
 
