@@ -77,7 +77,8 @@ public:
         m_scalers[channel] = scaler;
     }
 
-    void setConvesionDelay(uint8_t conversionDelay) {
+    void setConvesionDelay(uint8_t conversionDelay)
+    {
         _bank1->setConversionDelay(conversionDelay);
         _bank2->setConversionDelay(conversionDelay);
     }
@@ -88,30 +89,6 @@ public:
         _bank1 = NULL;
         delete _bank2;
         _bank2 = NULL;
-    }
-
-    float getVoltage(uint8_t channel)
-    {
-        if (channel < 0)
-            return -1;
-
-        if (channel > 7)
-        {
-            return -1;
-        }
-
-        float result = 0.0;
-
-        if (channel > 3)
-        {
-            result = _bank2->readADC_Voltage(channel - 4);
-        }
-        else
-        {
-            result = _bank1->readADC_Voltage(channel);
-        }
-
-        return result;
     }
 
     float getADC(byte port)
@@ -144,6 +121,30 @@ public:
         return -1;
     }
 
+    float getVoltage(uint8_t channel)
+    {
+        if (channel < 0)
+            return -1;
+
+        if (channel > 7)
+        {
+            return -1;
+        }
+
+        float result = 0.0;
+
+        if (channel > 3)
+        {
+            result = _bank2->readADC_Voltage(channel - 4);
+        }
+        else
+        {
+            result = _bank1->readADC_Voltage(channel);
+        }
+
+        return result;
+    }
+
     void enableADC(String name, int index, bool enabled)
     {
         if (index > 7)
@@ -151,7 +152,7 @@ public:
             m_console->printError("ADC > 7");
         }
 
-        if(enabled)
+        if (enabled)
         {
             m_console->println("adc" + String(index) + "=enabled,port=" + String(m_configPins->ADCChannel4) + ";");
         }
@@ -204,15 +205,15 @@ public:
         setBankEnabled(1, true);
         setBankEnabled(2, true);
 
-        enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config > 0);
-        enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config > 0);
-        enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config > 0);
-        enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config > 0);
-        enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config > 0);
-        enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config > 0);
-        enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config > 0);
-        enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config > 0);
-    
+        enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC);
+        enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC);
+        enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC);
+        enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config == ADC_CONFIG_ADC);
+        enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config == ADC_CONFIG_ADC);
+        enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config == ADC_CONFIG_ADC);
+        enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config == ADC_CONFIG_ADC);
+        enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config == ADC_CONFIG_ADC);
+
         setScaler(0, ioConfig->ADC1Scaler);
         setScaler(1, ioConfig->ADC2Scaler);
         setScaler(2, ioConfig->ADC3Scaler);
@@ -225,11 +226,26 @@ public:
 
     void debugPrint()
     {
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx) {
             if (m_portEnabled[idx])
-                m_console->printVerbose(m_names[idx] + "=" + String(getADC(idx)));
+            {
+                m_console->printVerbose(m_names[idx] + "=" + String(getADC(idx)) + ";");
+            }
+        }
     }
 
+    /**
+     * \brief Enable ADC Bank
+     * 
+     * Each board has two ADC converters, each ADC Converter has 4 channels. 
+     * 
+     * In some cases you may not need 8 ADC channels, if that's the case
+     * then you don't install the ADC bank and not enable it.
+     * 
+     * \param bank Index of bank to initialized (1 or 2)
+     * \param enabled True to enable, false to disable.
+     * 
+     */
     bool setBankEnabled(int bank, bool enabled)
     {
         switch (bank)
@@ -245,11 +261,29 @@ public:
         return true;
     }
 
+    /**
+     * \brief Determine if bank one is online.
+     * 
+     * This method can be called to make an I2C call
+     * to the ADC on bank one, if it finds it, the method
+     * will return true otherewise it return false.
+     * 
+     * \return True if the ADC respondes, false if not.
+     **/
     bool isBankOneOnline()
     {
         return _bank1->isOnline();
     }
 
+    /**
+     * \brief Determine if bank two is online.
+     * 
+     * This method can be called to make an I2C call
+     * to the ADC on bank two, if it finds it, the method
+     * will return true otherewise it return false.
+     * 
+     * \return True if the ADC respondes, false if not.
+     **/
     bool isBankTwoOnline()
     {
         return _bank2->isOnline();

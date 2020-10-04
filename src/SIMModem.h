@@ -85,6 +85,7 @@ private:
     bool getCREG();
     bool getCGREG();   
     int findRSSI();
+    
   
     Display *m_display;
     Console *m_console;

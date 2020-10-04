@@ -24,11 +24,26 @@ class PowerSensor: public AbstractSensor {
         float readWatts(uint8_t channel);        
         void setChannelVoltage(uint8_t channel, uint16_t voltage);
 
+        /**
+         * \brief sets sample period used for collecting AC samples.
+         * 
+         * Specify a period in milliseconds that will be used to capture A/C samples, the amount
+         * should be enough to catch a number of cycles and should be period that will collect points
+         * for complete samples.  For example for a 60Hz sample, if we specify a 333ms period, it will
+         * collect 1/3 of a second or 1/3 the cycles, which for a 60Hz sample would be 20 complete samples.
+         * 
+         * \param samplePeriodMS number of milliseconds to collect AC samples (default is 333).
+         * 
+         **/
+        void setSamplePeriodMS(uint16_t samplePeriodMS) {
+            m_samplePeriodMS = samplePeriodMS;
+        }
         void setup(IOConfig *ioConfig);
         void configure(IOConfig *ioConfig);
 
     private:
         bool m_isHealthy = false;
+        uint16_t m_samplePeriodMS = 333;
         String m_lastError = "";
 
         String m_names[NUMBER_CTS];

@@ -11,10 +11,13 @@ PowerSensor::PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, Mes
 
 void PowerSensor::setup(IOConfig *config)
 {
-    m_voltage[0] = 0;
-    m_voltage[1] = 0;
-    m_voltage[2] = 0;
-
+    for(int idx = 0; idx < 3; ++idx)
+    {
+        m_channelEnabled[idx] = false;
+        m_voltage[idx] = 0;
+        m_channelAmps[idx] = 0;
+    }
+    
     configure(config);
 }
 
@@ -47,13 +50,11 @@ void PowerSensor::loop()
         {
             int iterations = 33;
 
-            int samplePeriodMS = 333; // 333 MS or 1/3 a second, or 20 cycles.
+            int samplePeriodMS = 333; // 333 MS or 1/3 a second, or 20 cycles, may have to adjust this for 50Hz or otehrs.
 
             long startAvg = millis();
             iterations = 0;
 
-            // Assuming 60 hz
-            // sample once every 10ms or collect values over 30 samples
             while (millis() - startAvg < samplePeriodMS)
             {
                 m_sampleBuffer[iterations] = m_adc->getVoltage(adcChannel);
@@ -61,8 +62,6 @@ void PowerSensor::loop()
             }
 
             float baselineTotal = 0;
-            float absTotal = 0;
-
             for (int idx = 0; idx < iterations; ++idx)
             {
                 baselineTotal += m_sampleBuffer[idx];
@@ -70,7 +69,7 @@ void PowerSensor::loop()
 
             float baseline = baselineTotal / (float)iterations;
 
-
+            float absTotal = 0;
             for (int idx = 0; idx < iterations; ++idx)
             {
                 float voltage = m_sampleBuffer[idx];
@@ -78,17 +77,7 @@ void PowerSensor::loop()
             }
 
             float avgLevel = absTotal / (float)iterations;
-            m_channelAmps[idx] = avgLevel * m_ctRatioFactor[idx];
-
-            // i = E / R, burden resistor = 33.0
-            // TODO: may need to adjust this with different burden resistor settings.
-            //double current = avgLevel / 33.0f;
-
-            // we are using a 100A : 0.050MA CT, with the burden resistor it's
-            // a factor of 100.  If the CT ratio changes, we may need to consider
-            // adjusting this as well.  This should probably be pulled from a setting.
-            m_channelAmps[idx] = avgLevel * m_ctRatioFactor[idx];
-
+            m_channelAmps[idx] = avgLevel * m_ctRatioFactor[idx];            
          //   m_console->println("BASELINE: " + String(baseline) + ",  " + String(absTotal) + ",  "  + String(avgLevel) + ",  " + String(iterations) + ",  " + String(m_channelAmps[idx]));
 
         }
@@ -148,7 +137,7 @@ void PowerSensor::enableChannel(uint8_t channel, String name, float scaler)
     m_names[channel] = name;
     m_channelEnabled[channel] = true;
 
-    m_adc->enableADC(name, channel, true);
+    //m_adc->enableADC(name, channel, true);
     m_ctRatioFactor[channel] = (scaler);
 
     m_console->println(name + "=enabled;");

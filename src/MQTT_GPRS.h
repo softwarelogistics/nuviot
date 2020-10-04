@@ -20,6 +20,7 @@ public:
     bool connect(String uid, String pwd, String clientId);
     bool disconnect();
     bool publish(String topic, String payload, byte qos);
+    bool publish(String topic, byte buffer[], uint16_t len, byte qos);
     bool publish(String topic, byte qos);
     byte subscribe(String topic, byte qos);
     bool ping();

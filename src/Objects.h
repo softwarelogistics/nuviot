@@ -95,79 +95,80 @@ PowerSensor powerSensor(&adc, &configPins, &console, payload, &state);
 
 void configureI2C()
 {
-    if (!twoWire.begin(configPins.Sda1, configPins.Scl1, 400000))
-    {
-        display.drawStr("Could not start I2C.");
-        console.println("Could not start I2C on pins 21 and 22");
+  if (!twoWire.begin(configPins.Sda1, configPins.Scl1, 400000))
+  {
+    display.drawStr("Could not start I2C.");
+    console.println("Could not start I2C on pins 21 and 22");
 
-        while (true)
-        {
-            console.println("ic2=initfail;");
-            delay(1000);
-        }
-    }
-    else
+    while (true)
     {
-        console.println("sda=" + String(configPins.Sda1) + ";");
-        console.println("scl=" + String(configPins.Scl1) + ";");
-        console.println("i2c=initialized;");
+      console.println("ic2=initfail;");
+      delay(1000);
     }
+  }
+  else
+  {
+    console.println("sda=" + String(configPins.Sda1) + ";");
+    console.println("scl=" + String(configPins.Scl1) + ";");
+    console.println("i2c=initialized;");
+  }
 }
 
 void configureFileSystem()
 {
-    if (!SPIFFS.begin(true))
+  if (!SPIFFS.begin(true))
+  {
+    display.drawStr("Could not initialize SPIFFS.");
+    console.println("spiff=fail;");
+    while (true)
     {
-        display.drawStr("Could not initialize SPIFFS.");
-        console.println("spiff=fail;");
-        while (true)
-        {
-            console.println("spiff=fail;");
-            delay(1000);
-        }
+      console.println("spiff=fail;");
+      delay(1000);
     }
-    else
-    {
-        console.println("spiff=initialized;");
-    }
+  }
+  else
+  {
+    console.println("spiff=initialized;");
+  }
 }
 
 void configureModem(unsigned long baudRate = 115200)
 {
-    gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
-    gprsPort.setRxBufferSize(16 * 1024);
+  gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
+  gprsPort.setRxBufferSize(16 * 1024);
 }
 
 void welcome(String firmwareSKU, String version)
 {
-    console.println("WELCOME");
-    console.println("SOFTWARE LOGISTICS FIRMWARE");
-    console.println("SKU    : " + firmwareSKU);
-    console.println("VERSION: " + version);
-    delay(1000);
-    console.println("Continue Startup");
+  console.println("WELCOME");
+  console.println("SOFTWARE LOGISTICS FIRMWARE");
+  console.println("SKU    : " + firmwareSKU);
+  console.println("VERSION: " + version);
+  delay(1000);
+  console.println("Continue Startup");
 }
 
-void loadConfigurations() {
+void loadConfigurations()
+{
   ioConfig.load();
   sysConfig.load();
 }
 
 void initDisplay(String firmwareSKU, String version)
 {
-    display.enable(configPins.HasDisplay);
-    if (configPins.HasDisplay)
-    {
-        display.prepare();
-        display.setTextSize(1);
-        display.clearBuffer();
-        display.drawStr("WELCOME");
-        console.println("headless=false;");
-    }
-    else
-    {
-        console.println("headless=true;");
-    }
+  display.enable(configPins.HasDisplay);
+  if (configPins.HasDisplay)
+  {
+    display.prepare();
+    display.setTextSize(1);
+    display.clearBuffer();
+    display.drawStr("WELCOME", firmwareSKU.c_str(), version.c_str());
+    console.println("headless=false;");
+  }
+  else
+  {
+    console.println("headless=true;");
+  }
 }
 
 void spinWhileNotCommissioned()
@@ -176,16 +177,17 @@ void spinWhileNotCommissioned()
 
   while (!sysConfig.Commissioned)
   {
-    if(millis() - lastMsg > 1000){
+    if (millis() - lastMsg > 1000)
+    {
       console.println("commissioned=false;");
       lastMsg = millis();
     }
     state.loop();
-  }    
+  }
 }
 
-void attemptConnect(bool reconnect, unsigned long baud = 115200) {
-    
+void connect(bool reconnect = false, unsigned long baud = 115200)
+{
   while (state.isValid())
   {
     if (!state.getIsConfigurationModeActive() && client.Connect(reconnect, baud))
@@ -199,5 +201,38 @@ void attemptConnect(bool reconnect, unsigned long baud = 115200) {
 
       return;
     }
+  }
+}
+
+void initPins() {
+  configPins.init(BOARD_CONFIG);
+}
+
+/**
+ * \brief Setup the console.
+ * 
+ * \param baud Baud rate for serial console (default 115200)
+ * \param serialEnabled Use the confifugred serial port for transmitting data.
+ * \param btEnabled Use Bluetooth Serial to send data.
+ * 
+ **/
+void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled= true)
+{
+  consoleSerial.begin(baud, SERIAL_8N1);
+  console.enableSerialOut(serialEnabled);
+  console.enableBTOut(btEnabled);
+  console.setVerboseLogging(true);
+}
+
+void sendStatusUpdate(String currentState, String nextAction, String title = "Commo Starting", int afterDelay = 0)
+{
+  display.drawStr(title.c_str(), currentState.c_str());
+  delay(1000);
+  display.drawStr(title.c_str(), nextAction.c_str());
+
+  if (afterDelay > 0)
+  {
+    delay(afterDelay);
+  }
 }
 #endif

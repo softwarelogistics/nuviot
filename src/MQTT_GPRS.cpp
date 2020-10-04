@@ -262,7 +262,7 @@ bool MQTT::disconnect()
 bool MQTT::publish(String topic, String payload, byte qos)
 {
     int rl = 2 + topic.length() +
-             2 + // packet id
+             (qos == QOS0 ? 0 : 2) + // packet id
              payload.length();
 
     byte controlField = MQTT_PUBLISH;
@@ -273,11 +273,13 @@ bool MQTT::publish(String topic, String payload, byte qos)
     writeRemainingLength(rl);
 
     writeLengthPrefixedString(topic);
+    if(qos > QOS0)
+    {
+        m_channel->enqueueByte((uint8_t)((m_packetId >> 8) && 0xFF));
+        m_channel->enqueueByte((uint8_t)(m_packetId && 0xFF));
 
-    m_channel->enqueueByte((uint8_t)((m_packetId >> 8) && 0xFF));
-    m_channel->enqueueByte((uint8_t)(m_packetId && 0xFF));
-
-    m_packetId++;
+        m_packetId++;
+    }
 
     writeString(payload);
 
@@ -286,10 +288,38 @@ bool MQTT::publish(String topic, String payload, byte qos)
     return (qos > QOS0) ? readResponse(0x40) : true;
 }
 
+bool MQTT::publish(String topic, byte buffer[], uint16_t len, byte qos) {
+    int rl = 2 + topic.length() +
+             (qos == QOS0 ? 0 : 2) + // packet id
+             len;
+
+    byte controlField = MQTT_PUBLISH;
+
+    controlField = controlField | (qos << 1);
+
+    writeControlField(controlField);
+    writeRemainingLength(rl);
+
+    writeLengthPrefixedString(topic);
+
+    if(qos > QOS0) 
+    {
+        m_channel->enqueueByte((uint8_t)((m_packetId >> 8) && 0xFF));
+        m_channel->enqueueByte((uint8_t)(m_packetId && 0xFF));
+        m_packetId++;
+    }
+
+    writeByteArray(buffer, len);
+    
+    flush();
+
+    return (qos > QOS0) ? readResponse(0x40) : true;
+}
+
+
 bool MQTT::publish(String topic, byte qos)
 {
-    byte rl = 2 + topic.length() +
-              2; // packet id
+    byte rl = 2 + topic.length() + 2; // packet id
 
     byte controlField = MQTT_PUBLISH;
 
