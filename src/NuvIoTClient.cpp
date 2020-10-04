@@ -66,7 +66,7 @@ void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction)
 void NuvIoTClient::handleError(String errorCode, String message)
 {
     m_display->drawStr("ERROR", errorCode.c_str(), message.c_str());
-    m_console->printError(errorCode + "," + message + ",abort");
+    m_console->printError("err=" + errorCode + "," + message + ",abort");
     m_ledManager->setErrFlashRate(2);
     m_lastError = errorCode;
 
@@ -76,7 +76,7 @@ void NuvIoTClient::handleError(String errorCode, String message)
 void NuvIoTClient::handleWarning(String errorCode, String message, int retryCount)
 {
     m_display->drawStr("WARNING", errorCode.c_str(), message.c_str(), ("Retry Count " + String(retryCount)).c_str());
-    m_console->printWarning(errorCode + "," + message + ",retrycount=" + String(retryCount));
+    m_console->printWarning("warning=" + errorCode + "," + message + ",retrycount=" + String(retryCount));
     m_ledManager->setErrFlashRate(8);
     m_lastWarning = errorCode;
     delayAndCheckState(1000);
@@ -87,6 +87,7 @@ void NuvIoTClient::delayAndCheckState(long ms)
     while (ms-- > 0)
     {
         m_state->loop();
+        delay(1);
     }
 }
 
@@ -98,7 +99,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
     m_modem->isModemOnline();
 
-    m_console->println("Starting Connection Process.");
+    m_console->println("connect=starting.");
 
     int retryCount = 0;
     while (!m_modem->isModemOnline() && retryCount < 10)
@@ -115,7 +116,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     retryCount = 0;
     m_ledManager->setErrFlashRate(0);
     m_display->drawStr("Modem Online", "Resetting Modem");
-    m_console->println("modemonline;");
+    m_console->println("modem=online;");
     m_modem->setBaudRate(baudRate);
     m_modem->enableErrorMessages();
     sendStatusUpdate("Ready", "Resetting Modem");
@@ -133,7 +134,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
     retryCount = 0;
     m_ledManager->setErrFlashRate(0);
-    m_console->println("modemreset;");
+    m_console->println("modem=reset;");
     m_display->drawStr("Modem Reset", "Getting SIMID");
 
     String simId = m_modem->getSIMId();
@@ -163,7 +164,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     }
 
     retryCount = 0;
-    m_console->println("modeminit;");
+    m_console->println("modem=initialized;");
     m_display->drawStr("COMM5", "Initialize Modem");
     delayAndCheckState(1000);
     m_ledManager->setErrFlashRate(0);
@@ -183,7 +184,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
         }
 
         retryCount = 0;
-        m_console->println("gpsonline;");
+        m_console->println("gps=online;");
         m_display->drawStr("COMM6", "GPS Read");
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
@@ -340,9 +341,9 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
 void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t length)
 {
-    m_console->print("Message arrived [");
+    m_console->print("mqtttopic=");
     m_console->print(topic);
-    m_console->println("] ");
+    m_console->println(";");
 
     if (messageReceivedCallback != NULL)
     {

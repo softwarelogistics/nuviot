@@ -117,18 +117,12 @@ void Console::printError(String err)
 {
     if (m_stream != NULL && m_serialEnabled)
     {
-        m_stream->println("ERROR");
-        m_stream->println("=======");
-        m_stream->println(err);
-        m_stream->println();
+        m_stream->println("[error]=>" + err);
     }
 
     if (m_btSerial != NULL && m_btEnabled)
     {
-        m_btSerial->println("ERROR");
-        m_btSerial->println("=======");
-        m_btSerial->println(err);
-        m_btSerial->println();
+        m_btSerial->println("[error]=>" + err);
     }
 }
 
@@ -136,18 +130,12 @@ void Console::printWarning(String warning)
 {
     if (m_stream != NULL && m_serialEnabled)
     {
-        m_stream->println("WARNING");
-        m_stream->println("=======");
-        m_stream->println(warning);
-        m_stream->println();
+        m_stream->println("[warning]=>" + warning);
     }
 
     if (m_btSerial != NULL && m_btEnabled)
     {
-        m_btSerial->println("WARNING");
-        m_btSerial->println("=======");
-        m_btSerial->println(warning);
-        m_btSerial->println();
+        m_btSerial->println("[warning]=>" + warning);
     }
 }
 

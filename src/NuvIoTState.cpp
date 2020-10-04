@@ -111,18 +111,19 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     String btSerialName = "NuvIoT - " + (m_sysConfig->DeviceId == "?" ? firmwareSku : m_DeviceId);
     m_btSerial->begin(btSerialName); //Name of your Bluetooth Signal
 
-    /*
-    return true;
 
     if(!EEPROM.begin(2048))
     {
         m_display->println("Could not initialize EEPROM");
-        m_console->println("Could not initialize EEPROM") ;  
+        m_console->println("eeprom=failed-init;") ;  
     }
     else 
     {
-        m_console->printVerbose("initialized EEPROM");
+        m_console->printVerbose("eeprom=initialized;");
     }
+
+    /*
+    return true;
 
     // are we fully ready to be online?
     //m_isCommissioned = EEPROM.readUShort(IS_CONFIG_LOCATION) == COMMISSIONED_ID;
@@ -1089,10 +1090,13 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             int addr = INT_BLOCK_START + pParam->getIndex() * sizeof(intValue);
             EEPROM.writeInt(addr, intValue);
             EEPROM.commit();
-#ifdef STATE_VERBOSE
-            m_console->printVerbose("SET int " + field + " " + String(intValue) + " at address " + String(addr));
-#endif
+            m_console->println("SET int " + field + " " + String(intValue) + " at address " + String(addr));
         }
+        else
+        {
+            m_console->printError("COULD NOT FIND INT PROPERTY: " + field);
+        }
+        
     }
     else if (fieldType == "Decimal")
     {
@@ -1102,22 +1106,27 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             float floatValue = atof(value.c_str());
             EEPROM.writeFloat(FLT_BLOCK_START + pParam->getIndex() * sizeof(float), floatValue);
             EEPROM.commit();
-#ifdef STATE_VERBOSE
-            m_console->printVerbose("SET float " + field + "=" + String(floatValue));
-#endif
+            m_console->println("SET float " + field + "=" + String(floatValue));
+        }
+        else
+        {
+            m_console->printError("COULD NOT FIND DOUBLE PROPERTY: " + field);
         }
     }
-    else if (fieldType == "Boolean")
+    else if (fieldType == "TrueFalse")
     {
         Param *pParam = findKey(m_pBoolParamHead, field.c_str());
         if (pParam != NULL)
         {
             bool boolValue = value == "true";
-            EEPROM.writeBool(BOOL_BLOCK_START + pParam->getIndex() * sizeof(float), boolValue);
+            int addr = BOOL_BLOCK_START + pParam->getIndex() * sizeof(bool);
+            EEPROM.writeBool(addr, boolValue);
             EEPROM.commit();
-#ifdef STATE_VERBOSE
-            m_console->printVerbose("SET bool " + field + "=" + String(boolValue));
-#endif
+            m_console->println("SET bool " + field + "=" + String(boolValue) + " at address " + String(addr));
+        }
+        else
+        {
+            m_console->printError("COULD NOT FIND BOOL PROPERTY: " + field);
         }
     }
 }

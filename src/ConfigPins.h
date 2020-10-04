@@ -11,6 +11,9 @@
 #define GP0O1_BRD_V2_GPRS_RX 23
 #define GP0O1_BRD_V2_GPRS_TX 19
 
+#define GP0O1_BRD_V1_SCL1 15
+#define GP0O1_BRD_V1_SDA1 4
+
 #define GP0O1_BRD_V2_SCL1 22
 #define GP0O1_BRD_V2_SDA1 21
 
@@ -79,16 +82,16 @@ public:
     int8_t K4Ctl = -1;
 
     int8_t SimRx = -1;
-    int8_t SimTx = -1;
+    int8_t SimTx = -1;    
 
     int8_t UartNumber = -1;
 
     uint8_t Scl1 = GP0O1_BRD_V2_SCL1;
     uint8_t Sda1 = GP0O1_BRD_V2_SDA1;
 
-    uint8_t CTChannel1 = GP0O1_BRD_V2_ADC1;
-    uint8_t CTChannel2 = GP0O1_BRD_V2_ADC2;
-    uint8_t CTChannel3 = GP0O1_BRD_V2_ADC3;
+    uint8_t CTChannel1 = GP0O1_BRD_V2_ADC4;
+    uint8_t CTChannel2 = GP0O1_BRD_V2_ADC5;
+    uint8_t CTChannel3 = GP0O1_BRD_V2_ADC6;
 
     uint8_t ADCChannel1 = GP0O1_BRD_V2_ADC1;
     uint8_t ADCChannel2 = GP0O1_BRD_V2_ADC2;
@@ -122,7 +125,43 @@ public:
     }
 
     void init(uint8_t boardType){
-        if(boardType == 1) {
+        if(boardType == 0) {
+            K1Ctl = GP0O1_BRD_V2_K4_CTL;
+            K2Ctl = GP0O1_BRD_V2_K3_CTL;
+            K3Ctl = GP0O1_BRD_V2_K2_CTL;
+            K4Ctl = GP0O1_BRD_V2_K1_CTL;
+            UartNumber = GP0O1_BRD_UART_NUMBER;
+
+            SimRx = GP0O1_BRD_V2_GPRS_RX;
+            SimTx = GP0O1_BRD_V2_GPRS_TX;
+
+            Scl1 = GP0O1_BRD_V1_SCL1;
+            Sda1 = GP0O1_BRD_V1_SDA1;
+
+            ADCChannel1 = GP0O1_BRD_V2_ADC1;
+            ADCChannel2 = GP0O1_BRD_V2_ADC2;
+            ADCChannel3 = GP0O1_BRD_V2_ADC3;
+            ADCChannel4 = GP0O1_BRD_V2_ADC4;
+            ADCChannel5 = GP0O1_BRD_V2_ADC5;
+            ADCChannel6 = GP0O1_BRD_V2_ADC6;
+            ADCChannel7 = GP0O1_BRD_V2_ADC7;
+            ADCChannel8 = GP0O1_BRD_V2_ADC8;
+
+            Gpio0 = GP0O1_BRD_V2_IO1;
+            Gpio1 = GP0O1_BRD_V2_IO2;
+            Gpio2 = GP0O1_BRD_V2_IO3;
+            Gpio3 = GP0O1_BRD_V2_IO4;
+            Gpio4 = GP0O1_BRD_V2_IO5;
+            Gpio5 = GP0O1_BRD_V2_IO6;
+            Gpio6 = GP0O1_BRD_V2_IO7;
+            Gpio7 = GP0O1_BRD_V2_IO8;
+
+            HasDisplay = true;
+            HasRelays = true;
+
+            SerialPort = 1;
+        }
+        else if(boardType == 1) {
             K1Ctl = GP0O1_BRD_V2_K4_CTL;
             K2Ctl = GP0O1_BRD_V2_K3_CTL;
             K3Ctl = GP0O1_BRD_V2_K2_CTL;

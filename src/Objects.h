@@ -33,11 +33,19 @@
 #ifdef PROD_BRD_V1
 HardwareSerial gprsPort(0);
 HardwareSerial consoleSerial(1);
+TwoWire twoWire(1);
+#endif
+
+#ifdef GPIO_BRD_V1
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+TwoWire twoWire(1);
 #endif
 
 #ifdef GPIO_BRD_V2
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
+TwoWire twoWire(1);
 #endif
 
 IOConfig ioConfig;
@@ -51,7 +59,7 @@ Console console(&btSerial, &consoleSerial);
 Display display(DISPLAY_U8G);
 LedManager ledManager(&console, &configPins);
 NuvIoTState state(&display, &ioConfig, &sysConfig, &ledManager, &btSerial, &SPIFFS, &hal, &console);
-TwoWire twoWire(1);
+
 
 MessagePayload *payload = new MessagePayload();
 GPSData *gps = NULL;

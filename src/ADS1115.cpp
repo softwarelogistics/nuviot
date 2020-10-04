@@ -352,11 +352,10 @@ int16_t ADS1115::getLastConversionResults()
 float ADS1115::readADC_Voltage(uint8_t channel)
 {
   uint16_t raw = readADC_SingleEnded(channel);
-
   float output = 0.0;
 
   if(raw < 0x8000 && raw > 100) {
-    output = ( raw / 26789.0f) * 5.0f;
+    output = ( raw / 26789.0f) * 5.0f;    
   }  
 
   return output;

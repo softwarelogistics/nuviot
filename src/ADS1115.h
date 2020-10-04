@@ -116,6 +116,11 @@ protected:
   ADS1115(TwoWire *twoWire, uint8_t i2cAddress = ADS1115_ADDRESS1, uint8_t bank = 0);
 
   void begin(void);
+
+  void setConversionDelay(uint8_t conversionDelay) {
+      m_conversionDelay = conversionDelay;
+  }
+
   uint16_t  readADC_SingleEnded(uint8_t channel);
   int16_t   readADC_Differential_0_1(void);
   float     readADC_Voltage(uint8_t channel);

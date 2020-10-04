@@ -187,7 +187,7 @@ bool SIMModem::beginDownload(String url)
     while (!isServiceConnected())
     {
         delay(500);
-        m_console->printWarning("Service status is not up, retrying.");
+        m_console->printWarning("servicestatus=notup,willretry;");
 
         if (millis() - start > 60000)
         {
@@ -200,7 +200,7 @@ bool SIMModem::beginDownload(String url)
 
     if (!setBearer())
     {
-        m_console->printError("COULD NOT SET BEARER");
+        m_console->printError("setbearer=failed");
         return -1;
     }
 
@@ -834,6 +834,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
 
         m_network = getNetwork();
         m_console->printVerbose("Connected to network: " + m_network);
+        m_console->println("network=" + m_network + ";");
 
         int signalStrength = findRSSI();
         while (signalStrength < 1)
@@ -842,6 +843,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
         }
 
         m_console->printVerbose("Signal strength: " + String(signalStrength));
+        m_console->println("signalstrength=" + String(signalStrength) + ";");
 
         setAPN();
 
@@ -861,7 +863,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
             }
         }
 
-        m_console->println("Service status is up.");
+        m_console->println("servicestatus=up;");
 
         m_ipAddress = "";
         if (m_ipAddress == "")

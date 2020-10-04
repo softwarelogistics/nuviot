@@ -75,7 +75,11 @@ public:
     void setScaler(uint8_t channel, float scaler)
     {
         m_scalers[channel] = scaler;
+    }
 
+    void setConvesionDelay(uint8_t conversionDelay) {
+        _bank1->setConversionDelay(conversionDelay);
+        _bank2->setConversionDelay(conversionDelay);
     }
 
     ~ADC()

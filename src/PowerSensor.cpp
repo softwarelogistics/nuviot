@@ -24,43 +24,67 @@ void PowerSensor::loop()
 
     for (int idx = 0; idx < 3; ++idx)
     {
-        switch(idx){
-            case 0: adcChannel = m_configPins->CTChannel1; break;
-            case 1: adcChannel = m_configPins->CTChannel2; break;
-            case 2: adcChannel = m_configPins->CTChannel3; break;            
+        switch (idx)
+        {
+        case 0:
+            adcChannel = m_configPins->CTChannel1;
+            break;
+        case 1:
+            adcChannel = m_configPins->CTChannel2;
+            break;
+        case 2:
+            adcChannel = m_configPins->CTChannel3;
+            break;
         }
 
-        if(adcChannel == -1) {
+        if (adcChannel == -1)
+        {
+            m_console->printWarning("ADC CHANNEL: " + String(idx) + " not configured, aborting power sampling.");
             return;
         }
 
         if (m_channelEnabled[idx])
         {
             float avereageTotal = 0;
-            int iterations = 50;
+            int iterations = 33;
+
+            int samplePeriodMS = 333; // 333 MS or 1/3 a second, or 20 cycles.
 
             float min = 500;
             float max = -1;
 
+            long startAvg = millis();
+            iterations = 0;
             // Assuming 60 hz
             // sample once every 10ms or collect values over 30 samples
-            for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
+            /*while (millis() - startAvg < samplePeriodMS)
+            //for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
             {
-                float voltage = m_adc->getVoltage(adcChannel);
-                avereageTotal += voltage;
-                delay(10);
-            }
+                //long start = millis();
+                avereageTotal += m_adc->getVoltage(adcChannel);
+                iterations++;
+
+                //while((millis() - start) < 5) {
+                //  delayMicroseconds(250);
+                //}
+            }*/
 
             // over the course of exactly 30 (or very close to it) since we are measuring
             // an absolute voltage via a sine wave, the center should be right at zero
             // this will establishe our baseline (which for our circuit should be very close
             // to 2.5 volts).
-            float offset = avereageTotal / iterations;
+            //float offset = avereageTotal / iterations;
+            float offset = 2.5;
 
             float levelTotal = 0;
 
-            for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
+            long startSample = millis();
+            iterations = 0;
+
+            //for (int sampleIteration = 0; sampleIteration < iterations; ++sampleIteration)
+            while (millis() - startSample < samplePeriodMS)
             {
+                //long start = millis();
                 float voltage = m_adc->getVoltage(adcChannel);
                 if (voltage < min)
                     min = voltage;
@@ -70,13 +94,18 @@ void PowerSensor::loop()
 
                 /* start collecting the sum of the voltages */
                 levelTotal += voltage > offset ? voltage - offset : -(voltage - offset);
-                delay(10);
+                iterations++;
+                //while((millis() - start) < 5) {
+                //  delayMicroseconds(250);
+                //}
             }
+
+            long samplePeriod = millis() - startSample;
 
             float avgLevel = (levelTotal / (float)iterations);
 
             // i = E / R, burden resistor = 33.0
-            // TODO: may need to adjust this with different burden resistor settings.            
+            // TODO: may need to adjust this with different burden resistor settings.
             //double current = avgLevel / 33.0f;
 
             // we are using a 100A : 0.050MA CT, with the burden resistor it's
@@ -94,27 +123,65 @@ void PowerSensor::loop()
     m_payload->current3 = m_channelEnabled[2] ? m_channelAmps[2] : -1;
 }
 
-void PowerSensor::configure(IOConfig *config) {
-    if(config->ADC1Config == ADC_CONFIG_CT) enableChannel(0, config->ADC1Name, config->ADC1Scaler);
-    if(config->ADC2Config == ADC_CONFIG_CT) enableChannel(1, config->ADC1Name, config->ADC2Scaler);
-    if(config->ADC3Config == ADC_CONFIG_CT) enableChannel(2, config->ADC1Name, config->ADC3Scaler);
+void PowerSensor::configure(IOConfig *config)
+{
+    if (config->ADC1Config == ADC_CONFIG_CT)
+        enableChannel(0, config->ADC1Name, config->ADC1Scaler);
+    if (config->ADC2Config == ADC_CONFIG_CT)
+        enableChannel(1, config->ADC2Name, config->ADC2Scaler);
+    if (config->ADC3Config == ADC_CONFIG_CT)
+        enableChannel(2, config->ADC3Name, config->ADC3Scaler);
+
+    if (!m_adc->isBankOneOnline())
+    {
+        while (1)
+        {
+            m_console->printError("adcbank1=notready;");
+            m_state->loop();
+            delay(1000);
+        };
+    }
+    else
+    {
+        m_console->println("adcbank1=online;");
+    }
+
+    if (!m_adc->isBankTwoOnline())
+    {
+        m_console->printError("adcbank2=notready;");
+        while (1)
+        {
+            m_console->printError("adcbank2=notready;");
+            m_state->loop();
+            delay(1000);
+        };
+    }
+    else
+    {
+        m_console->println("adcbank2=online;");
+    }
+
+    m_adc->setConvesionDelay(10);
 }
 
 void PowerSensor::enableChannel(uint8_t channel, String name, float scaler)
 {
     m_names[channel] = name;
     m_channelEnabled[channel] = true;
-    
+
     m_adc->enableADC(name, channel, true);
     m_ctRatioFactor[channel] = (scaler);
+
+    m_console->println(name + "=enabled;");
 }
 
 void PowerSensor::debugPrint()
 {
-    for (int idx = 0; idx < 3; ++idx) {
+    for (int idx = 0; idx < 3; ++idx)
+    {
         if (m_channelEnabled[idx])
         {
-            m_console->printVerbose("AMPS" + String(idx) + "  :" + String(m_channelAmps[idx]));
+            m_console->printVerbose(m_names[idx] + "=" + String(m_channelAmps[idx]) + ";");
         }
     }
 }
@@ -126,7 +193,6 @@ void PowerSensor::setChannelVoltage(uint8_t channel, uint16_t voltage)
 
 float PowerSensor::readAmps(uint8_t channel)
 {
-    m_channelAmps[channel] = channel;
     return m_channelAmps[channel];
 }
 
