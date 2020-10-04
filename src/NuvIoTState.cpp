@@ -1118,7 +1118,7 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
         Param *pParam = findKey(m_pBoolParamHead, field.c_str());
         if (pParam != NULL)
         {
-            bool boolValue = value == "true";
+            bool boolValue = value == "true" || value == "True";
             int addr = BOOL_BLOCK_START + pParam->getIndex() * sizeof(bool);
             EEPROM.writeBool(addr, boolValue);
             EEPROM.commit();
