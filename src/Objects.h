@@ -132,6 +132,12 @@ void configureFileSystem()
     }
 }
 
+void configureModem(unsigned long baudRate = 115200)
+{
+    gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
+    gprsPort.setRxBufferSize(16 * 1024);
+}
+
 void welcome(String firmwareSKU, String version)
 {
     console.println("WELCOME");
@@ -142,7 +148,12 @@ void welcome(String firmwareSKU, String version)
     console.println("Continue Startup");
 }
 
-void initDisplay()
+void loadConfigurations() {
+  ioConfig.load();
+  sysConfig.load();
+}
+
+void initDisplay(String firmwareSKU, String version)
 {
     display.enable(configPins.HasDisplay);
     if (configPins.HasDisplay)
@@ -156,6 +167,37 @@ void initDisplay()
     else
     {
         console.println("headless=true;");
+    }
+}
+
+void spinWhileNotCommissioned()
+{
+  long lastMsg = 0;
+
+  while (!sysConfig.Commissioned)
+  {
+    if(millis() - lastMsg > 1000){
+      console.println("commissioned=false;");
+      lastMsg = millis();
+    }
+    state.loop();
+  }    
+}
+
+void attemptConnect(bool reconnect, unsigned long baud = 115200) {
+    
+  while (state.isValid())
+  {
+    if (!state.getIsConfigurationModeActive() && client.Connect(reconnect, baud))
+    {
+      mqtt.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS0);
+
+      if (sysConfig.GPSEnabled)
+      {
+        modem.startGPS();
+      }
+
+      return;
     }
 }
 #endif
