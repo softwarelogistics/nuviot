@@ -22,7 +22,9 @@ public:
     void printByteArray(byte buffer[], size_t length);
     void printByteArray(String prefix, byte buffer[]);    
     void printByteArray(String prefix, byte buffer[], size_t length);
-    
+
+    void repeatFatalError(String err);
+
     void printVerbose(String msg);
     void println(String msg);
     void print(String msg);
@@ -31,6 +33,7 @@ public:
     void printWarning(String warning);
 
     void setVerboseLogging(bool verbose);
+    bool getVerboseLogging();
 
     void enableBTOut(bool enabled);
     void enableSerialOut(bool enabled);

@@ -300,7 +300,7 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
     String onlinePayload = "{'rssi':" + String(m_modem->getSignalQuality()) + ",'reconnect':" + String(isReconnect) + "}";
 
-    while (!m_mqtt->publish("nuviot/dvconline/" + m_sysConfig->DeviceId, onlinePayload, QOS0) && retryCount < 10)
+    while (!m_mqtt->publish("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/status/online", onlinePayload, QOS0) && retryCount < 10)
     {
         handleWarning("MQTT003", "Failed publish nuviot/dvconline.", retryCount++);
         delayAndCheckState(1000);
@@ -341,9 +341,7 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
 void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t length)
 {
-    m_console->print("mqtttopic=");
-    m_console->print(topic);
-    m_console->println(";");
+    m_console->println("mqttrecv=" + topic + "; // length=" + String(length));
 
     if (messageReceivedCallback != NULL)
     {
@@ -432,7 +430,7 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                     if (parts[3] == "properties" &&
                         parts[4] == "query")
                     {
-                        String payload = m_state->queryFirmwareVersion();
+                        String payload = m_state->getRemoteProperties();
                         String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/state";
                         m_mqtt->publish(topic, payload, QOS0);
                     }

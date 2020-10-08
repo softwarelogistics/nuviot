@@ -11,6 +11,7 @@
 #include "IOConfig.h"
 #include "SysConfig.h"
 #include <FS.h>
+#include <nvs.h>
 
 enum Storage_DataTypes
 {
@@ -27,8 +28,7 @@ private:
     int m_intDefault;
     float m_fltDefault;
     bool m_boolDefault;
-    const char *m_key;
- 
+    const char *m_key;    
 
 public:
     Param(const char *key, int value) { m_key = key; m_intDefault = value; }
@@ -56,6 +56,7 @@ private:
     bool m_configurationMode = false;
     IOConfig *m_ioConfig;
     SysConfig *m_sysConfig;
+    nvs_handle m_nvsHandle;
 
     long m_pauseTimeout = 0;
 
@@ -69,7 +70,6 @@ private:
 
     String readString(int add, int maxLength);
     String m_deviceAddress;
-    void writeString(int add, String data);
     char m_messageBuffer[4096];
     char m_btAddress[20];
     uint16_t m_messageBufferTail = 0;
@@ -77,17 +77,6 @@ private:
 
     String m_firmwareSku;
     String m_firmwareVersion;
-    String m_DeviceId;
-    String m_DeviceAccessKey;
-    String m_HostName;
-    String m_HostUserName;
-    String m_HostPassword;
-
-    String m_WiFiSSID;
-    String m_WiFiPassword;
-
-    bool m_anonymous;
-    bool m_secureTransport;
     bool m_paused;
 
     /* These three values use bit masking to signify that the value has
@@ -102,7 +91,8 @@ private:
     Param *appendValue(Param *pHead, Param *pNode);
 
     Param *findKey(Param *pHead, const char *key);
-    void createDefaults();
+
+    String resolveError(esp_err_t err);
 
 public:
     NuvIoTState(Display *display, IOConfig *ioConfig, SysConfig *sysConfig, LedManager *ledManager, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console);
@@ -130,22 +120,16 @@ public:
     bool getSecureTransport();
     bool getIsAnonymous();
 
-    bool getBool(String key);
-    byte getByte(String key);
-    int getInt(String key);
-    long getLong(String key);
-    float getFlt(String key);
 
     void updateProperty(String fieldType, String field, String value);
 
-    void setBool(int idx, boolean value);
-    void setByte(int idx, byte value);
-    void setInt(int idx, int value);
-    void setFloat(int idx, float value);
-
-    void registerInt(const char *key, int defaultValue);
+    void registerInt(const char *key, int32_t defaultValue);
     void registerFloat(const char *key, float defaultValue);
     void registerBool(const char *key, bool defaultValue);
+
+    bool getBool(String key);
+    int32_t getInt(String key);
+    float getFlt(String key);
 
 private:
     void readFirmware();    

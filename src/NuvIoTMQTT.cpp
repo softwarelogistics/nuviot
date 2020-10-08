@@ -126,7 +126,12 @@ void NuvIoTMQTT::registerCallback(void (*callback)(String, String)) {
 
 void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int length)
 {
+    
+
     String strTopic = String(topic);
+
+    m_console->println("mqttrecv=" + strTopic + "; // length=" + length);
+
     String strPayload = "";
 
     for (int i = 0; i < length; i++)

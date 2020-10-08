@@ -141,6 +141,11 @@ void MQTT::checkForReceivedMessages()
 {
     byte responseCode = m_channel->readByte();
     m_console->printByte("Received [", responseCode, "] from MQTT Server.");
+    bool isVerbose = m_console->getVerboseLogging();
+    m_console->setVerboseLogging(true);
+    m_console->println("modem=unsolicitedresponse; // byte [" + String(responseCode) + "]");
+    m_console->setVerboseLogging(isVerbose);
+
     switch (responseCode)
     {
     case MQTT_PUBLISH:

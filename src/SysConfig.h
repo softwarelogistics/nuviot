@@ -21,9 +21,12 @@ public:
     String WiFiPWD;
 
     String SrvrHostName;
+    bool TLS;
     bool Anonymous;
     String SrvrUID;
     String SrvrPWD;
+
+    String DeviceAccessKey;
 
     bool GPSEnabled;
     bool CellEnabled;
@@ -40,6 +43,7 @@ public:
         const size_t capacity = JSON_OBJECT_SIZE(40);
         DynamicJsonDocument doc(capacity);
         doc["baud"] = GPRSModemBaudRate;
+        doc["tls"] = TLS;
         doc["commissioned"] = Commissioned;
         doc["deviceId"] = DeviceId;
         doc["wifissid"] = WiFiSSID;
@@ -55,6 +59,7 @@ public:
         doc["gpsEnabled"] = GPSEnabled;
         doc["wifiEnabled"] = WiFiEnabled;
         doc["cellEnabled"] = CellEnabled;
+
         String output;
         serializeJson(doc, output);
 
@@ -108,12 +113,14 @@ public:
         Commissioned = false;
         VerboseLogging = false;
         DeviceId = "?";
+        TLS = false;
         WiFiSSID = "";
         WiFiPWD = "";
         SrvrHostName = "?";
         Anonymous = false;
         SrvrUID = "";
         SrvrPWD = "";
+        DeviceAccessKey = "";
 
         PingRate = 120;
         SendUpdateRate = 120;
@@ -139,6 +146,7 @@ public:
             Commissioned = doc["commissioned"].as<bool>();
             CellEnabled = doc["cellEnabled"].as<bool>();
             WiFiEnabled = doc["wifiEnabled"].as<bool>();
+            TLS = doc["tls"].as<bool>();
             VerboseLogging = doc["verboseLogging"].as<bool>();
             DeviceId = doc["deviceId"].as<String>();
             WiFiSSID = doc["wifissid"].as<String>();
@@ -151,7 +159,15 @@ public:
             GPSEnabled = doc["gpsEnabled"].as<bool>();
             SendUpdateRate = doc["sendUpdateRate"].as<uint32_t>();
             GPSUpdateRate = doc["gpsUpdateRate"].as<uint32_t>();
-            GPRSModemBaudRate = doc["baud"].as<uint32_t>();       
+            GPRSModemBaudRate = doc["baud"].as<uint32_t>();     
+            if(doc.containsKey("deviceAccessKey"))
+            {
+                String tmpKey = doc["deviceAccessKey"].as<String>();
+                if(tmpKey.length() > 0)
+                {
+                    DeviceAccessKey = tmpKey;
+                }
+            }
             return true;
         }
         else {

@@ -3,93 +3,9 @@
 #include "math.h"
 #include <Update.h>
 
-#define IS_CONFIG_LOCATION 0
+#include <nvs.h>
 
-#define INITIALIZED_ID 100
-#define COMMISSIONED_ID 101
-
-#define STRUCTURE_VERSION_START 2
-#define DATA_VERSION_START 4
-
-#define ANONYOUS_SERVER_CONN_START 6
-#define SECURE_TRANSPORT_START 7
-
-#define INT_SET_MASK_START 10
-#define FLT_SET_MASK_START INT_SET_MASK_START + sizeof(long)
-#define BOOL_SET_MASK_START FLT_SET_MASK_START + sizeof(long)
-
-#define DEVICEID_START 50
-#define DEVICEID_LEN 50 //100
-
-#define DEVICE_ACCESS_CODE_START DEVICEID_START + DEVICEID_LEN
-#define DEVICE_ACCESS_CODE_LEN 256 // 356
-
-#define SERVER_HOST DEVICE_ACCESS_CODE_START + DEVICE_ACCESS_CODE_LEN
-#define SERVER_HOST_LEN 100 // 238
-
-#define SERVER_USER_NAME_START SERVER_HOST + SERVER_HOST_LEN
-#define SERVER_USER_NAME_LEN 100 // 270
-
-#define SERVER_PASSWORD SERVER_USER_NAME_START + SERVER_USER_NAME_LEN
-#define SERVER_PASSWORD_LEN 100 // 302
-
-#define WIFI_SSID_START SERVER_PASSWORD + SERVER_PASSWORD_LEN
-#define WIFI_SSID_LEN 100 // 334
-
-#define WIFI_PASSWORD_START WIFI_SSID_START + WIFI_SSID_LEN
-#define WIFI_PASSWORD_LEN 100 // 366
-
-#define INT_BLOCK_START 1024
-#define INT_BLOCK_MAX 50 * sizeof(int) // (50 4 byte ints)
-
-#define FLT_BLOCK_START 1600
-#define FLT_BLOCK_SIZE 50 * sizeof(flt) // 4 bytes per float
-
-#define BOOL_BLOCK_START 1900
-#define BOOL_BLOCK_LEN 100 * sizeof(bool)
-
-/* 
-  Memory Map:
-    0 CONFIG LOCATION - Used to determine the state of the configuration, can be 
-        Unkonwn
-        Inintialized - Default parameters have been set, and can read/write from EEPROM 
-        Commissioned - Device has all the parameters it needs, upon reboot it will be come live
-    2 STRUCTURE VERSION - is used to denote the memory map used to start device parameters, if you increment this it will wipe the defaults
-    4 DATA VERSION - Each time the parameters are written, this is incremented, this potentially will be used with the device twin concept.
-    6 Anonymous Connection, if true uid/pwd will not be sent with connection request (note this is independent of the transport)
-    7 Secure Connection, if this is set the connection that is established should be HTTPS or MQTTS, basically some sort of TLS
-
-    Block of parameters that are used on all configurations
-    ========================================================
-    10 - 50 - Device ID
-    60 - 256 - Access Code, Key used for autentication 
-    316 - 80 - Server Host Name or IP Address
-    396 - 60 - User name used if not Anonymous
-    456 - 60 - Password used if not Anonymous
-    516 - 50 - WiFi SSID
-    566 - 50 - WiFi Password
-   
-    Block of parameters that are specific to an application
-    values are syncronized either with a textual key, this
-    value store is responsible for mapping keys to storage
-    locations.
-
-    Example
-    key = "calfactor"   index = 0 type = float
-    key = "updaterate"  index = 0 type = short
-    
-    Note that keys and storage locations need to be mapped
-    for specific types, that way it knows which bucket the
-    and slot within that bucket the value should be stored
-    and retreived.
-    ========================================================
-    
-    Parameters storage starts at byte 600
-    600 - 50 x 2 byte values SHORT 
-    700 - 10 x 8 byte values LONG
-    800 - 20 x 8 byte values FLOAT
-    960 - 20 x 1 byte value BOOL
- */
+#define FLOAT_DECIMAL_SCALER 1000.0f
 
 NuvIoTState::NuvIoTState(Display *display, IOConfig *config, SysConfig *sysConfig, LedManager *ledManager, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console)
 {
@@ -107,17 +23,44 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     m_firmwareSku = firmwareSku;
     m_firmwareVersion = firmwareVersion;
 
-    m_DeviceId = m_sysConfig->DeviceId;
-    String btSerialName = "NuvIoT - " + (m_sysConfig->DeviceId == "?" ? firmwareSku : m_DeviceId);
+    String btSerialName = "NuvIoT - " + (m_sysConfig->DeviceId == "?" ? firmwareSku : m_sysConfig->DeviceId);
     m_btSerial->begin(btSerialName); //Name of your Bluetooth Signal
 
-
-    if(!EEPROM.begin(2048))
+    esp_err_t openStat = nvs_open_from_partition("nvs", "kvp", NVS_READWRITE, &m_nvsHandle);
+    if (openStat != ESP_OK)
     {
-        m_display->println("Could not initialize EEPROM");
-        m_console->println("eeprom=failed-init;") ;  
+        String err = "UNKNOWN: " + String(openStat);
+
+        switch (openStat)
+        {
+        case ESP_ERR_NVS_NOT_INITIALIZED:
+            err = "NVS Not Initialized.";
+            break;
+        case ESP_ERR_NVS_PART_NOT_FOUND:
+            err = "Partition Not Found.";
+            break;
+        case ESP_ERR_NVS_NOT_FOUND:
+            err = "NS Not Exist, mode readonly.";
+            break;
+        case ESP_ERR_NVS_INVALID_NAME:
+            err = "Invalid namespace name.";
+            break;
+        }
+
+        m_display->drawStr("Could not initialize", "NVS KVP Storage", err.c_str());
+        m_console->repeatFatalError("nvskvp=notinitialized; // " + err);
     }
-    else 
+    else
+    {
+        m_console->printVerbose("nvskvp=initialized;");
+    }
+
+    if (!EEPROM.begin(2048))
+    {
+        m_display->drawStr("Could not initialize", "EEPROM");
+        m_console->repeatFatalError("Could not init EEPROM storage;");
+    }
+    else
     {
         m_console->printVerbose("eeprom=initialized;");
     }
@@ -260,86 +203,27 @@ void NuvIoTState::setDebugMode(bool mode)
 
 String NuvIoTState::getWiFiSSID()
 {
-    return m_WiFiSSID;
+    return m_sysConfig->WiFiSSID;
 }
 
 String NuvIoTState::getWiFiPassword()
 {
-    return m_WiFiPassword;
+    return m_sysConfig->WiFiPWD;
 }
 
 String NuvIoTState::getDeviceAccessKey()
 {
-    return m_DeviceAccessKey;
+    return m_sysConfig->DeviceAccessKey;
 }
 
 bool NuvIoTState::getIsAnonymous()
 {
-    return m_anonymous;
+    return m_sysConfig->Anonymous;
 }
 
 bool NuvIoTState::getSecureTransport()
 {
-    return m_secureTransport;
-}
-
-void NuvIoTState::createDefaults()
-{
-    Param *pNext = m_pFloatParamHead;
-    while (pNext != NULL)
-    {
-        uint64_t fieldMask = (uint64_t)pow(2, pNext->getIndex());
-        if ((m_fltSetValueMask & fieldMask) == fieldMask)
-        {
-            m_console->printVerbose("Flt [" + String(pNext->getKey()) + "] set at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-        }
-        else
-        {
-            m_console->printVerbose("Flt [" + String(pNext->getKey()) + "] not set, default: " + String(pNext->getFltDefault()) + " at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-            EEPROM.writeFloat(FLT_BLOCK_START + pNext->getIndex() * sizeof(float), pNext->getFltDefault());
-            m_fltSetValueMask = m_fltSetValueMask | fieldMask;
-        }
-        pNext = pNext->pNext;
-    }
-
-    pNext = m_pIntParamHead;
-    while (pNext != NULL)
-    {
-        uint64_t fieldMask = (uint64_t)pow(2, pNext->getIndex());
-        if ((m_intSetValueMask & fieldMask) == fieldMask)
-        {
-            m_console->printVerbose("Int [" + String(pNext->getKey()) + "] at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-        }
-        else
-        {
-            m_console->printVerbose("Int [" + String(pNext->getKey()) + "] not set, default: " + String(pNext->getIntDefault()) + " at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-            EEPROM.writeInt(INT_BLOCK_START + pNext->getIndex() * sizeof(int), pNext->getIntDefault());
-
-            m_intSetValueMask = m_intSetValueMask | fieldMask;
-        }
-        pNext = pNext->pNext;
-    }
-
-    pNext = m_pBoolParamHead;
-    while (pNext != NULL)
-    {
-        uint64_t fieldMask = (uint64_t)pow(2, pNext->getIndex());
-        if ((m_boolSetValueMask & fieldMask) == fieldMask)
-        {
-            m_console->printVerbose("Bool [" + String(pNext->getKey()) + "] at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-        }
-        else
-        {
-            m_console->printVerbose("Bool [" + String(pNext->getKey()) + "] not set, default: " + String(pNext->getBoolDefault()) + " at " + String(pNext->getIndex()) + " msk: " + String((int)fieldMask));
-            EEPROM.writeInt(BOOL_BLOCK_START + pNext->getIndex() * sizeof(bool), pNext->getBoolDefault());
-            m_boolSetValueMask = m_boolSetValueMask | fieldMask;
-        }
-        pNext = pNext->pNext;
-    }
-
-    EEPROM.writeLong64(INT_SET_MASK_START, m_intSetValueMask);
-    EEPROM.writeLong64(FLT_SET_MASK_START, m_fltSetValueMask);
-    EEPROM.writeLong64(BOOL_BLOCK_START, m_boolSetValueMask);
+    return m_sysConfig->TLS;
 }
 
 String NuvIoTState::queryFirmwareVersion()
@@ -349,39 +233,14 @@ String NuvIoTState::queryFirmwareVersion()
         "firmwareVersion=" + m_firmwareVersion + ";";
 
     return state;
-    /*
-    Param *pNext = m_pBoolParamHead;
-    while (pNext != NULL)
-    {
-        state += ", " + String(pNext->getKey()) + "=" + getBool(pNext->getKey());
-        pNext = pNext->pNext;
-    }
-
-    pNext = m_pIntParamHead;
-    while (pNext != NULL)
-    {
-        state += ", " + String(pNext->getKey()) + "=" + getInt(pNext->getKey());
-        pNext = pNext->pNext;
-    }
-
-    pNext = m_pFloatParamHead;
-    while (pNext != NULL)
-    {
-        state += ", " + String(pNext->getKey()) + "=" + getFlt(pNext->getKey());
-        pNext = pNext->pNext;
-    }
-
-    state += ";";
-    return state;*/
 }
 
 #define DFU_TIMEOUT 10000
 
-
 String NuvIoTState::getRemoteProperties()
 {
     String state =
-        "PROPERTIES:readonly-firmwareSku=" + m_firmwareSku + "," +
+        "readonly-firmwareSku=" + m_firmwareSku + "," +
         "readonly-firmwareVersion=" + m_firmwareVersion;
 
     Param *pNext = m_pBoolParamHead;
@@ -524,7 +383,7 @@ void NuvIoTState::readFirmware()
                 m_paused = true;
                 return;
             }
-                    
+
             delay(1);
         }
 
@@ -636,6 +495,10 @@ void NuvIoTState::loop()
         m_paused = false;
         m_btSerial->println("DISCONNECTED");
         m_pauseTimeout = 0;
+    }
+    else if (m_paused)
+    {
+        m_console->println("PAUSE: " + String(m_pauseTimeout) + " " + String(millis()));
     }
 
     while (m_btSerial->available() > 0)
@@ -863,93 +726,8 @@ void NuvIoTState::loop()
                 String type = setCommand.substring(0, dashIdx);
                 String key = setCommand.substring(dashIdx + 1, equalsIdx);
                 String value = setCommand.substring(equalsIdx + 1);
-                if (key == "deviceid")
-                {
-                    m_DeviceId = value;
-                    writeString(DEVICEID_START, m_DeviceId);
-                    m_btSerial->println("set-ack:" + key);
-                }
-                else if (key == "srvrhost")
-                {
-                    m_HostName = value;
-                    writeString(SERVER_HOST, m_HostName);
-                    m_btSerial->println("set-ack:" + key);
-                }
-                else if (key == "srvranonymous")
-                {
-                    m_anonymous = value == "true";
-                    EEPROM.writeBool(ANONYOUS_SERVER_CONN_START, m_anonymous);
-                    if (m_anonymous)
-                    {
-                        writeString(SERVER_USER_NAME_START, "");
-                        writeString(SERVER_PASSWORD, "");
-                    }
-                    m_btSerial->println("set-ack:" + key);
-                }
-                else if (key == "srvruid")
-                {
-                    m_HostUserName = value;
-                    writeString(SERVER_USER_NAME_START, m_HostUserName);
-                    m_btSerial->println("set-ack:" + key);
-                }
-                else if (key == "srvrpwd")
-                {
-                    m_HostPassword = value;
-                    writeString(SERVER_PASSWORD, m_HostPassword);
-                    m_btSerial->println("set-ack:" + key);
-                }
-                else if (key == "accesskey")
-                {
-                    m_DeviceAccessKey = value;
-                    writeString(DEVICE_ACCESS_CODE_START, m_DeviceAccessKey);
-                    m_btSerial->println("set-ack:" + key);
-                }
-                else if (key == "ssid")
-                {
-                    m_WiFiSSID = value;
-                    writeString(WIFI_SSID_START, m_WiFiSSID);
-                    m_btSerial->println("set-ack:" + key);
-                }
-                else if (key == "wifipwd")
-                {
-                    m_WiFiPassword = value;
-                    writeString(WIFI_PASSWORD_START, m_WiFiPassword);
-                    m_btSerial->println("set-ack:" + key);
-                }
-                else
-                {
-                    updateProperty(type, key, value);
-                    m_btSerial->println("set-ack:" + key);
-                }
-            }
-            else if (msg == "QUERY")
-            {
-                m_btSerial->print("deviceid=" + m_DeviceId + "\n");
-                m_btSerial->print("srvrhost=" + m_HostName + "\n");
-                m_btSerial->print("srvranonymous=");
-                m_btSerial->print(m_anonymous ? "true\n" : "false\n");
-
-                if (!m_anonymous)
-                {
-                    m_btSerial->print("srvruid=" + m_HostUserName + "\n");
-                    m_btSerial->print("srvrpwd=" + m_HostPassword + "\n");
-                }
-
-                if (m_DeviceAccessKey != NULL && m_DeviceAccessKey.length() > 0)
-                {
-                    m_btSerial->print("key=" + m_DeviceAccessKey + "\n");
-                }
-
-                if (m_WiFiSSID != NULL && m_WiFiSSID.length() > 0)
-                {
-                    m_btSerial->print("ssid=" + m_WiFiSSID + "\n");
-                    m_btSerial->print("wifipwd=" + m_WiFiPassword + "\n");
-                }
-
-                m_btSerial->print("fwsku=" + m_firmwareSku + "\n");
-                m_btSerial->print("fwversion=" + m_firmwareVersion + "\n");
-                m_btSerial->print("hwversion=2\n");
-                m_btSerial->print("platform=ESP32\n");
+                updateProperty(type, key, value);
+                m_btSerial->println("set-ack:" + key);
             }
             else if (msg == "QUIT")
             {
@@ -959,62 +737,8 @@ void NuvIoTState::loop()
             {
                 m_sysConfig->Commissioned = true;
                 m_sysConfig->write();
-                EEPROM.writeUShort(IS_CONFIG_LOCATION, COMMISSIONED_ID);
-                EEPROM.commit();
                 m_btSerial->println("999,ACK\n");
                 m_hal->restart();
-            }
-            else
-            {
-
-                switch (m_messageBuffer[0])
-                {
-                case '0': // Device ID;
-                    m_DeviceId = String(&m_messageBuffer[2]);
-                    writeString(DEVICEID_START, m_DeviceId);
-                    m_btSerial->println("0,ACK;");
-                    break;
-                case '1': // Server Host Name
-                    m_HostName = String(&m_messageBuffer[2]);
-                    writeString(SERVER_HOST, m_HostName);
-                    m_btSerial->println("1,ACK;");
-                    break;
-                case '2': // Anonyous
-                    m_anonymous = String(&m_messageBuffer[2]) == "true";
-                    EEPROM.writeBool(ANONYOUS_SERVER_CONN_START, m_anonymous);
-                    if (m_anonymous)
-                    {
-                        writeString(SERVER_USER_NAME_START, "");
-                        writeString(SERVER_PASSWORD, "");
-                    }
-                    m_btSerial->println("2,ACK;");
-                    break;
-                case '3': // Server User Name
-                    m_HostUserName = String(&m_messageBuffer[2]);
-                    writeString(SERVER_USER_NAME_START, m_HostUserName);
-                    m_btSerial->println("3,ACK;");
-                    break;
-                case '4': // Server Password
-                    m_HostPassword = String(&m_messageBuffer[2]);
-                    writeString(SERVER_PASSWORD, m_HostPassword);
-                    m_btSerial->println("4,ACK;");
-                    break;
-                case '5': // Device Access m_DeviceAccessKey
-                    m_DeviceAccessKey = String(&m_messageBuffer[2]);
-                    writeString(DEVICE_ACCESS_CODE_START, m_DeviceAccessKey);
-                    m_btSerial->println("5,ACK;");
-                    break;
-                case '6':
-                    m_WiFiSSID = String(&m_messageBuffer[2]);
-                    writeString(WIFI_SSID_START, m_WiFiSSID);
-                    m_btSerial->println("6,ACK;");
-                    break;
-                case '7':
-                    m_WiFiPassword = String(&m_messageBuffer[2]);
-                    writeString(WIFI_PASSWORD_START, m_WiFiPassword);
-                    m_btSerial->println("7,ACK;");
-                    break;
-                }
             }
 
             m_messageBufferTail = 0;
@@ -1045,38 +769,75 @@ Param *NuvIoTState::findKey(Param *pHead, const char *key)
 
 bool NuvIoTState::getBool(String key)
 {
-    Param *pParam = findKey(m_pBoolParamHead, key.c_str());
-    if (pParam != NULL)
-    {
-        return EEPROM.readBool(BOOL_BLOCK_START + pParam->getIndex() * sizeof(bool));
-    }
+    uint8_t tmpBool;
 
-    return 0;
+    esp_err_t err = nvs_get_u8(m_nvsHandle, key.c_str(), &tmpBool);
+
+    if (err == ESP_OK)
+    {
+        return tmpBool != 0;
+    }
+    else
+    {
+        String errMsg = resolveError(err);
+        Param *pParam = findKey(m_pIntParamHead, key.c_str());
+        if (pParam != NULL)
+        {
+            m_console->printWarning("getbool=failed; // err: not found and not registerd, key: " + String(key) + ";");
+            return false;
+        }
+
+        m_console->printWarning("getbool=failed; // returning default, err: " + errMsg + ", key: " + String(key) + ";");
+        return pParam->getBoolDefault();
+    }
 }
 
-int NuvIoTState::getInt(String key)
+int32_t NuvIoTState::getInt(String key)
 {
-    Param *pParam = findKey(m_pIntParamHead, key.c_str());
-    if (pParam != NULL)
+    int32_t tmpInt;
+    esp_err_t err = nvs_get_i32(m_nvsHandle, key.c_str(), &tmpInt);
+    if (err == ESP_OK)
     {
-        int addr = INT_BLOCK_START + pParam->getIndex() * sizeof(int);
-
-        int result = EEPROM.readInt(addr);
-        return result;
+        return tmpInt;
     }
+    else
+    {
+        String errMsg = resolveError(err);
+        Param *pParam = findKey(m_pIntParamHead, key.c_str());
+        if (pParam != NULL)
+        {
+            m_console->printWarning("getint=failed; // err: not found and not registerd, key: " + String(key) + ";");
+            return false;
+        }
 
-    return 0;
+        m_console->printWarning("getint=failed; // returning default, err: " + errMsg + " key: " + String(key));
+        return pParam->getIntDefault();
+    }
 }
 
 float NuvIoTState::getFlt(String key)
 {
-    Param *pParam = findKey(m_pFloatParamHead, key.c_str());
-    if (pParam != NULL)
-    {
-        return EEPROM.readFloat(FLT_BLOCK_START + pParam->getIndex() * sizeof(float));
-    }
+    int32_t tmpFlt;
 
-    return 0;
+    esp_err_t err = nvs_get_i32(m_nvsHandle, key.c_str(), &tmpFlt);
+
+    if (err == ESP_OK)
+    {
+        return tmpFlt / FLOAT_DECIMAL_SCALER;
+    }
+    else
+    {
+        String errMsg = resolveError(err);
+        Param *pParam = findKey(m_pIntParamHead, key.c_str());
+        if (pParam != NULL)
+        {
+            m_console->printWarning("getflt=failed," + key + "; // err: not found and not registerd, key: " + String(key) + ";");
+            return 0;
+        }
+
+        m_console->printWarning("getflt=failed," + key + "; // returning default, err: " + errMsg + ", key: " + String(key) + ";");
+        return pParam->getFltDefault();
+    }
 }
 
 void NuvIoTState::updateProperty(String fieldType, String field, String value)
@@ -1086,31 +847,61 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
         Param *pParam = findKey(m_pIntParamHead, field.c_str());
         if (pParam != NULL)
         {
-            int intValue = atoi(value.c_str());
-            int addr = INT_BLOCK_START + pParam->getIndex() * sizeof(intValue);
-            EEPROM.writeInt(addr, intValue);
-            EEPROM.commit();
-            m_console->println("SET int " + field + " " + String(intValue) + " at address " + String(addr));
+            int32_t intValue = atol(value.c_str());
+            esp_err_t err = nvs_set_i32(m_nvsHandle, field.c_str(), intValue);
+            if (err == ESP_OK)
+            {
+                err = nvs_commit(m_nvsHandle);
+                if (err == ESP_OK)
+                {
+                    m_console->println("setint=success," + field + ";");
+                }
+                else
+                {
+                    String errMsg = resolveError(err);
+                    m_console->printError("setint=failed,commit" + field + "; // error: " + errMsg);
+                }
+            }
+            else
+            {
+                String errMsg = resolveError(err);
+                m_console->printError("setint=failed,write," + field + "; // error: " + errMsg);
+            }
         }
         else
         {
-            m_console->printError("COULD NOT FIND INT PROPERTY: " + field);
+            m_console->printError("setint=failed,find," + field + "; // error: could not find field.");
         }
-        
     }
     else if (fieldType == "Decimal")
     {
         Param *pParam = findKey(m_pFloatParamHead, field.c_str());
         if (pParam != NULL)
         {
-            float floatValue = atof(value.c_str());
-            EEPROM.writeFloat(FLT_BLOCK_START + pParam->getIndex() * sizeof(float), floatValue);
-            EEPROM.commit();
-            m_console->println("SET float " + field + "=" + String(floatValue));
+            float floatValue = atof(value.c_str()) * FLOAT_DECIMAL_SCALER;
+            esp_err_t err = nvs_set_i32(m_nvsHandle, field.c_str(), floatValue);
+            if (err == ESP_OK)
+            {
+                err = nvs_commit(m_nvsHandle);
+                if (err == ESP_OK)
+                {
+                    m_console->println("setdecimal=success," + field + ";");
+                }
+                else
+                {
+                    String errMsg = resolveError(err);
+                    m_console->printError("setdecimal=failed,commit," + field + "; // error: " + errMsg);
+                }
+            }
+            else
+            {
+                String errMsg = resolveError(err);
+                m_console->printError("setdecimal=failed,write," + field + "; // error: " + errMsg);
+            }
         }
         else
         {
-            m_console->printError("COULD NOT FIND DOUBLE PROPERTY: " + field);
+            m_console->printError("setdecimal=failed,find" + field + "; // error: could not find field.");
         }
     }
     else if (fieldType == "TrueFalse")
@@ -1118,66 +909,32 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
         Param *pParam = findKey(m_pBoolParamHead, field.c_str());
         if (pParam != NULL)
         {
-            bool boolValue = value == "true" || value == "True";
-            int addr = BOOL_BLOCK_START + pParam->getIndex() * sizeof(bool);
-            EEPROM.writeBool(addr, boolValue);
-            EEPROM.commit();
-            m_console->println("SET bool " + field + "=" + String(boolValue) + " at address " + String(addr));
+            uint8_t boolValue = value == "true" || value == "True" ? 255 : 0;
+            esp_err_t err = nvs_set_u8(m_nvsHandle, field.c_str(), boolValue);
+            if (err == ESP_OK)
+            {
+                err = nvs_commit(m_nvsHandle);
+                if (err == ESP_OK)
+                {
+                    m_console->println("setbool=success," + field + ";");
+                }
+                else
+                {
+                    String errMsg = resolveError(err);
+                    m_console->printError("setbool=failed,commit," + field + "; // error: " + errMsg);
+                }
+            }
+            else
+            {
+                String errMsg = resolveError(err);
+                m_console->printError("setbool=failed,write," + field + "; // error: " + errMsg);
+            }
         }
         else
         {
-            m_console->printError("COULD NOT FIND BOOL PROPERTY: " + field);
+            m_console->printError("setbool=failed,find" + field + "; // error: could not find field.");
         }
     }
-}
-
-void NuvIoTState::setBool(int idx, boolean value)
-{
-    EEPROM.writeBool(idx, value);
-    EEPROM.commit();
-}
-
-void NuvIoTState::setByte(int idx, byte value)
-{
-    EEPROM.writeByte(idx, value);
-    EEPROM.commit();
-}
-
-void NuvIoTState::setInt(int idx, int value)
-{
-    EEPROM.writeInt(idx, value);
-}
-
-void NuvIoTState::setFloat(int idx, float value)
-{
-    EEPROM.writeFloat(idx, value);
-}
-
-void NuvIoTState::writeString(int adddr, String data)
-{
-    int _size = data.length();
-    for (int i = 0; i < _size; i++)
-    {
-        EEPROM.write(adddr + i, data[i]);
-    }
-    EEPROM.write(adddr + _size, '\0'); //Add termination null character for String Data
-    EEPROM.commit();
-}
-
-String NuvIoTState::readString(int addr, int maxLength)
-{
-    char data[100]; //Max 100 Bytes
-    int len = 0;
-    unsigned char k;
-    k = EEPROM.read(addr);
-    while (k != '\0' && len < maxLength) //Read until null character
-    {
-        k = EEPROM.read(addr + len);
-        data[len] = k;
-        len++;
-    }
-    data[len] = '\0';
-    return String(data);
 }
 
 Param *NuvIoTState::appendValue(Param *pHead, Param *pNode)
@@ -1207,58 +964,159 @@ Param *NuvIoTState::appendValue(Param *pHead, Param *pNode)
     return NULL;
 }
 
-void NuvIoTState::registerInt(const char *key, int defaultValue)
+String NuvIoTState::resolveError(esp_err_t err)
 {
-    Param *p = new Param(key, defaultValue);
+    switch (err)
+    {
+    case ESP_ERR_NVS_NOT_FOUND:
+        return "keynotfound";
+    case ESP_ERR_NVS_INVALID_HANDLE:
+        return "invalidhandle";
+    case ESP_ERR_NVS_INVALID_NAME:
+        return "invalidname";
+    case ESP_ERR_NVS_INVALID_LENGTH:
+        return "invalidlength";
+    default:
+        return "unknown-" + String(err);
+    }
+}
+
+void NuvIoTState::registerInt(const char *keyName, int32_t defaultValue)
+{
+    Param *p = new Param(keyName, defaultValue);
 
     if (m_pIntParamHead == NULL)
     {
         p->setIndex(0);
-#ifdef STATE_VERBOSE
-        m_console->printVerbose("Reg int [" + String(p->getKey()) + "]=[" + String(p->getIntDefault()) + "] idx [" + String(p->getIndex()) + "]");
-#endif
         m_pIntParamHead = p;
     }
     else
     {
         appendValue(m_pIntParamHead, p);
     }
+
+    int32_t tmpValue;
+    esp_err_t err = nvs_get_i32(m_nvsHandle, keyName, &tmpValue);
+    if (err == ESP_OK)
+    {
+        m_console->println("keyreg=existing,int," + String(keyName) + "; // existing value: " + String(tmpValue));
+    }
+    else if (err == ESP_ERR_NVS_NOT_FOUND)
+    {
+        err = nvs_set_i32(m_nvsHandle, keyName, (int32_t)(defaultValue));
+        if (err == ESP_OK)
+        {
+            err = nvs_commit(m_nvsHandle);
+            if (err == ESP_OK)
+            {
+                m_console->println("keyreg=added,int," + String(keyName) + "; // default value: " + String(defaultValue));
+            }
+            else
+            {
+                m_console->repeatFatalError("keyreg=failed,commit,int," + String(keyName) + "; // " + resolveError(err));
+            }
+        }
+        else
+        {
+            m_console->repeatFatalError("keyreg=failed,write,int," + String(keyName) + "; // " + resolveError(err));
+        }
+    }
+    else
+    {
+        m_console->repeatFatalError("addkey=>" + String(keyName) + "; // " + resolveError(err));
+    }
 }
 
-void NuvIoTState::registerFloat(const char *key, float defaultValue)
+void NuvIoTState::registerFloat(const char *keyName, float defaultValue)
 {
-    Param *p = new Param(key, defaultValue);
+    Param *p = new Param(keyName, defaultValue);
 
     if (m_pFloatParamHead == NULL)
     {
         p->setIndex(0);
-#ifdef STATE_VERBOSE
-        m_console->printVerbose("Reg flt [" + String(p->getKey()) + "]=[" + String(p->getFltDefault()) + "] idx [" + String(p->getIndex()) + "]");
-#endif
         m_pFloatParamHead = p;
     }
     else
     {
         appendValue(m_pFloatParamHead, p);
     }
+
+    int32_t tmpValue;
+    esp_err_t err = nvs_get_i32(m_nvsHandle, keyName, &tmpValue);
+    if (err == ESP_OK)
+    {
+        m_console->println("keyreg=existing,decimal," + String(keyName) + "; // existing value: " + String(tmpValue / FLOAT_DECIMAL_SCALER));
+    }
+    else if (err == ESP_ERR_NVS_NOT_FOUND)
+    {
+        err = nvs_set_i32(m_nvsHandle, keyName, (int32_t)(defaultValue * FLOAT_DECIMAL_SCALER));
+        if (err == ESP_OK)
+        {
+            err = nvs_commit(m_nvsHandle);
+            if (err == ESP_OK)
+            {
+                m_console->println("keyreg=added,decimal," + String(keyName) + "; // default value: " + String(defaultValue));
+            }
+            else
+            {
+                m_console->repeatFatalError("keyreg=failed,commit,decimal," + String(keyName) + "; // " + resolveError(err));
+            }
+        }
+        else
+        {
+            m_console->repeatFatalError("keyreg=failed,write,decimal," + String(keyName) + "; // " + resolveError(err));
+        }
+    }
+    else
+    {
+        m_console->repeatFatalError("keyreg=failed,read,decimal," + String(keyName) + "; // " + resolveError(err));
+    }
 }
 
-void NuvIoTState::registerBool(const char *key, boolean defaultValue)
+void NuvIoTState::registerBool(const char *keyName, boolean defaultValue)
 {
-    Param *p = new Param(key, defaultValue);
+    Param *p = new Param(keyName, defaultValue);
 
     if (m_pBoolParamHead == NULL)
     {
         p->setIndex(0);
-#ifdef STATE_VERBOSE
-        m_console->printVerbose("Reg bool [" + String(p->getKey()) + "]=[" + String(p->getBoolDefault()) + "] idx [" + String(p->getIndex()) + "]");
-#endif
-
         m_pBoolParamHead = p;
     }
     else
     {
         appendValue(m_pBoolParamHead, p);
+    }
+
+    uint8_t tmpValue;
+    esp_err_t err = nvs_get_u8(m_nvsHandle, keyName, &tmpValue);
+    if (err == ESP_OK)
+    {
+        // key exists and we read it.
+        m_console->println("keyreg=existing,bool," + String(keyName) + "; // existing value: " + String(tmpValue) + ", 255 = true 0 = false");
+    }
+    else if (err == ESP_ERR_NVS_NOT_FOUND)
+    {
+        err = nvs_set_u8(m_nvsHandle, keyName, defaultValue);
+        if (err == ESP_OK)
+        {
+            err = nvs_commit(m_nvsHandle);
+            if (err == ESP_OK)
+            {
+                m_console->println("keyreg=added,bool," + String(keyName) + "; // default value: " + String(tmpValue) + ", 255 = true 0 = false");
+            }
+            else
+            {
+                m_console->repeatFatalError("keyreg=failed,commit,bool," + String(keyName) + "; // " + resolveError(err));
+            }
+        }
+        else
+        {
+            m_console->repeatFatalError("keyreg=failed,write,bool," + String(keyName) + "; // " + resolveError(err));
+        }
+    }
+    else
+    {
+        m_console->repeatFatalError("keyreg=failed,read,bool," + String(keyName) + "; // " + resolveError(err));
     }
 }
 

@@ -22,7 +22,6 @@ void Console::printByte(byte ch)
 {
     if (m_verboseLogging)
     {
-
         char hexChar[2];
 
         if (m_stream != NULL && m_serialEnabled)
@@ -66,11 +65,30 @@ void Console::setVerboseLogging(bool verbose)
     m_verboseLogging = verbose;
 }
 
+bool Console::getVerboseLogging()
+{
+    return m_verboseLogging;
+}
+
 void Console::printVerbose(String msg)
 {
     if (m_verboseLogging)
     {
         println(msg);
+    }
+}
+
+void Console::repeatFatalError(String error)
+{
+    println("[fatalerror]=>" + error);
+    long nextSend = millis() + 1000;
+    while (true)
+    {
+        if (nextSend < millis())
+        {
+            println("[fatalerror]=>" + error);
+            nextSend = millis() + 1000;
+        }
     }
 }
 
