@@ -64,121 +64,6 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     {
         m_console->printVerbose("eeprom=initialized;");
     }
-
-    /*
-    return true;
-
-    // are we fully ready to be online?
-    //m_isCommissioned = EEPROM.readUShort(IS_CONFIG_LOCATION) == COMMISSIONED_ID;
-    if (m_sysConfig->Commissioned)
-    {
-        // if so we must be initialized.
-        m_isInitialized = true;
-    }
-    else
-    {
-        short initValue = EEPROM.readUShort(IS_CONFIG_LOCATION);
-        // have the data values been initialized in EEPROM?
-        m_isInitialized = EEPROM.readUShort(IS_CONFIG_LOCATION) == INITIALIZED_ID;
-    }
-
-    //m_DeviceId = (!m_isInitialized) ? "?" : readString(DEVICEID_START, DEVICEID_LEN);
-
-    const uint8_t *bt_addr = esp_bt_dev_get_address();
-
-    sprintf(m_btAddress, "%02X:%02X:%02X:%02X:%02X:%02X",
-            (int)bt_addr[0],
-            (int)bt_addr[1],
-            (int)bt_addr[2],
-            (int)bt_addr[3],
-            (int)bt_addr[4],
-            (int)bt_addr[5]);
-
-    m_btAddress[17] = 0x00;
-
-    if (!m_isInitialized)
-    {
-        m_console->printVerbose("State -> Not init.");
-
-        m_anonymous = true;
-        m_secureTransport = false;
-        m_HostName = "?";
-        m_HostUserName = "?";
-        m_HostPassword = "?";
-        m_DeviceAccessKey = "?";
-        m_WiFiSSID = "?";
-        m_WiFiPassword = "?";
-
-        m_intSetValueMask = 0x00;
-        m_fltSetValueMask = 0x00;
-        m_boolSetValueMask = 0x00;
-
-        EEPROM.writeLong64(INT_SET_MASK_START, m_intSetValueMask);
-        EEPROM.writeLong64(FLT_SET_MASK_START, m_fltSetValueMask);
-        EEPROM.writeLong64(BOOL_SET_MASK_START, m_boolSetValueMask);
-
-        writeString(DEVICEID_START, m_DeviceId);
-        writeString(DEVICE_ACCESS_CODE_START, m_DeviceAccessKey);
-        EEPROM.writeBool(ANONYOUS_SERVER_CONN_START, m_anonymous);
-        EEPROM.writeBool(SECURE_TRANSPORT_START, m_secureTransport);
-        writeString(SERVER_USER_NAME_START, m_HostUserName);
-        writeString(SERVER_PASSWORD, m_HostPassword);
-        writeString(SERVER_HOST, m_HostName);
-        writeString(WIFI_SSID_START, m_WiFiSSID);
-        writeString(WIFI_PASSWORD_START, m_WiFiPassword);
-        EEPROM.writeUShort(IS_CONFIG_LOCATION, INITIALIZED_ID);
-        short initValue = EEPROM.readUShort(IS_CONFIG_LOCATION);
-
-        m_console->printVerbose("WROTE INITI");
-    }
-    else
-    {
-        m_console->printVerbose("State - Has Datat.");
-
-        m_intSetValueMask = EEPROM.readLong64(INT_SET_MASK_START);
-        m_fltSetValueMask = EEPROM.readLong64(FLT_SET_MASK_START);
-        m_boolSetValueMask = EEPROM.readLong64(BOOL_SET_MASK_START);
-
-        m_HostName = readString(SERVER_HOST, SERVER_HOST_LEN);
-        m_anonymous = EEPROM.readBool(ANONYOUS_SERVER_CONN_START);
-        m_HostUserName = readString(SERVER_USER_NAME_START, SERVER_USER_NAME_LEN);
-        m_HostPassword = readString(SERVER_PASSWORD, SERVER_PASSWORD_LEN);
-        m_DeviceAccessKey = readString(DEVICE_ACCESS_CODE_START, DEVICE_ACCESS_CODE_LEN);
-        m_WiFiSSID = readString(WIFI_SSID_START, WIFI_SSID_LEN);
-        m_WiFiPassword = readString(WIFI_PASSWORD_START, WIFI_PASSWORD_LEN);
-    }
-
-    m_console->printVerbose("HERE");
-
-    createDefaults();
-
-    m_console->printVerbose("CREATED DEFAULTS");
-
-    Param *pNode = m_pIntParamHead;
-    while (pNode != NULL)
-    {
-        m_console->println(String(pNode->getIndex() + ". " + String(pNode->getKey())));
-        pNode = pNode->pNext;
-    }
-
-    if (!m_sysConfig->Commissioned)
-    {
-        m_display->clearBuffer();
-        if (m_DeviceId != "?")
-        {
-            m_display->println(m_DeviceId.c_str());
-        }
-
-        m_display->println("Please Config");
-        m_display->println("BT Addr:");
-        m_display->println(m_btAddress);
-        m_display->sendBuffer();
-    }
-
-    EEPROM.commit();
-    m_console->printVerbose("COMMIT EEPROM");
-
-    delay(2500);*/
 }
 
 bool NuvIoTState::isValid()
@@ -333,6 +218,7 @@ void NuvIoTState::readFirmware()
         m_display->println("ERR: fail start DFU");
         delay(2000);
         m_paused = false;
+        m_console->enableBTOut(true);
         return;
     }
 
@@ -401,6 +287,7 @@ void NuvIoTState::readFirmware()
         if (actualCheckSum != calcCheckSum)
         {
             m_btSerial->print("fail-checksum:" + String(idx) + "\n");
+            m_console->enableBTOut(true);
             return;
         }
         else
@@ -428,10 +315,12 @@ void NuvIoTState::readFirmware()
         }
         else
         {
+            m_console->enableBTOut(true);
             m_console->printError("Could not flash file");
             m_console->printError("Could not write byte array.");
             m_display->drawStr("Flashing failed");
             m_btSerial->print("fail-write:" + String(idx) + "\n");
+
             delay(2000);
             return;
         }
@@ -764,6 +653,8 @@ Param *NuvIoTState::findKey(Param *pHead, const char *key)
         pNext = pNext->pNext;
     }
 
+    m_console->printError("kvp=notfound; // could not find key " + String(key) + " in linked list.");
+
     return NULL;
 }
 
@@ -781,7 +672,7 @@ bool NuvIoTState::getBool(String key)
     {
         String errMsg = resolveError(err);
         Param *pParam = findKey(m_pIntParamHead, key.c_str());
-        if (pParam != NULL)
+        if (pParam == NULL)
         {
             m_console->printWarning("getbool=failed; // err: not found and not registerd, key: " + String(key) + ";");
             return false;
@@ -804,7 +695,7 @@ int32_t NuvIoTState::getInt(String key)
     {
         String errMsg = resolveError(err);
         Param *pParam = findKey(m_pIntParamHead, key.c_str());
-        if (pParam != NULL)
+        if (pParam == NULL)
         {
             m_console->printWarning("getint=failed; // err: not found and not registerd, key: " + String(key) + ";");
             return false;
@@ -829,7 +720,7 @@ float NuvIoTState::getFlt(String key)
     {
         String errMsg = resolveError(err);
         Param *pParam = findKey(m_pIntParamHead, key.c_str());
-        if (pParam != NULL)
+        if (pParam == NULL)
         {
             m_console->printWarning("getflt=failed," + key + "; // err: not found and not registerd, key: " + String(key) + ";");
             return 0;

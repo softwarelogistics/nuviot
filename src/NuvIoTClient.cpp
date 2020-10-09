@@ -300,7 +300,7 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
     String onlinePayload = "{'rssi':" + String(m_modem->getSignalQuality()) + ",'reconnect':" + String(isReconnect) + "}";
 
-    while (!m_mqtt->publish("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/status/online", onlinePayload, QOS0) && retryCount < 10)
+    while (!m_mqtt->publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", onlinePayload, QOS0) && retryCount < 10)
     {
         handleWarning("MQTT003", "Failed publish nuviot/dvconline.", retryCount++);
         delayAndCheckState(1000);
