@@ -27,6 +27,9 @@ public:
     void setMessageReceivedCallback(void (*callback)(String topic, byte buffer[], size_t buffer_length));
     void setErrorCallback(void (*callback)(String error));      
     void loop();
+    void reset();
+
+    bool getIsClosed() {return m_closed;}
 
     void setTransparentMode(bool transparentMode) {
         m_transparentMode = transparentMode;
@@ -41,6 +44,8 @@ private:
     Console *m_console;
     Channel *m_channel;
     String m_lastError;
+
+    bool m_closed = true;
 
     byte m_rxBuffer[4096];
     byte m_txBuffer[4096];

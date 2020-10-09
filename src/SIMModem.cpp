@@ -53,11 +53,15 @@ bool SIMModem::waitForReply(String expectedReply, int iterations)
 
 bool SIMModem::enableTransparentMode()
 {
+    m_console->println("XXXXXXXXXXXXXX SETTING TRANSPARENT MODE.");
+
     return sendCommand("AT+CIPMODE=1") == S_OK;
 }
 
 bool SIMModem::disableTransparentMode()
 {
+    m_console->println("XXXXXXXXXXXXXX CLEAR TRANSPARENT MODE.");
+
     return sendCommand("AT+CIPMODE=0") == S_OK;
 }
 
@@ -720,19 +724,31 @@ String SIMModem::parseIPAddress()
 
 bool SIMModem::connectServer(String hostName, String port)
 {
-    if (sendCommand("AT+CIPSHUT", S_SHUT_OK, 0, 5000, false) != S_OK)
+    String response = sendCommand("AT+CIPSHUT", S_SHUT_OK, 0, 5000, false);
+
+    if (response != S_OK)
     {
+        m_console->printError("connectserver=fail; // SHUT OK unexpected response- " + response);
+        return false;
+    }
+
+    response = sendCommand("AT+CIPCLOSE", S_CLOSE_OK, 0, 5000, false);
+
+    // hack: if the connection is not open, we probably will get an error, that's OK.
+    // todo: get CIPSTATUS working, maybe that will clean this up a little.
+    if (response != S_OK && response != S_ERROR)
+    {
+        m_console->printError("connectserver=fail; // CLOSE OK unepected response - " + response);
         return false;
     }
 
     String connect = "AT+CIPSTART=\"TCP\",\"" + hostName + "\",\"" + port + "\"";
-    //if (sendCommand(connect, S_CONNECT, 0, 5000, false) != S_OK)
 
-    String response = sendCommand(connect, "CONNECT OK",0, 5000, false);
+    response = sendCommand(connect, S_CONNECT_OK,0, 5000, false);
 
     if (response != S_OK)
     {        
-        m_console->println("EXPECTED [CONNECT OK] received " + response);
+        m_console->printError("connectserver=fail; // CONNECT OK unepected response - " + response);
         return false;
     }
 

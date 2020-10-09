@@ -9,7 +9,9 @@
 #define S_OK "OK"
 #define S_AT "AT"
 #define S_SHUT_OK "SHUT OK"
+#define S_CLOSE_OK "CLOSE OK"
 #define S_CONNECT "CONNECT"
+#define S_CONNECT_OK "CONNECT OK"
 #define S_CLOSED "CLOSED"
 #define S_RESET "RESET!"
 

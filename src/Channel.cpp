@@ -32,11 +32,31 @@ size_t Channel::readBytes(byte *buffer, size_t length)
     while(m_stream->available() < length && ((millis() - start) < 5000));        
 
     if(m_stream->available() < length){
-        m_console->printError("Expected: " + String(length) + " read " + String(m_stream->available()) );
+        size_t bufflen = m_stream->available();
+        m_console->printError("channelreadbyte:failed; // Expected: " + String(length) + ", Actual " + String(bufflen) );
+        m_stream->readBytes(buffer, bufflen);
+        bool isVerbose = m_console->getVerboseLogging();
+        m_console->setVerboseLogging(true);
+        m_console->printByteArray(buffer, bufflen);
+        m_console->setVerboseLogging(isVerbose);
         return -1;
     }
 
     return m_stream->readBytes(buffer, length);
+}
+
+void Channel::clearBuffers()
+{
+    bool isVerbose = m_console->getVerboseLogging();
+    m_console->setVerboseLogging(true);
+    size_t bufflen = m_stream->available();
+    m_stream->readBytes(m_rxBuffer, bufflen);
+    m_console->printByteArray(m_rxBuffer, bufflen);
+
+    m_console->setVerboseLogging(isVerbose);
+
+    m_txHead = 0;
+    m_txTail = 0;
 }
 
 void Channel::transmit(String msg)
@@ -134,9 +154,14 @@ bool Channel::flush() {
 
     if(sendLength != bytesWritten)
     {
-        m_console->printError("Mismatch: " + String(sendLength) + " sent; " + String(bytesWritten) + " written");
+        m_console->printError("channelflush=failed; // send/write mismatch, Sent:" + String(sendLength) + " Written" + String(bytesWritten) + ".");
         return false;
     }
+    else
+    {
+        m_console->printVerbose("channelflush=success; // send/wrote " + String(sendLength));
+    }
+    
 
     return true;
 }

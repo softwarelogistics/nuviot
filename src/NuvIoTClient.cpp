@@ -92,8 +92,7 @@ void NuvIoTClient::delayAndCheckState(long ms)
 }
 
 bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, unsigned long baudRate)
-{
-    m_console->setVerboseLogging(m_state->getVerboseLogging());
+{    
     sendStatusUpdate("Ready", "Connecting to Modem");
     delay(1000);
 
@@ -246,13 +245,25 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     return true;
 }
 
+#define RETRY_COUNT 2
+
 bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 {
+    m_console->setVerboseLogging(m_state->getVerboseLogging());
+
     bool transparentMode = false;
 
-    if (!ConnectToAPN(transparentMode, true, baudRate))
+    if(!m_modem->isServiceConnected() || !isReconnect)
     {
-        return false;
+        m_console->println("serviceconnected=false; // will connect to GRPS");
+        if (!ConnectToAPN(transparentMode, true, baudRate))
+        {
+            return false;
+        }
+    }
+    else
+    {
+        m_console->println("serviceconnected=true; // continue to connect to MQTT");
     }
 
     int retryCount = 0;
@@ -261,13 +272,13 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
     retryCount = 0;
     sendStatusUpdate("Connected to APN", "Connecting to MQTT");
-    while (!m_modem->connectServer(m_sysConfig->SrvrHostName, "1883") && retryCount < 10)
+    while (!m_modem->connectServer(m_sysConfig->SrvrHostName, "1883") && retryCount < RETRY_COUNT)
     {
         handleWarning("MQTT001", "Failed to connect to mqtt server: " + m_sysConfig->SrvrHostName, retryCount++);
         delayAndCheckState(1000);
     }
 
-    if (retryCount == 10)
+    if (retryCount == RETRY_COUNT)
     {
         handleError("MQTT001", "Failed to connect to mqtt server: " + m_sysConfig->SrvrHostName);
         return false;
@@ -279,13 +290,13 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
     delayAndCheckState(1000);
     m_ledManager->setErrFlashRate(0);
 
-    while (!m_mqtt->connect(m_sysConfig->SrvrUID, m_sysConfig->SrvrPWD, m_sysConfig->DeviceId) && retryCount < 10)
+    while (!m_mqtt->connect(m_sysConfig->SrvrUID, m_sysConfig->SrvrPWD, m_sysConfig->DeviceId) && retryCount < RETRY_COUNT)
     {
         handleWarning("MQTT002", "Failed to authenticate to m_mqtt server: " + m_sysConfig->SrvrHostName, retryCount++);
         delayAndCheckState(1000);
     }
 
-    if (retryCount == 10)
+    if (retryCount == RETRY_COUNT)
     {
         handleError("MQTT002", "Failed to authenticate to m_mqtt: " + m_sysConfig->SrvrHostName);
         return false;
@@ -300,13 +311,13 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
     String onlinePayload = "{'rssi':" + String(m_modem->getSignalQuality()) + ",'reconnect':" + String(isReconnect) + "}";
 
-    while (!m_mqtt->publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", onlinePayload, QOS0) && retryCount < 10)
+    while (!m_mqtt->publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", onlinePayload, QOS0) && retryCount < RETRY_COUNT)
     {
         handleWarning("MQTT003", "Failed publish nuviot/dvconline.", retryCount++);
         delayAndCheckState(1000);
     }
 
-    if (retryCount == 10)
+    if (retryCount == RETRY_COUNT)
     {
         handleError("MQTT003", "Failed publish [nuviot/dvconline].");
         return false;
@@ -318,13 +329,13 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
     delayAndCheckState(1000);
     m_ledManager->setErrFlashRate(0);
 
-    while (m_mqtt->subscribe("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/#", QOS0) == -1 && retryCount < 10)
+    while (m_mqtt->subscribe("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/#", QOS0) == -1 && retryCount < RETRY_COUNT)
     {
         handleWarning("MQTT004", "Failed subscribe to [nuviot/dvcsrvc].", retryCount++);
         delayAndCheckState(1000);
     }
 
-    if (retryCount == 10)
+    if (retryCount == RETRY_COUNT)
     {
         handleError("MQTT004", "Failed subscribe to [nuviot/dvcsrvc].");
         return false;

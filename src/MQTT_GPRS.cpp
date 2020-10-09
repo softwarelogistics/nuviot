@@ -7,6 +7,21 @@ MQTT::MQTT(Channel *channel, Console *console)
     m_console = console;
 }
 
+void MQTT::reset()
+{
+    m_rxBufferHead = 0;
+    m_rxBufferTail = 0;
+
+    m_txBufferHead = 0;
+    m_txBufferTail = 0;
+
+    m_lastError = "NOERROR";
+    m_subscriptionId = 0;
+    m_packetId = 0;
+
+    m_channel->clearBuffers();
+}
+
 void MQTT::writeControlField(byte control_field)
 {
     m_channel->enqueueByte(control_field);
@@ -77,7 +92,7 @@ bool MQTT::flush()
         uint16_t retryCount = 0;
         while(ch != '>' && retryCount++ < 500)
         {
-            while(m_channel->available() > 1 && ch != '>') {
+            while(m_channel->available() > 0 && ch != '>') {
                 ch = m_channel->readByte();
                 m_console->printVerbose("UNEXPECTED RESPONSE: [" + String(ch) + "]");
             }
@@ -86,11 +101,11 @@ bool MQTT::flush()
 
         if(ch != '>')
         {
-            m_console->printError("Timeout waiting for > to send data..");
+            m_console->printError("mqttflush=fail; //timeout waiting for > ");
             return false;
         }
 
-        m_console->printVerbose("RECEIVED: [" + String(ch) + "] CONTINUE");
+        m_console->printVerbose("RECEIVED: [" + String(ch) + "] Will continue");
     }
     else {
         m_console->printVerbose("TRANSPARENT MODE - NO CIPSEND");
@@ -98,12 +113,14 @@ bool MQTT::flush()
 
     if(!m_channel->flush())
     {
-        m_console->printError("Could not flush channel.");
+        m_console->printError("mqttflush=fail; // could not flush channel");
         return false;
     }
 
     String response = m_channel->readStringUntil('\n', 3000);
+    m_console->printVerbose(response);
     response = m_channel->readStringUntil('\n', 3000);
+    m_console->printVerbose(response);
 
     return true;
 }
@@ -120,7 +137,12 @@ void MQTT::handlePublishedMessage()
     int remainingLength = readRemainingLength();
     if (remainingLength > 0)
     {
-        m_channel->readBytes(m_rxBuffer, remainingLength);
+        size_t bytesRead = m_channel->readBytes(m_rxBuffer, remainingLength);
+        if(bytesRead != remainingLength)
+        {
+            m_console->println("mqtthandlepublish=false; // invalid message size");
+            return;
+        }
 
         int topicLength = (m_rxBuffer[0] << 8) | m_rxBuffer[1];
         String topic = "";
@@ -150,6 +172,22 @@ void MQTT::checkForReceivedMessages()
     {
     case MQTT_PUBLISH:
         handlePublishedMessage();
+        case 0x0d:
+            String response = m_channel->readStringUntil(0x0a, 250);
+            response.trim();
+            if(response.length() == 0)
+            {
+                response = m_channel->readStringUntil(0x0a, 250);
+                response.trim();
+                m_console->println("modem=unsolicitedresponse;" + response);
+                if(response == "CLOSED")
+                {
+                    m_console->println("modem=connectionlost;");
+                    m_closed = true;
+                }
+            }
+            break;
+
     }
 }
 
@@ -171,6 +209,12 @@ bool MQTT::readResponse(byte expected)
                 handlePublishedMessage();
                 break;
             default:
+                if (responseCode == expected)
+                {
+                    m_console->printVerbose("Returned expected response code.");
+                    return true;
+                }
+
                 int remainingLength = readRemainingLength();
                 if (remainingLength > 0)
                 {
@@ -182,7 +226,7 @@ bool MQTT::readResponse(byte expected)
                     }
                     else
                     {
-                        m_console->printError("Expected array of " + String(remainingLength) + " received " + String((int)bytesRead) + " bytes.");
+                        m_console->printError("readresponse=fail; // Expected RL of " + String(remainingLength) + " received " + String((int)bytesRead) + " bytes.");
                         return false;
                     }
                 }
@@ -190,19 +234,13 @@ bool MQTT::readResponse(byte expected)
                 {
                     m_console->printVerbose("No payload from message.  ");
                 }
-
-                if (responseCode == expected)
-                {
-                    m_console->printVerbose("Returned expected response code.");
-                    return true;
-                }
             }
         }
 
         delay(10);
     }
 
-    m_console->printError("Error waiting for MQTT Response.");
+    m_console->printError("readresponse=failed; // timeout waiting for response from server.");
 
     return false;
 }
@@ -231,6 +269,8 @@ bool MQTT::connect(String uid, String pwd, String clientId)
         0x00, 0x3C,  // Keep Alive
     };
 
+    m_channel->clearBuffers();
+
     writeControlField(MQTT_CONNECT);
     writeRemainingLength(remainingLength);
 
@@ -245,16 +285,20 @@ bool MQTT::connect(String uid, String pwd, String clientId)
         writeLengthPrefixedString(pwd);
     }
 
-    flush();
+    if(!flush())
+    {
+        return false;
+    }
 
     if (readResponse(0x20))
     {
-        m_console->printVerbose("Connected to MQTT");
+        m_closed = false;
+        m_console->printVerbose("mqttconnect=success;");
         return true;
     }
     else
     {
-        m_console->printError("Not connected to MQTT.");
+        m_console->printError("mqttconnect=fail; // invalid response.");
         return false;
     }
 }
@@ -274,6 +318,8 @@ bool MQTT::publish(String topic, String payload, byte qos)
 
     controlField = controlField | (qos << 1);
 
+    m_channel->clearBuffers();
+
     writeControlField(controlField);
     writeRemainingLength(rl);
 
@@ -288,7 +334,7 @@ bool MQTT::publish(String topic, String payload, byte qos)
 
     writeString(payload);
 
-    flush();
+    if(!flush()) return false;   
 
     return (qos > QOS0) ? readResponse(0x40) : true;
 }
@@ -301,6 +347,8 @@ bool MQTT::publish(String topic, byte buffer[], uint16_t len, byte qos) {
     byte controlField = MQTT_PUBLISH;
 
     controlField = controlField | (qos << 1);
+
+    m_channel->clearBuffers();
 
     writeControlField(controlField);
     writeRemainingLength(rl);
@@ -316,7 +364,7 @@ bool MQTT::publish(String topic, byte buffer[], uint16_t len, byte qos) {
 
     writeByteArray(buffer, len);
     
-    flush();
+    if(!flush()) return false;
 
     return (qos > QOS0) ? readResponse(0x40) : true;
 }
@@ -330,6 +378,8 @@ bool MQTT::publish(String topic, byte qos)
 
     controlField = controlField | (qos << 1);
 
+    m_channel->clearBuffers();
+
     writeControlField(controlField);
     writeRemainingLength(rl);
 
@@ -340,7 +390,7 @@ bool MQTT::publish(String topic, byte qos)
 
     m_packetId++;
 
-    flush();
+    if(!flush()) return false;
 
     return (qos > QOS0) ? readResponse(0x40) : true;
 }
@@ -354,6 +404,8 @@ byte MQTT::subscribe(String topic, byte qos)
         payloadLen,
         0x00, m_subscriptionId};
 
+    m_channel->clearBuffers();
+
     writeByteArray(subscribeHeader, sizeof(subscribeHeader));
     writeLengthPrefixedString(topic);
 
@@ -362,7 +414,7 @@ byte MQTT::subscribe(String topic, byte qos)
     };
 
     writeByteArray(qosBuffer, 1);
-    flush();
+    if(!flush()) return -1;
 
     if (readResponse(0x90))
     {
@@ -384,8 +436,10 @@ bool MQTT::ping()
 {
     byte pingMsg[] = {0xC0, 0x00};
 
+    m_channel->clearBuffers();
+
     writeByteArray(pingMsg, sizeof(pingMsg));
-    flush();
+    if(!flush()) return false;
 
     return readResponse(0xD0);
 }

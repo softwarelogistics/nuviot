@@ -13,6 +13,8 @@ class Channel
 public:
     Channel(HardwareSerial *stream, Console *console);
 
+    void clearBuffers();
+
     void transmit(String msg);
     void transmit(byte *msg, size_t len);
     void transmitln(String msg);
