@@ -455,7 +455,6 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
             {
                 if (partIdx >= 4)
                 {
-                    m_modem->exitDataMode();
                     String url = "http://api.nuviot.com/api/firmware/download/" + parts[4];
                     m_console->println("Request Download.");
                     m_console->println(url);

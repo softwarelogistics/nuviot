@@ -74,8 +74,8 @@ private:
     String sendCommand(String cmd, String expectedReply, unsigned long delayMS, long timeout, boolean returnAny);    bool setNBIoTMode();
     String parseIPAddress();
     
-    long downloadContent(long contentSize, unsigned char * buffer);
-    long configureForDownload(String url);
+    uint32_t downloadContent(uint32_t contentSize, unsigned char * buffer);
+    uint32_t configureForDownload(String url);
     bool setBearer();
     bool setLTE();
     bool selectNetwork();

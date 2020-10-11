@@ -53,15 +53,11 @@ bool SIMModem::waitForReply(String expectedReply, int iterations)
 
 bool SIMModem::enableTransparentMode()
 {
-    m_console->println("XXXXXXXXXXXXXX SETTING TRANSPARENT MODE.");
-
     return sendCommand("AT+CIPMODE=1") == S_OK;
 }
 
 bool SIMModem::disableTransparentMode()
 {
-    m_console->println("XXXXXXXXXXXXXX CLEAR TRANSPARENT MODE.");
-
     return sendCommand("AT+CIPMODE=0") == S_OK;
 }
 
@@ -84,17 +80,17 @@ bool SIMModem::exitDataMode()
     return result;
 }
 
-long SIMModem::configureForDownload(String url)
+uint32_t SIMModem::configureForDownload(String url)
 {
     if (sendCommand("AT+HTTPINIT") != S_OK)
     {
-        m_console->printError("COULD NOT SEND HTTPINIT");
+        m_console->printError("fwupdateconfig=failed; // failed http init.");
         return -1;
     }
 
     if (sendCommand("AT+HTTPPARA=\"CID\",1") != S_OK)
     {
-        m_console->printError("COULD NOT SEND HTTPPARAM=\"CID\",1");
+        m_console->printError("fwupdateconfig=failed; // failed set http param, cid=1");
         return -1;
     }
 
@@ -102,27 +98,28 @@ long SIMModem::configureForDownload(String url)
 
     if (sendCommand(downloadCommand) != S_OK)
     {
-        m_console->printError("COULD NOT SEND HTTPPARAM=\"URL\",\"....\"");
+        m_console->printError("fwupdateconfig=failed; // could not set url " + url);
         return -1;
     }
 
     if (sendCommand("AT+HTTPACTION=0") != S_OK)
     {
-        m_console->printError("COULD NOT SEND HTTPACTION=0");
+        m_console->printError("fwupdateconfig=failed; // could not set http action");
         return -1;
     }
 
     int retryCount = 0;
     bool done = false;
-    long contentSize = 0;
+    uint32_t contentSize = 0;
     while (!done && retryCount++ < 5)
     {
-        String msg = m_channel->readStringUntil('\n', 10000);
+        String msg = m_channel->readStringUntil('\n', 5000);
         msg.trim();
         if (msg != "")
         {
             contentSize = atol(msg.substring(msg.lastIndexOf(",") + 1).c_str());
             done = true;
+            m_console->println("     HTTPREAD: " + msg);
         }
 
         delay(retryCount * 500);
@@ -130,7 +127,7 @@ long SIMModem::configureForDownload(String url)
 
     if (retryCount == 5)
     {
-        m_console->printError("No server response from AT+HTTPACTION=0");
+        m_console->printError("fwupdateconfig=failed; // could not begin download");
         return -1;
     }
 
@@ -140,19 +137,25 @@ long SIMModem::configureForDownload(String url)
 
     String readResponse = m_channel->readStringUntil('\n', 10000);
     readResponse.trim();
+    
+    m_console->println("     HTTPREAD: " + readResponse);
+
+    m_console->println("fwupdateconfig=succuss; // download size " + String(contentSize));
 
     return contentSize;
 }
 
 #define BLOCK_SIZE 2 * 1024
 
-long SIMModem::downloadContent(long contentSize, unsigned char *buffer)
+uint32_t SIMModem::downloadContent(uint32_t contentSize, unsigned char *buffer)
 {
-    long totalBytesRead = 0;
+    uint32_t totalBytesRead = 0;
+
+    long start = millis();
 
     String logMessage = "Expected:";
-
-    while (contentSize > 0)
+    int loopCount = 0;
+    while (contentSize > 0 && loopCount++ < 500)
     {
         long toRead = BLOCK_SIZE < contentSize ? BLOCK_SIZE : contentSize;
 
@@ -160,8 +163,7 @@ long SIMModem::downloadContent(long contentSize, unsigned char *buffer)
 
         if (actualRead != -1)
         {
-            logMessage += String(contentSize);
-
+            logMessage += String(actualRead) + ", ";
             for (int idx = 0; idx < actualRead; ++idx)
             {
                 buffer[idx + totalBytesRead] = m_tempBuffer[idx];
@@ -170,15 +172,23 @@ long SIMModem::downloadContent(long contentSize, unsigned char *buffer)
             contentSize -= actualRead;
             totalBytesRead += actualRead;
         }
-        else
-        {
-            m_console->printError("Expected " + String(contentSize) + ", Actual Read " + String(actualRead));
-        }
+     
+        delay(100);
     }
 
-    m_console->println(logMessage +";");
+    if (contentSize > 0)
+    {
+        m_console->printWarning("fwupdatedownload=failed; // remaining content size " + String(contentSize));
+    }
+    else
+    {
+        m_console->println("fwupdatedownload=complete; // read " + String(totalBytesRead) + " bytes, " + String(millis() - start) + "ms, " + String(loopCount) + " iterations.");
+    }
 
-    waitForReply("OK", 10);
+    if (loopCount < 500)
+    {
+        waitForReply("OK", 10);
+    }
 
     return totalBytesRead;
 }
@@ -186,6 +196,8 @@ long SIMModem::downloadContent(long contentSize, unsigned char *buffer)
 bool SIMModem::beginDownload(String url)
 {
     m_display->drawStr("Starting firware", "update process.");
+
+    m_console->println("fwupdate=start; // url=" + url);
 
     long start = millis();
     while (!isServiceConnected())
@@ -197,14 +209,14 @@ bool SIMModem::beginDownload(String url)
         {
             m_lastError = "SIM0011";
 
-            m_console->printError("Timeout waiting for service connection.");
+            m_console->printError("connecttoservice=failed; // will not retry.");
             return -1;
         }
     }
 
     if (!setBearer())
     {
-        m_console->printError("setbearer=failed");
+        m_console->printError("setbearer=failed;");
         return -1;
     }
 
@@ -214,7 +226,7 @@ bool SIMModem::beginDownload(String url)
         return false;
     }
 
-    m_console->printVerbose("Received content size of [" + String(contentSize) + "].");
+    m_console->println("fwupdate=size; // download size of " + String(contentSize) + ".");
 
     long bytesread = downloadContent(contentSize, m_rxBuffer);
 
@@ -227,13 +239,13 @@ bool SIMModem::beginDownload(String url)
 
         if (sendCommand("AT+HTTPTERM") != S_OK)
         {
-            m_console->printError("COULD NOT TERMINATE HTTP SESSION");
+            m_console->printError("fwupdatehttpterm=failed; // could not terminate http term session.");
             return -1;
         }
 
         int chunks = (fullFileSize / DOWNLOAD_BUFFER_SIZE) + 1;
 
-        m_console->printVerbose("String full content size to download [" + String(fullFileSize) + "], broken into " + String(chunks) + " chunks.");
+        m_console->println("fwupdate=begin; // full size=" + String(fullFileSize) + ", block size " + String(chunks) + " chunks.");
 
         if (Update.begin(fullFileSize, U_FLASH))
         {
@@ -245,25 +257,50 @@ bool SIMModem::beginDownload(String url)
                 if (downloadChunkSize > DOWNLOAD_BUFFER_SIZE)
                     downloadChunkSize = DOWNLOAD_BUFFER_SIZE;
 
-                String downloadQueryString = "?start=" + String(start) + "&length=" + String(downloadChunkSize);
-                m_console->printVerbose("Query String: " + downloadQueryString + "  " + String(chunkIndex + 1) + " of " + String(chunks) + " chunks in file size of " + fullFileSize + "].");
-                m_display->drawStr("Downloading firmware", String("Total: " + String(fullFileSize) + " bytes").c_str(), String("Part " + String(chunkIndex) + " of " + String(chunks)).c_str());
-
-                contentSize = configureForDownload(url + downloadQueryString);
-                if (contentSize != downloadChunkSize)
+                bool chunkDownloaded = false;
+                int downloadRetryCount = 0;
+                while (!chunkDownloaded && downloadRetryCount < 5)
                 {
-                    m_console->printError("Expected file size of " + String(downloadChunkSize) + " returned size " + String(contentSize));
-                    delay(2000);
-                    ESP.restart();
+                    long startMS = millis();
+                    String downloadQueryString = "?start=" + String(start) + "&length=" + String(downloadChunkSize);
+                    m_console->println("fwupdate=block; // uri= " + downloadQueryString + " chunk " + String(chunkIndex + 1) + " of " + String(chunks) + " chunks in file size of " + fullFileSize + ".");
+                    m_display->drawStr("Downloading firmware", String("Total: " + String(fullFileSize) + " bytes").c_str(), String("Part " + String(chunkIndex) + " of " + String(chunks)).c_str());
+
+                    contentSize = configureForDownload(url + downloadQueryString);
+                    if (contentSize != downloadChunkSize)
+                    {
+                        m_console->printError("fwupdate=invalidblocksize // expected: " + String(downloadChunkSize) + " returned: " + String(contentSize) + " will retry.");
+                        sendCommand("AT+HTTPTERM");
+                        delay(1000);
+                    }
+                    else
+                    {
+                        m_console->println("fwupdate=recvblock; // blocksize:" + String(contentSize) + ".");
+                        long bytesDownloaded = downloadContent(contentSize, m_rxBuffer);
+                        m_console->println("fwupdate=downloaded; // elapsed: " + String(millis() - startMS));
+
+                        if (bytesDownloaded != contentSize)
+                        {
+                            m_console->printWarning("fwupdate=warning; // failed to download chunk, attempt " + String(downloadRetryCount) + " of 5");
+                            delay(1000);
+                            sendCommand("AT+HTTPTERM");
+                        }
+                        else
+                        {
+                            chunkDownloaded = true;
+                            m_console->println("fwupdate=match; // bytes downloaded == conentsize == " + String(contentSize) + ".");
+                            if (sendCommand("AT+HTTPTERM") != S_OK)
+                            {
+                                m_console->printError("fwupdatehttpterm=failed; // could not terminate http term session.");
+                                return -1;
+                            }
+                        }
+                    }
                 }
 
-                m_console->println("Received content size of [" + String(contentSize) + "].");
-
-                long bytesDownloaded = downloadContent(contentSize, m_rxBuffer);
-
-                if (bytesDownloaded != contentSize)
+                if (!chunkDownloaded)
                 {
-                    m_console->printError("Expected to download" + String(contentSize) + " actual bytes " + String(bytesDownloaded));
+                    m_console->printError("fwupdate=failed; // could not download chunk.");
                     delay(2000);
                     ESP.restart();
                 }
@@ -271,14 +308,7 @@ bool SIMModem::beginDownload(String url)
                 int written = Update.write(m_rxBuffer, contentSize);
                 if (written < contentSize)
                 {
-                    m_console->printError("Expected to write " + String(contentSize) + " actual bytes " + String(written));
-                    delay(2000);
-                    ESP.restart();
-                }
-
-                if (sendCommand("AT+HTTPTERM") != S_OK)
-                {
-                    m_console->printError("COULD NOT TERMINATE HTTP SESSION");
+                    m_console->printError("fwupdate=failed; // byte array to ota buffer " + String(written) + "/" + String(contentSize) + " - " + String(Update.errorString()) + ".");
                     delay(2000);
                     ESP.restart();
                 }
@@ -286,21 +316,21 @@ bool SIMModem::beginDownload(String url)
         }
         else
         {
-            //   m_console->printError("Could not begin flash process " + String(Update.errorString()));
+            m_console->printError("fwupdate=failed; // could not begin ota session: " + String(Update.errorString()));
             delay(2000);
             ESP.restart();
         }
     }
     else
     {
-        m_console->printError("Mismatch in bytes read [" + String(bytesread) + "] and content size [" + String(contentSize) + "]");
+        m_console->printError("fwupdate=failed; // mismatch in bytes read [" + String(bytesread) + "] and content size [" + String(contentSize) + "]");
         delay(2000);
         ESP.restart();
     }
 
     if (!Update.isFinished())
     {
-        m_console->printError("Update Finish returned false.");
+        m_console->printError("fwupdate=failed; // download complete, ota not finished.");
         delay(2000);
         ESP.restart();
     }
@@ -308,14 +338,16 @@ bool SIMModem::beginDownload(String url)
     {
         if (Update.end())
         {
-            m_display->drawStr("Error flashing", "Rebooting in 2 seconds.");
-            // m_console->printError("Error flashing: " + String(Update.errorString()));
+            m_display->drawStr("Success flashing", "Rebooting in 2 seconds.");
+            m_console->println("fwupdate=success; // rebooting");
+            delay(2000);
             ESP.restart();
         }
         else
         {
-            m_display->drawStr("Success flashing", "Rebooting in 2 seconds.");
-            m_console->println("Success flashing, starting new version.");
+            
+            m_display->drawStr("Error flashing", "Rebooting in 2 seconds.");
+            m_console->printError("fwupdate=failed; // could not end OTA process: " + String(Update.errorString()));
             delay(2000);
             ESP.restart();
         }
@@ -528,8 +560,10 @@ bool SIMModem::setPDPContext()
 bool SIMModem::setBand()
 {
     int retry = 0;
-    while(retry < 5) {
-        if (sendCommand("AT+CBAND=\"ALL_MODE\"") == S_OK) {
+    while (retry < 5)
+    {
+        if (sendCommand("AT+CBAND=\"ALL_MODE\"") == S_OK)
+        {
             m_console->setVerboseLogging(false);
             return true;
         }
@@ -744,10 +778,10 @@ bool SIMModem::connectServer(String hostName, String port)
 
     String connect = "AT+CIPSTART=\"TCP\",\"" + hostName + "\",\"" + port + "\"";
 
-    response = sendCommand(connect, S_CONNECT_OK,0, 5000, false);
+    response = sendCommand(connect, S_CONNECT_OK, 0, 5000, false);
 
     if (response != S_OK)
-    {        
+    {
         m_console->printError("connectserver=fail; // CONNECT OK unepected response - " + response);
         return false;
     }
@@ -768,7 +802,8 @@ bool SIMModem::initGPS()
         m_console->printError("Could not power up GPS");
         return false;
     }
-    else {
+    else
+    {
         m_console->printVerbose("Started up GPS");
     }
 
@@ -793,18 +828,30 @@ GPSData *SIMModem::readGPS()
     m_channel->print("AT+CGNSINF\r");
     String echo = m_channel->readStringUntil('\r', 100);
 
-    while (!m_channel->available()); m_channel->readByte();
-    while (!m_channel->available()); m_channel->readByte();
+    while (!m_channel->available())
+        ;
+    m_channel->readByte();
+    while (!m_channel->available())
+        ;
+    m_channel->readByte();
 
     String gpsData = m_channel->readStringUntil('\r', 100);
 
-    while (!m_channel->available()); m_channel->readByte();
-    while (!m_channel->available()); m_channel->readByte(); 
-    while (!m_channel->available()); m_channel->readByte();
+    while (!m_channel->available())
+        ;
+    m_channel->readByte();
+    while (!m_channel->available())
+        ;
+    m_channel->readByte();
+    while (!m_channel->available())
+        ;
+    m_channel->readByte();
 
     String ok = m_channel->readStringUntil('\r', 100);
-    while (!m_channel->available()); m_channel->readByte();
-    
+    while (!m_channel->available())
+        ;
+    m_channel->readByte();
+
     if (ok == "OK")
     {
         m_gpsData->parse(gpsData + "\r");
@@ -911,7 +958,7 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
             m_console->printVerbose("Already Connected IP Address is " + m_ipAddress);
         }
 
-        connected = true;        
+        connected = true;
     }
 
     return connected;
