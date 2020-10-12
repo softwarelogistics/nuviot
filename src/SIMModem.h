@@ -19,6 +19,7 @@
 #define DOWNLOAD_BUFFER_SIZE 16384l
 
 #include <Arduino.h>
+#include "Hal.h"
 #include "Console.h"
 #include "Channel.h"
 #include "Display.h"
@@ -26,8 +27,8 @@
 
 class SIMModem {
 public:
-    SIMModem(Display *display, Channel *channel, Console *console);
-    SIMModem(Channel *channel, Console *console);
+    SIMModem(Display *display, Channel *channel, Console *console, Hal *hal);
+    SIMModem(Channel *channel, Console *console, Hal *hal);
 
     bool isServiceConnected();
     bool isModemOnline();
@@ -64,6 +65,7 @@ private:
     String m_simId;
     String m_network;
     String m_ipAddress;
+    bool m_isHttpSessionActive = false;
     int m_rssi;
 
     GPSData *m_gpsData;
@@ -87,8 +89,12 @@ private:
     bool getCREG();
     bool getCGREG();   
     int findRSSI();
-    
+
+    bool httpGetNoContent(String url);
+    bool httpGetSetError(String url, String errMsg);
+    void httpCloseSession(String tag);
   
+    Hal *m_hal;
     Display *m_display;
     Console *m_console;
     Channel *m_channel;

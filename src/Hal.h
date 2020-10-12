@@ -14,7 +14,8 @@ uint8_t temprature_sens_read();
 
 class Hal {
     public:
-        void restart();        
+        void restart();
+        void restart(long pause);
 };
 
 #endif

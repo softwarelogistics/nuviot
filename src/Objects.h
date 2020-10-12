@@ -71,7 +71,7 @@ Channel channel(&gprsPort, &console);
 
 MQTT mqtt(&channel, &console);
 
-SIMModem modem(&display, &channel, &console);
+SIMModem modem(&display, &channel, &console, &hal);
 
 WiFiClient wifiClient;
 WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &sysConfig);
