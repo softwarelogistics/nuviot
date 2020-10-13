@@ -170,11 +170,9 @@ void NuvIoTState::readFirmware()
         {
             m_console->printError("ERROR WAITING FOR DFU SIZE");
             m_ledManager->setErrFlashRate(4);
-            delay(5000);
-            m_ledManager->setErrFlashRate(0);
-            m_console->enableBTOut(true);
-            m_paused = false;
-            return;
+            m_btSerial->println("fail-update:readsize-timeout;\n");
+            delay(2000);
+            m_hal->restart();
         }
         delay(1);
     }
@@ -192,13 +190,11 @@ void NuvIoTState::readFirmware()
     {
         if (millis() > timeout)
         {
-            m_console->printError("ERROR WAITING FOR BLOCK COUNT");
             m_ledManager->setErrFlashRate(4);
-            delay(5000);
-            m_ledManager->setErrFlashRate(0);
-            m_console->enableBTOut(true);
-            m_paused = false;
-            return;
+            m_console->printError("ERROR WAITING FOR BLOCK COUNT");
+            m_btSerial->println("fail-update:blkcount-timeout;\n");
+            delay(2000);
+            m_hal->restart();
         }
         delay(1);
     }
@@ -213,12 +209,11 @@ void NuvIoTState::readFirmware()
 
     if (!Update.begin(total, U_FLASH))
     {
-        m_btSerial->print("fail-start\n");
+        m_btSerial->print("fail-update:could not start, " + String(Update.errorString()) +"\n");
         m_console->println("Could not start DFU process.");
         m_display->println("ERR: fail start DFU");
         delay(2000);
-        m_paused = false;
-        m_console->enableBTOut(true);
+        m_hal->restart();
         return;
     }
 
@@ -237,9 +232,11 @@ void NuvIoTState::readFirmware()
                 m_ledManager->setErrFlashRate(4);
                 delay(5000);
                 m_ledManager->setErrFlashRate(0);
+                m_btSerial->println("fail-update:blk-timeout;\n");
                 m_console->enableBTOut(true);
                 m_paused = false;
                 Update.abort();
+                m_hal->restart();
                 return;
             }
 
@@ -287,7 +284,8 @@ void NuvIoTState::readFirmware()
         if (actualCheckSum != calcCheckSum)
         {
             m_btSerial->print("fail-checksum:" + String(idx) + "\n");
-            m_console->enableBTOut(true);
+            Update.abort();
+            delay(2000);
             return;
         }
         else
@@ -298,7 +296,7 @@ void NuvIoTState::readFirmware()
         blocksReceived++;
 
         size_t written = Update.write(buffer, blockSize);
-        if (written > 0)
+        if (written == blockSize)
         {
             int percentCommplete = (100 * blocksReceived) / blockCount;
             String progress = "Progress " + String(percentCommplete);
@@ -319,8 +317,7 @@ void NuvIoTState::readFirmware()
             m_console->printError("Could not flash file");
             m_console->printError("Could not write byte array.");
             m_display->drawStr("Flashing failed");
-            m_btSerial->print("fail-write:" + String(idx) + "\n");
-
+            m_btSerial->print("fail-write:blk-" + String(idx) + "," + String(Update.errorString()) + "\n");
             delay(2000);
             return;
         }
@@ -332,36 +329,43 @@ void NuvIoTState::readFirmware()
 
     if (blocksReceived == blockCount)
     {
+        if(!Update.isFinished())
+        {
+            m_console->println("All received, but update not finished.");
+            m_btSerial->print("fail-update:is-finsished=false; " + String(Update.errorString()) + "\n");
+            Update.abort();
+            delay(2000);
+            m_hal->restart();
+        }        
+
         if (Update.end())
         {
-#ifdef MQTT_VERBOSE
-            m_console->println("Success flashing, pausing and then restarting.");
-#endif
             m_display->drawStr("Success flashing", "Restarting");
-            delay(2000);
-
             m_btSerial->print("ok-update:success\n");
-
             m_console->println("Success flashing, restarting.");
+            delay(2000);
             m_hal->restart();
         }
         else
         {
             m_console->printError("Could not flash file");
-
-            m_btSerial->print("ok-update:fail\n");
-
-            m_display->drawStr("Flasing Failed", "MD5 Error");
+            m_btSerial->print("fail-update:end-returned false; " + String(Update.errorString()) + "\n");
+            m_display->drawStr("Flashing Failed", Update.errorString());
+            Update.abort();
             delay(2000);
-        }
+            m_hal->restart();
+         }
     }
     else
     {
         m_console->printError("Could not download file.");
         m_console->printError("Downloaded: " + String(blocksReceived) + " total:" + String(blockCount));
-
-        m_display->drawStr("Flashing Failed", "Download Error");
-    }
+        m_btSerial->print("fail-update:block-mismatch;\n");
+        m_display->drawStr("Flashing Failed", "block count mismatch");
+        Update.abort();
+        delay(2000);
+        m_hal->restart();
+   }
 
     m_console->enableBTOut(true);
 }
