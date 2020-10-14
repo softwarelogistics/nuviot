@@ -292,7 +292,7 @@ bool SIMModem::beginDownload(String url)
             m_lastError = "SIM0011";
 
             m_console->printError("connecttoservice=failed; // will not retry.");
-            ESP.restart();
+            m_hal->restart();
         }
     }
 
