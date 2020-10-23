@@ -152,6 +152,26 @@ String NuvIoTState::getRemoteProperties()
     return state;
 }
 
+String NuvIoTState::getIOConfigSettings()
+{
+    return String(m_ioConfig->ADC1Config) + "," + String(m_ioConfig->ADC1Scaler) + "," +
+           String(m_ioConfig->ADC2Config) + "," + String(m_ioConfig->ADC2Scaler) + "," +
+           String(m_ioConfig->ADC3Config) + "," + String(m_ioConfig->ADC3Scaler) + "," +
+           String(m_ioConfig->ADC4Config) + "," + String(m_ioConfig->ADC4Scaler) + "," +
+           String(m_ioConfig->ADC5Config) + "," + String(m_ioConfig->ADC5Scaler) + "," +
+           String(m_ioConfig->ADC6Config) + "," + String(m_ioConfig->ADC6Scaler) + "," +
+           String(m_ioConfig->ADC7Config) + "," + String(m_ioConfig->ADC7Scaler) + "," +
+           String(m_ioConfig->ADC8Config) + "," + String(m_ioConfig->ADC8Scaler) + "," +
+           String(m_ioConfig->GPIO1Config) + "," + String(m_ioConfig->GPIO1Scaler) + "," +
+           String(m_ioConfig->GPIO2Config) + "," + String(m_ioConfig->GPIO2Scaler) + "," +
+           String(m_ioConfig->GPIO3Config) + "," + String(m_ioConfig->GPIO3Scaler) + "," +
+           String(m_ioConfig->GPIO4Config) + "," + String(m_ioConfig->GPIO4Scaler) + "," +
+           String(m_ioConfig->GPIO5Config) + "," + String(m_ioConfig->GPIO5Scaler) + "," +
+           String(m_ioConfig->GPIO6Config) + "," + String(m_ioConfig->GPIO6Scaler) + "," +
+           String(m_ioConfig->GPIO7Config) + "," + String(m_ioConfig->GPIO7Scaler) + "," +
+           String(m_ioConfig->GPIO8Config) + "," + String(m_ioConfig->GPIO8Scaler) + "\n";
+}
+
 int _lstSend = 0;
 
 void NuvIoTState::readFirmware()
@@ -329,7 +349,7 @@ void NuvIoTState::readFirmware()
     {
         m_ledManager->setErrFlashRate(4);
         m_btSerial->print("fwupdate=failed; // block count mis-match: " + String(blocksReceived) + " expected:" + String(blockCount) + "\n");
-        m_console->printError("fwupdate=failed; // block count mis-match: " + String(blocksReceived) + " expected:" + String(blockCount) + ".");        
+        m_console->printError("fwupdate=failed; // block count mis-match: " + String(blocksReceived) + " expected:" + String(blockCount) + ".");
         m_display->drawStr("Flashing Failed", "final block count mismatch");
         delay(5000);
         m_hal->restart();
@@ -347,10 +367,10 @@ void NuvIoTState::readFirmware()
 
     if (!Update.end())
     {
-        
+
         m_btSerial->print("fwupdate=failed; Update.end() failed: " + String(Update.errorString()) + "\n");
         m_console->printError("fwupdate=failed; Update.end() failed: " + String(Update.errorString()) + ".");
-        m_display->drawStr("Flashing Failed", Update.errorString());        
+        m_display->drawStr("Flashing Failed", Update.errorString());
         delay(5000);
         m_hal->restart();
     }
@@ -725,6 +745,45 @@ float NuvIoTState::getFlt(String key)
         m_console->printWarning("getflt=failed," + key + "; // returning default, err: " + errMsg + ", key: " + String(key) + ";");
         return pParam->getFltDefault();
     }
+}
+
+void NuvIoTState::setADCConfig(int idx, uint8_t config, float scaler)
+{
+    m_console->println("setadc=true; // index=" + String(idx) + ", " + String(config) + ", " + String(scaler)) ;
+
+    switch(idx)
+    {
+        case 0: m_ioConfig->ADC1Config = config; m_ioConfig->ADC1Scaler = scaler; break;
+        case 1: m_ioConfig->ADC2Config = config; m_ioConfig->ADC2Scaler = scaler; break;
+        case 2: m_ioConfig->ADC3Config = config; m_ioConfig->ADC3Scaler = scaler; break;
+        case 3: m_ioConfig->ADC4Config = config; m_ioConfig->ADC4Scaler = scaler; break;
+        case 4: m_ioConfig->ADC5Config = config; m_ioConfig->ADC5Scaler = scaler; break;
+        case 5: m_ioConfig->ADC6Config = config; m_ioConfig->ADC6Scaler = scaler; break;
+        case 6: m_ioConfig->ADC7Config = config; m_ioConfig->ADC7Scaler = scaler; break;
+        case 7: m_ioConfig->ADC8Config = config; m_ioConfig->ADC8Scaler = scaler; break;
+    }
+}
+
+void NuvIoTState::setIOCConfig(int idx, uint8_t config, float scaler)
+{
+    m_console->println("setioconfig=true; // index=" + String(idx) + ", " + String(config) + ", " + String(scaler)) ;
+
+    switch(idx)
+    {
+        case 0: m_ioConfig->GPIO1Config = config; m_ioConfig->GPIO1Scaler = scaler; break;
+        case 1: m_ioConfig->GPIO2Config = config; m_ioConfig->GPIO2Scaler = scaler; break;        
+        case 2: m_ioConfig->GPIO3Config = config; m_ioConfig->GPIO3Scaler = scaler; break;
+        case 3: m_ioConfig->GPIO4Config = config; m_ioConfig->GPIO4Scaler = scaler; break;        
+        case 4: m_ioConfig->GPIO5Config = config; m_ioConfig->GPIO5Scaler = scaler; break;
+        case 5: m_ioConfig->GPIO6Config = config; m_ioConfig->GPIO6Scaler = scaler; break;        
+        case 6: m_ioConfig->GPIO7Config = config; m_ioConfig->GPIO7Scaler = scaler; break;
+        case 7: m_ioConfig->GPIO8Config = config; m_ioConfig->GPIO8Scaler = scaler; break;        
+    }
+}
+
+void NuvIoTState::persistConfig()
+{
+    m_ioConfig->write();
 }
 
 void NuvIoTState::updateProperty(String fieldType, String field, String value)

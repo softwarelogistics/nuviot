@@ -116,11 +116,15 @@ public:
 
     String queryFirmwareVersion();
     String getRemoteProperties();
+    String getIOConfigSettings();
 
     bool getSecureTransport();
     bool getIsAnonymous();
 
-
+    void setADCConfig(int idx, uint8_t config, float scaler);
+    void setIOCConfig(int idx, uint8_t config, float scaler);
+    void persistConfig();
+    
     void updateProperty(String fieldType, String field, String value);
 
     void registerInt(const char *key, int32_t defaultValue);
