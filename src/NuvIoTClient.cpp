@@ -92,7 +92,7 @@ void NuvIoTClient::delayAndCheckState(long ms)
 }
 
 bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, unsigned long baudRate)
-{    
+{
     sendStatusUpdate("Ready", "Connecting to Modem");
     delay(1000);
 
@@ -253,7 +253,7 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
 
     bool transparentMode = false;
 
-    if(!m_modem->isServiceConnected() || !isReconnect)
+    if (!m_modem->isServiceConnected() || !isReconnect)
     {
         m_console->println("serviceconnected=false; // will connect to GRPS");
         if (!ConnectToAPN(transparentMode, true, baudRate))
@@ -309,7 +309,7 @@ bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
     delayAndCheckState(1000);
     m_ledManager->setErrFlashRate(0);
 
-    String onlinePayload = "readonly-rssi=" + String(m_modem->getSignalQuality()) + ",readonly-reconnect=" + String(isReconnect) + ",";
+    String onlinePayload = "readonly-rssi=" + String(m_modem->getSignalQuality()) + ",readonly-reconnect=" + (isReconnect ? "true" : "false") + ",";
     onlinePayload += m_state->getRemoteProperties();
 
     while (!m_mqtt->publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", onlinePayload, QOS0) && retryCount < RETRY_COUNT)
@@ -435,39 +435,48 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                     m_state->updateProperty(fieldType, field, value);
                 }
             }
-            else if( action == "ioconfig" && partIdx > 4)
+            else if (action == "ioconfig" && partIdx > 4)
             {
                 value = parts[4];
 
-                String settings[16];
-                int charPointer = 0;
-                for(int idx = 0; idx < 8; ++idx)
+                if (value == "query")
                 {
-                    String config = "";
-                    while(payload[charPointer] != ',')
-                        config += (char)payload[charPointer++];
-
-                    charPointer++;
-
-                    String scaler = "";
-
-                    while(payload[charPointer] != ',')
-                        scaler += (char)payload[charPointer++];
-
-                    charPointer++;
-
-                    m_console->println("VALUE "  + config + " " + scaler);
-
-                    int32_t configValue = atoi(config.c_str());
-                    float scalerValue = atof(scaler.c_str());
-                            
-                    if(value == "adc")
-                        m_state->setADCConfig(idx, configValue, scalerValue);
-                    else if(value == "gpio")
-                        m_state->setIOCConfig(idx, configValue, scalerValue);
+                    String payload = m_state->getIOConfigSettings();
+                    String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/ioconfig";
+                    m_mqtt->publish(topic, payload, QOS0);
                 }
+                else
+                {
+                    String settings[16];
+                    int charPointer = 0;
+                    for (int idx = 0; idx < 8; ++idx)
+                    {
+                        String config = "";
+                        while (payload[charPointer] != ',')
+                            config += (char)payload[charPointer++];
 
-                m_state->persistConfig();
+                        charPointer++;
+
+                        String scaler = "";
+
+                        while (payload[charPointer] != ',')
+                            scaler += (char)payload[charPointer++];
+
+                        charPointer++;
+
+                        m_console->println("VALUE " + config + " " + scaler);
+
+                        int32_t configValue = atoi(config.c_str());
+                        float scalerValue = atof(scaler.c_str());
+
+                        if (value == "adc")
+                            m_state->setADCConfig(idx, configValue, scalerValue);
+                        else if (value == "gpio")
+                            m_state->setIOCConfig(idx, configValue, scalerValue);
+                    }
+
+                    m_state->persistConfig();
+                }
             }
             else if (action == "properties")
             {
@@ -484,12 +493,6 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
             }
             else if (action == "ioconfig")
             {
-                if(parts[4] == "query")
-                {
-                        String payload = m_state->getIOConfigSettings();
-                        String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/ioconfig";
-                        m_mqtt->publish(topic, payload, QOS0);
-                }
             }
             else if (action == "restart")
             {
