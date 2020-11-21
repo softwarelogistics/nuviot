@@ -31,7 +31,10 @@
 #include "NuvIoTMQTT.h"
 #include <PubSubClient.h>
 
+#define DEFAULT_BRD
+
 #ifdef PROD_BRD_V1
+#undef DEFAULT_BRD
 HardwareSerial gprsPort(0);
 HardwareSerial consoleSerial(1);
 TwoWire twoWire(1);
@@ -39,6 +42,7 @@ TwoWire twoWire(1);
 #endif
 
 #ifdef GPIO_BRD_V1
+#undef DEFAULT_BRD
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
@@ -46,6 +50,14 @@ TwoWire twoWire(1);
 #endif
 
 #ifdef GPIO_BRD_V2
+#undef DEFAULT_BRD
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+TwoWire twoWire(1);
+#define BOARD_CONFIG 1
+#endif
+
+#ifdef DEFAULT_BRD
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
@@ -67,19 +79,23 @@ NuvIoTState state(&display, &ioConfig, &sysConfig, &ledManager, &btSerial, &SPIF
 MessagePayload *payload = new MessagePayload();
 GPSData *gps = NULL;
 
+#ifdef CELLULAR
 Channel channel(&gprsPort, &console);
-
-MQTT mqtt(&channel, &console);
-
 SIMModem modem(&display, &channel, &console, &hal);
-
-WiFiClient wifiClient;
-WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &sysConfig);
-
 OtaServices ota(&display, &console, &modem, &hal);
+MQTT mqtt(&channel, &console);
 NuvIoTClient client(&modem, &mqtt, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
+#endif
 
-NuvIoTMQTT wifiMqtt(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
+#ifdef WIFI
+WiFiClient wifiClient;
+OtaServices ota(&display, &console, &hal);
+WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &console, &sysConfig);
+NuvIoTMQTT mqtt(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
+NuvIoTClient client(&wifiMgr, &mqtt, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
+#endif
+
+
 
 Telemetry telemetry(&btSerial);
 
@@ -186,11 +202,20 @@ void spinWhileNotCommissioned()
   }
 }
 
+//TODO: Not a lot of value here...
 void connect(bool reconnect = false, unsigned long baud = 115200)
 {
+  #ifdef WIFI
+    if (!state.getIsConfigurationModeActive() && client.WifiConnect(reconnect))
+    {
+      mqtt.addSubscriptions("nuviot/paw/" + sysConfig.DeviceId + "/#");
+      return;
+    }
+  #endif
+  #ifdef CELLULAR
   while (state.isValid())
   {
-    if (!state.getIsConfigurationModeActive() && client.Connect(reconnect, baud))
+    if (!state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
     {
       mqtt.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS0);
 
@@ -202,11 +227,14 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
       return;
     }
   }
+  #endif
 }
 
+#ifdef BOARD_CONFIG
 void initPins() {
   configPins.init(BOARD_CONFIG);
 }
+#endif
 
 /**
  * \brief Setup the console.

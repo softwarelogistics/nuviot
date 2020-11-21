@@ -222,7 +222,7 @@ void NuvIoTState::readFirmware()
     }
 
     short blockCount = m_btSerial->read() << 8 | m_btSerial->read();
-    byte buffer[512];
+    byte buffer[16384];
 
     m_console->println("Started reading [" + String(blockCount) + "] blocks");
     m_btSerial->print("fwupdate=ok-blocks=" + String(blockCount) + ";\n");
@@ -399,11 +399,12 @@ void NuvIoTState::loop()
     {
         m_paused = false;
         m_btSerial->println("DISCONNECTED");
+        m_console->enableBTOut(true);        
         m_pauseTimeout = 0;
     }
     else if (m_paused)
     {
-        m_console->println("PAUSE: " + String(m_pauseTimeout) + " " + String(millis()));
+        //   m_console->println("PAUSE: " + String(m_pauseTimeout) + " " + String(millis()));
     }
 
     while (m_btSerial->available() > 0)
@@ -419,7 +420,7 @@ void NuvIoTState::loop()
         {
             m_messageBuffer[m_messageBufferTail++] = 0x00;
             String msg = String(m_messageBuffer);
-            Serial.println("RECEIVE LINE: " + msg);
+            m_console->println("BT - RECEIVE LINE: " + msg);
 
             if (msg == "HELLO")
             {
@@ -428,6 +429,7 @@ void NuvIoTState::loop()
                 m_display->println("Configuration Mode");
                 m_display->sendBuffer();
                 m_configurationMode = true;
+                m_paused = true;
             }
             else if (msg == "PAUSE")
             {
@@ -438,6 +440,13 @@ void NuvIoTState::loop()
             else if (msg == "CONTINUE")
             {
                 m_paused = false;
+                m_configurationMode = false;
+
+                m_display->clearBuffer();
+                m_display->println("Completed");
+                m_display->println("Leaving Config Mode");
+                m_display->sendBuffer();
+                m_console->enableBTOut(true);
             }
             else if (msg == "FIRMWARE")
             {
@@ -495,6 +504,7 @@ void NuvIoTState::loop()
             }
             else if (msg.substring(0) == "SYSCONFIG-RECV-START")
             {
+                m_console->enableBTOut(false);
                 m_jsonBufferTail = 0x00;
             }
             else if (msg.substring(0) == "SYSCONFIG-RECV-END")
@@ -502,30 +512,35 @@ void NuvIoTState::loop()
                 m_jsonBuffer[m_jsonBufferTail] = 0x00;
                 Serial.println(m_jsonBuffer);
                 m_jsonBufferTail = 0;
+                
 
                 if (m_sysConfig->parseJSON(m_jsonBuffer))
                 {
                     m_sysConfig->write();
                     m_btSerial->println("SYSCONFIG-RECV-END:OK");
+                    m_btSerial->flush();
                 }
                 else
                 {
                     m_btSerial->println("SYSCONFIG-RECV-END:FAIL");
+                    m_btSerial->flush();
                 }
+
+                m_console->enableBTOut(true);
             }
             else if (msg.substring(0, 14) == "SYSCONFIG-RECV")
             {
                 // format is
                 // ICONFIG-RECV:XX,CRC,[CONTENTS]
-                Serial.println("----------------------");
+                m_console->println("----------------------");
                 char hexBuffer[3];
                 msg.toCharArray(hexBuffer, 3, 15);
-                Serial.println(hexBuffer);
+                m_console->println(hexBuffer);
                 uint8_t rowIndex = strtol(hexBuffer, NULL, 16);
 
                 msg.toCharArray(hexBuffer, 3, 18);
                 uint8_t crc = strtol(hexBuffer, NULL, 16);
-                Serial.println(hexBuffer);
+                m_console->println(hexBuffer);
                 uint8_t calcCRC = 0x00;
 
                 for (int idx = 21; idx < msg.length(); ++idx)
@@ -533,12 +548,10 @@ void NuvIoTState::loop()
                     calcCRC += (uint8_t)msg[idx];
                 }
 
-                Serial.println("RESULT: " + String(rowIndex) + " " + String(crc) + " " + String(calcCRC));
-                Serial.println("----------------------");
-
                 if (crc == calcCRC)
                 {
                     m_btSerial->println("SYSCONFIG-RECV-OK:" + String(rowIndex));
+                    m_btSerial->flush();
 
                     if (rowIndex == 0)
                     {
@@ -549,15 +562,23 @@ void NuvIoTState::loop()
                     {
                         m_jsonBuffer[m_jsonBufferTail++] = msg[idx];
                     }
+
+                    m_console->println("RESULT-OK: " + String(rowIndex) + " " + String(crc) + " " + String(calcCRC));
+                    m_console->println("----------------------");
                 }
                 else
                 {
                     m_btSerial->println("SYSCONFIG-RECV-CRC-ERR:" + String(rowIndex));
+                    m_btSerial->flush();
+
+                    m_console->println("RESULT-ERR: " + String(rowIndex) + " " + String(crc) + " " + String(calcCRC));
+                    m_console->println("----------------------");
                 }
             }
             else if (msg.substring(0) == "IOCONFIG-RECV-START")
             {
                 m_jsonBufferTail = 0;
+                m_console->enableBTOut(false);
             }
             else if (msg.substring(0) == "IOCONFIG-RECV-END")
             {
@@ -569,11 +590,14 @@ void NuvIoTState::loop()
                 {
                     m_ioConfig->write();
                     m_btSerial->println("IOCONFIG-RECV-END:OK");
+                    m_btSerial->flush();
                 }
                 else
                 {
                     m_btSerial->println("IOCONFIG-RECV-END:FAIL");
+                    m_btSerial->flush();
                 }
+                m_console->enableBTOut(true);
             }
             else if (msg.substring(0, 13) == "IOCONFIG-RECV")
             {
@@ -749,35 +773,83 @@ float NuvIoTState::getFlt(String key)
 
 void NuvIoTState::setADCConfig(int idx, uint8_t config, float scaler)
 {
-    m_console->println("setadc=true; // index=" + String(idx) + ", " + String(config) + ", " + String(scaler)) ;
+    m_console->println("setadc=true; // index=" + String(idx) + ", " + String(config) + ", " + String(scaler));
 
-    switch(idx)
+    switch (idx)
     {
-        case 0: m_ioConfig->ADC1Config = config; m_ioConfig->ADC1Scaler = scaler; break;
-        case 1: m_ioConfig->ADC2Config = config; m_ioConfig->ADC2Scaler = scaler; break;
-        case 2: m_ioConfig->ADC3Config = config; m_ioConfig->ADC3Scaler = scaler; break;
-        case 3: m_ioConfig->ADC4Config = config; m_ioConfig->ADC4Scaler = scaler; break;
-        case 4: m_ioConfig->ADC5Config = config; m_ioConfig->ADC5Scaler = scaler; break;
-        case 5: m_ioConfig->ADC6Config = config; m_ioConfig->ADC6Scaler = scaler; break;
-        case 6: m_ioConfig->ADC7Config = config; m_ioConfig->ADC7Scaler = scaler; break;
-        case 7: m_ioConfig->ADC8Config = config; m_ioConfig->ADC8Scaler = scaler; break;
+    case 0:
+        m_ioConfig->ADC1Config = config;
+        m_ioConfig->ADC1Scaler = scaler;
+        break;
+    case 1:
+        m_ioConfig->ADC2Config = config;
+        m_ioConfig->ADC2Scaler = scaler;
+        break;
+    case 2:
+        m_ioConfig->ADC3Config = config;
+        m_ioConfig->ADC3Scaler = scaler;
+        break;
+    case 3:
+        m_ioConfig->ADC4Config = config;
+        m_ioConfig->ADC4Scaler = scaler;
+        break;
+    case 4:
+        m_ioConfig->ADC5Config = config;
+        m_ioConfig->ADC5Scaler = scaler;
+        break;
+    case 5:
+        m_ioConfig->ADC6Config = config;
+        m_ioConfig->ADC6Scaler = scaler;
+        break;
+    case 6:
+        m_ioConfig->ADC7Config = config;
+        m_ioConfig->ADC7Scaler = scaler;
+        break;
+    case 7:
+        m_ioConfig->ADC8Config = config;
+        m_ioConfig->ADC8Scaler = scaler;
+        break;
     }
 }
 
 void NuvIoTState::setIOCConfig(int idx, uint8_t config, float scaler)
 {
-    m_console->println("setioconfig=true; // index=" + String(idx) + ", " + String(config) + ", " + String(scaler)) ;
+    m_console->println("setioconfig=true; // index=" + String(idx) + ", " + String(config) + ", " + String(scaler));
 
-    switch(idx)
+    switch (idx)
     {
-        case 0: m_ioConfig->GPIO1Config = config; m_ioConfig->GPIO1Scaler = scaler; break;
-        case 1: m_ioConfig->GPIO2Config = config; m_ioConfig->GPIO2Scaler = scaler; break;        
-        case 2: m_ioConfig->GPIO3Config = config; m_ioConfig->GPIO3Scaler = scaler; break;
-        case 3: m_ioConfig->GPIO4Config = config; m_ioConfig->GPIO4Scaler = scaler; break;        
-        case 4: m_ioConfig->GPIO5Config = config; m_ioConfig->GPIO5Scaler = scaler; break;
-        case 5: m_ioConfig->GPIO6Config = config; m_ioConfig->GPIO6Scaler = scaler; break;        
-        case 6: m_ioConfig->GPIO7Config = config; m_ioConfig->GPIO7Scaler = scaler; break;
-        case 7: m_ioConfig->GPIO8Config = config; m_ioConfig->GPIO8Scaler = scaler; break;        
+    case 0:
+        m_ioConfig->GPIO1Config = config;
+        m_ioConfig->GPIO1Scaler = scaler;
+        break;
+    case 1:
+        m_ioConfig->GPIO2Config = config;
+        m_ioConfig->GPIO2Scaler = scaler;
+        break;
+    case 2:
+        m_ioConfig->GPIO3Config = config;
+        m_ioConfig->GPIO3Scaler = scaler;
+        break;
+    case 3:
+        m_ioConfig->GPIO4Config = config;
+        m_ioConfig->GPIO4Scaler = scaler;
+        break;
+    case 4:
+        m_ioConfig->GPIO5Config = config;
+        m_ioConfig->GPIO5Scaler = scaler;
+        break;
+    case 5:
+        m_ioConfig->GPIO6Config = config;
+        m_ioConfig->GPIO6Scaler = scaler;
+        break;
+    case 6:
+        m_ioConfig->GPIO7Config = config;
+        m_ioConfig->GPIO7Scaler = scaler;
+        break;
+    case 7:
+        m_ioConfig->GPIO8Config = config;
+        m_ioConfig->GPIO8Scaler = scaler;
+        break;
     }
 }
 

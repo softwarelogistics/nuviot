@@ -61,7 +61,7 @@ private:
 
     Stream *m_stream;
 
-    bool m_transparentMode;
+    bool m_transparentMode = false;
 
     void writeString(String string);
     void writeLengthPrefixedString(String str);

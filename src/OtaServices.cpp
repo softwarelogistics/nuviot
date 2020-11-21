@@ -50,7 +50,7 @@ bool OtaServices::downloadOverWiFi(String url)
     int written = 0;
     int total = 1;
     int len = 1;
-    uint8_t buff[1024] = {0};
+    uint8_t buff[4098] = {0};
     size_t size = sizeof(buff);
     int ret = 0;
     HTTPClient http;
@@ -74,9 +74,8 @@ bool OtaServices::downloadOverWiFi(String url)
         // get lenght of document (is -1 when Server sends no Content-Length header)
         len = http.getSize();
         total = len;
-#ifdef MQTT_VERBOSE            
         m_console->println("Begin download of: " + String(len));
-#endif        
+
         downloaded = 0;
         // get tcp stream
         WiFiClient *stream = http.getStreamPtr();
@@ -103,7 +102,8 @@ bool OtaServices::downloadOverWiFi(String url)
                             int percentCommplete = (100 * downloaded) / total;
                             String progress = "Progress " + String(percentCommplete);
                             const char *str = progress.c_str();
-                            m_console->println(progress);
+                            m_console->println("Downoaded " + String(downloaded) + " out of " + String(total));
+
                             for (int idx = 0; idx < percentCommplete / 10; ++idx)
                             {
                                 progressBar[idx] = '.';
@@ -114,7 +114,7 @@ bool OtaServices::downloadOverWiFi(String url)
                             m_display->drawStr("Updating Firmware", str, progressBar);
                             if (written != c)
                             {
-                                //m_display->drawString(0,48, "Partial Recieve - likely failure");
+                                m_console->println("Partial Recieve - likely failure: " + String(written) + " "  + String(c));
                             }
 
                             downloaded += written;
@@ -155,6 +155,9 @@ bool OtaServices::downloadOverWiFi(String url)
     }
 
     http.end();
+
+    m_console->println("Finished download.");
+
     if (downloaded == total && len == 0)
     {
         if (Update.end())

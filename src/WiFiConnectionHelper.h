@@ -6,25 +6,28 @@
 #include "SysConfig.h"
 #include "NuvIoTState.h"
 #include "NuvIoTState.h"
+#include "Console.h"
 
 class WiFiConnectionHelper {
     public:
         WiFiConnectionHelper();
-        WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state, SysConfig *sysConfig);
+        WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state, Console *console, SysConfig *sysConfig);
         void setup();
+        void connect(bool isReconnecting);
         void disconnect();
         void loop();
 
         bool isConnected();
         String getIPAddress();
         String getMACAddress();
+        int getRSSI();
           
     private:
-        void connect(bool isReconnecting);
         Display *m_display;
         WiFiClient *m_client;
         NuvIoTState *m_state;
         SysConfig *m_sysConfig;
+        Console *m_console;
 };
 
 #endif
