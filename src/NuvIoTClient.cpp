@@ -125,7 +125,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
     m_modem->isModemOnline();
 
-    m_console->println("connect=starting.");
+    m_console->println("connect=starting; // modem baud rate " + String(baudRate));
 
     int retryCount = 0;
     while (!m_modem->isModemOnline() && retryCount < 10)
@@ -282,7 +282,7 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
 
     if (!m_modem->isServiceConnected() || !isReconnect)
     {
-        m_console->println("serviceconnected=false; // will connect to GRPS");
+        m_console->println("serviceconnected=false; // will connect to GRPS with baud rate " + String(baudRate));
         if (!ConnectToAPN(transparentMode, true, baudRate))
         {
             return false;

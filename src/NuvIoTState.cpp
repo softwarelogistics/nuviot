@@ -132,7 +132,7 @@ String NuvIoTState::getRemoteProperties()
     Param *pNext = m_pBoolParamHead;
     while (pNext != NULL)
     {
-        state += ",Boolean-" + String(pNext->getKey()) + "=" + getBool(pNext->getKey());
+        state += ",Boolean-" + String(pNext->getKey()) + "=" + getBool(pNext->getKey()) ? "true" : "false";
         pNext = pNext->pNext;
     }
 

@@ -143,8 +143,10 @@ void configureFileSystem()
 
 void configureModem(unsigned long baudRate = 115200)
 {
+  console.println("modem=configuring; // initial baud rate: " + String(baudRate));
   gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
   gprsPort.setRxBufferSize(16 * 1024);
+  console.println("modem=configured; // initial baud rate: " + String(baudRate));
 }
 
 void welcome(String firmwareSKU, String version)

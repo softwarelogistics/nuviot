@@ -36,7 +36,7 @@ public:
     uint32_t PingRate;
     uint32_t SendUpdateRate;
     uint32_t GPSUpdateRate;
-    uint32_t GPRSModemBaudRate;
+    unsigned long GPRSModemBaudRate;
 
     String toJSON()
     {
@@ -159,7 +159,7 @@ public:
             GPSEnabled = doc["gpsEnabled"].as<bool>();
             SendUpdateRate = doc["sendUpdateRate"].as<uint32_t>();
             GPSUpdateRate = doc["gpsUpdateRate"].as<uint32_t>();
-            GPRSModemBaudRate = doc["baud"].as<uint32_t>();     
+            GPRSModemBaudRate = doc["baud"].as<unsigned long>();     
             if(doc.containsKey("deviceAccessKey"))
             {
                 String tmpKey = doc["deviceAccessKey"].as<String>();
