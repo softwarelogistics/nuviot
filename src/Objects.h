@@ -197,6 +197,8 @@ void spinWhileNotCommissioned()
   }
 }
 
+#define MAX_RETRY_ATTEMPTS 4
+
 //TODO: Not a lot of value here...
 void connect(bool reconnect = false, unsigned long baud = 115200)
 {
@@ -257,5 +259,28 @@ void sendStatusUpdate(String currentState, String nextAction, String title = "Co
   {
     delay(afterDelay);
   }
+}
+
+void reconnect()
+{
+  console.println("connection=lost;");
+  console.println("connection=reconnecting;");
+
+  sendStatusUpdate("No MQTT Connection", "Restarting", "Message Loop", 1000);
+
+  int retryCount = 0;
+  while (!client.CellularConnect(true, sysConfig.GPRSModemBaudRate))
+  {
+    retryCount++;
+    console.println("connection=failreconnect; // connection attempt " + String(retryCount));
+    if (retryCount == MAX_RETRY_ATTEMPTS)
+    {
+      hal.restart();
+    }
+    state.loop();
+  }
+
+  console.println("connection=reestablished;"); 
+  return;
 }
 #endif
