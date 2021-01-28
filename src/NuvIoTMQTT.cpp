@@ -73,7 +73,7 @@ void NuvIoTMQTT::connect()
 
             IPAddress remote_addr;
             (WiFi.hostByName(m_sysConfig->SrvrHostName.c_str(), remote_addr));
-            m_console->println(m_sysConfig->SrvrHostName + "=" + remote_addr.toString() + " with device id: " + m_sysConfig->DeviceId);
+            m_console->println("wifimqtt=connecting; // host=" + m_sysConfig->SrvrHostName + "; addr=" + remote_addr.toString() + "; deviceid= " + m_sysConfig->DeviceId);
 
             //m_mqtt->setServer(m_state->getHostName().c_str(), 1883);
             m_mqtt->setServer(remote_addr, 1883);
@@ -84,7 +84,6 @@ void NuvIoTMQTT::connect()
             }
             else
             {
-                m_console->println(m_sysConfig->DeviceId + " " + m_sysConfig->SrvrHostName + " " + remote_addr.toString() + " " + m_sysConfig->SrvrUID + " " + m_sysConfig->SrvrPWD);
                 connectResult = m_mqtt->connect(m_sysConfig->DeviceId.c_str(), m_sysConfig->SrvrUID.c_str(), m_sysConfig->SrvrPWD.c_str());
             }
 
@@ -93,19 +92,20 @@ void NuvIoTMQTT::connect()
             if (m_client->connected())
             {
                 publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", "{'firmwareversion':'" + m_state->getFirmwareVersion() + "','firmwareSku':'" + m_state->getFirmwareSKU() + "'}");
-                m_console->println("Success connecting to MQTT server " + m_sysConfig->SrvrHostName + ".");
+                m_console->println("wifimqtt=clientconnected; // host=" + m_sysConfig->SrvrHostName + ".");
             }
             else
             {
-                m_console->printError("Could not connect to MQTT server " + m_sysConfig->SrvrHostName + ".");
+                m_console->printError("wifimqtt=failedclientconnect; // host=" + m_sysConfig->SrvrHostName + ".");
             }
 
             if (connectResult)
             {
+                m_console->println("wifimqtt=mqttconnected; // host=" + m_sysConfig->SrvrHostName + ".");
                 for (int idx = 0; idx < m_subscrptionCount; ++idx)
                 {
                     m_mqtt->subscribe(m_subscriptions[idx].c_str());
-                    m_console->println("Added subscription: " + m_subscriptions[idx]);
+                    m_console->println("wifimqtt=subscribed; // subscription=" + m_subscriptions[idx]);
                 }
 
                 m_mqtt->setCallback(mqttCallback);
@@ -119,6 +119,7 @@ void NuvIoTMQTT::connect()
             }
             else
             {
+                m_console->printError("wifimqtt=failedmqttconnected; // host=" + m_sysConfig->SrvrHostName + ".");
                 delay(500);
             }
 
@@ -136,7 +137,7 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
 {
     String strTopic = String(topic);
 
-    m_console->println("mqttrecv=" + strTopic + "; // length=" + length);
+    m_console->println("wifimqtt=receive; // topic=" + strTopic + ".");
 
     String strPayload = "";
 
@@ -144,8 +145,6 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
     {
         strPayload += (char)payload[i];
     }
-
-    m_console->printVerbose("Message arrived [" + String(topic) + "]");
 
     String parts[10];
     int partIdx = 0;
@@ -166,11 +165,6 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
     }
 
     parts[partIdx++] = String(&topic[start]);
-
-    for (int idx = 0; idx < partIdx; ++idx)
-    {
-        m_console->printVerbose("Topic Segment: " + String(idx) + ". [" + parts[idx] + "]");
-    }
 
     if (length > 0)
     {
@@ -266,6 +260,7 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
 
 void NuvIoTMQTT::addSubscriptions(String subscription)
 {
+    m_console->println("wifimqtt=addsubscription; // topic=" + subscription + ".");
     m_subscriptions[m_subscrptionCount++] = subscription;
 }
 
@@ -318,7 +313,7 @@ void NuvIoTMQTT::loop()
 {
     if (!m_client->connected())
     {
-        m_console->printError("server connection lost;");
+        m_console->printError("wifimqtt=clientconnectionlost;");
 
         m_display->clearBuffer();
         m_display->drawString(0, 0, "MQTT Not Connected");
@@ -329,7 +324,7 @@ void NuvIoTMQTT::loop()
     }
     else if (!m_mqtt->connected())
     {
-        m_console->printError("mqtt connection lost;");
+        m_console->printError("wifimqtt=connectionlost;");
 
         m_display->clearBuffer();
         m_display->drawString(0, 0, "MQTT Not Connected");

@@ -24,7 +24,8 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     m_firmwareVersion = firmwareVersion;
 
     String btSerialName = "NuvIoT - " + (m_sysConfig->DeviceId == "?" ? firmwareSku : m_sysConfig->DeviceId);
-    m_btSerial->begin(btSerialName); //Name of your Bluetooth Signal
+    m_btSerial->begin(btSerialName); 
+    m_console->println("bluetooth=started; name=" + btSerialName);
 
     esp_err_t openStat = nvs_open_from_partition("nvs", "kvp", NVS_READWRITE, &m_nvsHandle);
     if (openStat != ESP_OK)
@@ -862,33 +863,42 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
 {
     if (fieldType == "Integer")
     {
-        Param *pParam = findKey(m_pIntParamHead, field.c_str());
-        if (pParam != NULL)
-        {
-            int32_t intValue = atol(value.c_str());
-            esp_err_t err = nvs_set_i32(m_nvsHandle, field.c_str(), intValue);
-            if (err == ESP_OK)
+        int32_t intValue = atol(value.c_str());
+        if(field == "updaterate") {
+            m_sysConfig->SendUpdateRate = intValue;
+        }
+        else if(field == "pingrate") {
+            m_sysConfig->PingRate = intValue;
+        }
+        else {
+            Param *pParam = findKey(m_pIntParamHead, field.c_str());
+            if (pParam != NULL)
             {
-                err = nvs_commit(m_nvsHandle);
+                
+                esp_err_t err = nvs_set_i32(m_nvsHandle, field.c_str(), intValue);
                 if (err == ESP_OK)
                 {
-                    m_console->println("setint=success," + field + ";");
+                    err = nvs_commit(m_nvsHandle);
+                    if (err == ESP_OK)
+                    {
+                        m_console->println("setint=success," + field + ";");
+                    }
+                    else
+                    {
+                        String errMsg = resolveError(err);
+                        m_console->printError("setint=failed,commit" + field + "; // error: " + errMsg);
+                    }
                 }
                 else
                 {
                     String errMsg = resolveError(err);
-                    m_console->printError("setint=failed,commit" + field + "; // error: " + errMsg);
+                    m_console->printError("setint=failed,write," + field + "; // error: " + errMsg);
                 }
             }
             else
             {
-                String errMsg = resolveError(err);
-                m_console->printError("setint=failed,write," + field + "; // error: " + errMsg);
+                m_console->printError("setint=failed,find," + field + "; // error: could not find field.");
             }
-        }
-        else
-        {
-            m_console->printError("setint=failed,find," + field + "; // error: could not find field.");
         }
     }
     else if (fieldType == "Decimal")

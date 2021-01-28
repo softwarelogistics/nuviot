@@ -35,8 +35,8 @@
 
 #ifdef PROD_BRD_V1
 #undef DEFAULT_BRD
-HardwareSerial gprsPort(0);
-HardwareSerial consoleSerial(1);
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
 #define BOARD_CONFIG 2
 #endif
@@ -46,7 +46,7 @@ TwoWire twoWire(1);
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
-#define BOARD_CONFIG 0
+#define BOARD_CONFIG 1
 #endif
 
 #ifdef GPIO_BRD_V2
@@ -95,38 +95,31 @@ NuvIoTMQTT mqtt(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &
 NuvIoTClient client(&wifiMgr, &mqtt, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
 #endif
 
-
-
 Telemetry telemetry(&btSerial);
 
 // drivers
 PulseCounter pulseCounter(&console, &configPins);
-ADC adc(&twoWire, &configPins, &console, payload);
+ADC adc(&twoWire, &state, &configPins, &console, &display, payload);
 TemperatureProbes probes(&console, &configPins, payload);
 
 RelayManager relayManager(&console, &configPins);
 OnOffDetector onOffDetector(&console, &configPins);
 
-PowerSensor powerSensor(&adc, &configPins, &console, payload, &state);
+PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
 
 void configureI2C()
 {
   if (!twoWire.begin(configPins.Sda1, configPins.Scl1, 400000))
   {
-    display.drawStr("Could not start I2C.");
-    console.println("Could not start I2C on pins 21 and 22");
-
     while (true)
     {
-      console.println("ic2=initfail;");
+      console.println("ic2=initfail; Pins SDA=" + String(configPins.Sda1) + ", SCL=" + String(configPins.Scl1) + ".");
       delay(1000);
     }
   }
   else
   {
-    console.println("sda=" + String(configPins.Sda1) + ";");
-    console.println("scl=" + String(configPins.Scl1) + ";");
-    console.println("i2c=initialized;");
+    console.println("i2c=initialized; Pins SDA=" + String(configPins.Sda1) + ", SCL=" + String(configPins.Scl1) + ".");
   }
 }
 

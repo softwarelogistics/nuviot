@@ -219,7 +219,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
     uint8_t pin = resolvePinIndex(idx);
     if (pin == -1)
     {
-        m_console->printVerbose("Invalid pin on configure probe.");
+        m_console->printError("Invalid pin on configure probe.");
         return;
     }
 
@@ -234,6 +234,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
     switch (config)
     {
     case None:
+        m_console->println("Probe pin: " + String(pin) + " not configured as probe.");
         if (m_dhts[idx] != NULL)
         {
             delete m_dhts[idx];
@@ -254,6 +255,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
 
         break;
     case Dht11:
+        m_console->println("Probe pin: " + String(pin) + " configured as DHT11.");
         if (m_probes[idx] != NULL)
         {
             delete m_probes[idx];
@@ -272,6 +274,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
         }
         break;
     case Dht22:
+        m_console->println("Probe pin: " + String(pin) + " configured as DHT22.");
         if (m_probes[idx] != NULL)
         {
             delete m_probes[idx];
@@ -290,6 +293,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
         }
         break;
     case DS18B20:
+        m_console->println("Probe pin: " + String(pin) + " configured as DS1820B.");
         if (m_dhts[idx] != NULL)
         {
             delete m_dhts[idx];

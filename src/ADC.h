@@ -6,6 +6,8 @@
 #include "MessagePayload.h"
 #include "AbstractSensor.h"
 #include "Console.h"
+#include "NuvIoTState.h"
+#include "Display.h"
 #include "IOConfig.h"
 #include "ConfigPins.h"
 
@@ -18,7 +20,10 @@ private:
     ADS1115 *_bank1;
     ADS1115 *_bank2;
     Console *m_console;
+    Display *m_display;
+    NuvIoTState *m_state;
     bool m_portEnabled[NUMBER_ADC_PORTS];
+    bool m_isCt[NUMBER_ADC_PORTS];
     float m_scalers[NUMBER_ADC_PORTS];
     String m_names[NUMBER_ADC_PORTS];
 
@@ -28,9 +33,11 @@ private:
     ConfigPins *m_configPins;
 
 public:
-    ADC(TwoWire *wire, ConfigPins *configPins, Console *console, MessagePayload *payload)
+    ADC(TwoWire *wire, NuvIoTState *state, ConfigPins *configPins, Console *console, Display *display, MessagePayload *payload)
     {
         m_console = console;
+        m_display = display;
+        m_state = state;
         m_configPins = configPins;
 
         /* addr2 = +5V, ADCMOD1 */
@@ -42,6 +49,7 @@ public:
         for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
         {
             m_portEnabled[idx] = false;
+            m_isCt[idx] = false;
         }
 
         m_messagePayload = payload;
@@ -135,11 +143,53 @@ public:
 
         if (channel > 3)
         {
-            result = _bank2->readADC_Voltage(channel - 4);
+            if (m_bank2Enabled)
+            {
+                result = _bank2->readADC_Voltage(channel - 4);
+            }
+            else
+            {
+                bool toggle = false;
+                while (1)
+                {
+                    m_display->clearBuffer();
+                    m_display->setTextSize(2);
+                    toggle = !toggle;
+                    if (toggle)
+                        m_display->drawStr("ERROR", "ADC BANK2", "NOT ENABLED", "!!!!");
+                    else
+                        m_display->drawStr("ERROR", "ADC BANK2", "NOT ENABLED");
+                    m_display->sendBuffer();
+                    m_console->printError("adcbank1=notenabled; // Call to read voltage on disabled bank 2 channel " + String(channel));
+                    m_state->loop();
+                    delay(1000);
+                };
+            }
         }
         else
         {
+            if(m_bank1Enabled)
+            {
             result = _bank1->readADC_Voltage(channel);
+            }
+            else
+            {                  
+                bool toggle = false;
+                while (1)
+                {
+                    m_display->clearBuffer();
+                    m_display->setTextSize(2);
+                    toggle = !toggle;
+                    if (toggle)
+                        m_display->drawStr("ERROR", "ADC BANK1", "NOT ENABLED", "!!!!");
+                    else
+                        m_display->drawStr("ERROR", "ADC BANK1", "NOT ENABLED");
+                    m_display->sendBuffer();
+                    m_console->printError("adcbank1=notready; // Call to read voltage on disabled bank 1 channel " + String(channel));
+                    m_state->loop();
+                    delay(1000);
+                };            
+            }
         }
 
         return result;
@@ -151,14 +201,31 @@ public:
         {
             m_console->printError("ADC > 7");
         }
-
+        
         if (enabled)
         {
-            m_console->println("adc" + String(index) + "=enabled,port=" + String(m_configPins->ADCChannel4) + ";");
+            m_console->println("adc" + String(index) + "=enabled, adcbank=" + String(index > 3 ? 2 : 1) + ";");
         }
 
         m_portEnabled[index] = enabled;
         m_names[index] = name;
+    }
+
+    void enableADCAsCT(String name, int index, bool enabled)
+    {
+        if (index > 7)
+        {
+            m_console->printError("ADC > 7");
+        }
+        
+        if (enabled)
+        {
+            m_console->println("adc" + String(index) + "=enabledAsCT, adcbank=" + String(index > 3 ? 2 : 1) + ";");
+        }
+
+        m_portEnabled[index] = enabled;
+        m_names[index] = name;
+        m_isCt[index] = true;
     }
 
     void setup(IOConfig *ioConfig)
@@ -202,9 +269,6 @@ public:
 
     void configure(IOConfig *ioConfig)
     {
-        setBankEnabled(1, true);
-        setBankEnabled(2, true);
-
         enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC);
         enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC);
         enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC);
@@ -226,8 +290,9 @@ public:
 
     void debugPrint()
     {
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx) {
-            if (m_portEnabled[idx])
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
+        {
+            if (m_portEnabled[idx] && !m_isCt[idx])
             {
                 m_console->printVerbose(m_names[idx] + "=" + String(getADC(idx)) + ";");
             }
@@ -275,6 +340,11 @@ public:
         return _bank1->isOnline();
     }
 
+    bool isBank1Enabled()
+    {
+        return m_bank1Enabled;
+    }
+
     /**
      * \brief Determine if bank two is online.
      * 
@@ -287,6 +357,11 @@ public:
     bool isBankTwoOnline()
     {
         return _bank2->isOnline();
+    }
+
+    bool isBank2Enabled()
+    {
+        return m_bank2Enabled;
     }
 };
 #endif

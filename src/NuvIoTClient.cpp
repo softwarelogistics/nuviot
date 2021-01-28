@@ -531,7 +531,7 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                         {
                             m_mqtt->publish(topic, payload, QOS0);
                         }
-                    }
+                        }
                 }
             }
             else if (action == "ioconfig")

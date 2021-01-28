@@ -445,7 +445,14 @@ bool MQTT::ping()
     writeByteArray(pingMsg, sizeof(pingMsg));
     if(!flush()) return false;
 
-    return readResponse(0xD0);
+    if(readResponse(0xD0))
+    {
+        return readResponse(0x00);
+    }
+    else
+    {
+        return false;
+    }
 }
 
 void MQTT::setMessageReceivedCallback(void (*callback)(String topic, unsigned char *buffer, size_t len))

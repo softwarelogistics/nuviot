@@ -1,23 +1,24 @@
 #include "PowerSensor.h"
 
-PowerSensor::PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, MessagePayload *payload, NuvIoTState *state)
+PowerSensor::PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, Display *display, MessagePayload *payload, NuvIoTState *state)
 {
     m_adc = adc;
     m_console = console;
     m_payload = payload;
     m_state = state;
     m_configPins = configPins;
+    m_display = display;
 }
 
 void PowerSensor::setup(IOConfig *config)
 {
-    for(int idx = 0; idx < 3; ++idx)
+    for (int idx = 0; idx < 3; ++idx)
     {
         m_channelEnabled[idx] = false;
         m_voltage[idx] = 0;
         m_channelAmps[idx] = 0;
     }
-    
+
     configure(config);
 }
 
@@ -77,9 +78,8 @@ void PowerSensor::loop()
             }
 
             float avgLevel = absTotal / (float)iterations;
-            m_channelAmps[idx] = avgLevel * m_ctRatioFactor[idx];            
-         //   m_console->println("BASELINE: " + String(baseline) + ",  " + String(absTotal) + ",  "  + String(avgLevel) + ",  " + String(iterations) + ",  " + String(m_channelAmps[idx]));
-
+            m_channelAmps[idx] = avgLevel * m_ctRatioFactor[idx];
+            m_console->printVerbose("BASELINE: " + String(baseline) + ",  " + String(absTotal) + ",  "  + String(avgLevel) + ",  " + String(iterations) + ",  " + String(m_channelAmps[idx]));
         }
     }
 
@@ -100,10 +100,23 @@ void PowerSensor::configure(IOConfig *config)
     if (config->ADC3Config == ADC_CONFIG_CT)
         enableChannel(2, config->ADC3Name, config->ADC3Scaler);
 
-    if (!m_adc->isBankOneOnline())
+    if(!m_adc->isBank1Enabled())
     {
+        m_console->println("adcbank1=disabled;");
+    }
+    else if (!m_adc->isBankOneOnline())
+    {
+        bool toggle = false;
         while (1)
         {
+            m_display->clearBuffer();
+            m_display->setTextSize(2);
+            toggle = !toggle;
+            if (toggle)
+                m_display->drawStr("ERROR", "ADC BANK1", "OFFLINE", "!!!!");
+            else
+                m_display->drawStr("ERROR", "ADC BANK1", "OFFLINE");
+            m_display->sendBuffer();
             m_console->printError("adcbank1=notready;");
             m_state->loop();
             delay(1000);
@@ -114,11 +127,26 @@ void PowerSensor::configure(IOConfig *config)
         m_console->println("adcbank1=online;");
     }
 
-    if (!m_adc->isBankTwoOnline())
+    if(!m_adc->isBank2Enabled())
+    {
+        m_console->println("adcbank2=disabled;");
+    }
+    else if (!m_adc->isBankOneOnline())
+    if (m_adc->isBank2Enabled() && !m_adc->isBankTwoOnline())
     {
         m_console->printError("adcbank2=notready;");
+                bool toggle = false;
         while (1)
         {
+            m_display->clearBuffer();
+            m_display->setTextSize(2);
+            toggle = !toggle;
+            if (toggle)
+                m_display->drawStr("ERROR", "ADC BANK2", "OFFLINE", "!!!!");
+            else
+                m_display->drawStr("ERROR", "ADC BANK2", "OFFLINE");
+            m_display->sendBuffer();
+
             m_console->printError("adcbank2=notready;");
             m_state->loop();
             delay(1000);
@@ -136,11 +164,25 @@ void PowerSensor::enableChannel(uint8_t channel, String name, float scaler)
 {
     m_names[channel] = name;
     m_channelEnabled[channel] = true;
-
-    //m_adc->enableADC(name, channel, true);
     m_ctRatioFactor[channel] = (scaler);
 
-    m_console->println(name + "=enabled;");
+    uint8_t adcChannel = -1;
+
+    switch(channel) {
+        case 0:  adcChannel = m_configPins->CTChannel1; break;
+        case 1:  adcChannel = m_configPins->CTChannel2; break;
+        case 2:  adcChannel = m_configPins->CTChannel3; break;
+    }
+
+    if(adcChannel < 0)
+    {
+        m_console->printError("invalidchannel=ct" + String(channel) + "; // Invalid mapping for a ct");
+    }
+    else
+    {
+        m_console->println("ct" + String(channel) + ",adcchannel=" + String(adcChannel) + ",name+ " + name + "=enabled;scaler=" + String(scaler) + ";");
+        m_adc->enableADCAsCT(name, adcChannel, true);
+    }
 }
 
 void PowerSensor::debugPrint()
