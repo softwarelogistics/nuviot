@@ -141,6 +141,11 @@ void configureFileSystem()
   }
 }
 
+void handleConsoleCommand(String cmd)
+{
+  state.handleConsoleCommand(cmd);
+}
+
 void configureModem(unsigned long baudRate = 115200)
 {
   console.println("modem=configuring; // initial baud rate: " + String(baudRate));
@@ -247,6 +252,7 @@ void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bo
   console.enableSerialOut(serialEnabled);
   console.enableBTOut(btEnabled);
   console.setVerboseLogging(true);
+  console.registerCallback(handleConsoleCommand);
 }
 
 void sendStatusUpdate(String currentState, String nextAction, String title = "Commo Starting", int afterDelay = 0)

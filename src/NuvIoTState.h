@@ -118,6 +118,8 @@ public:
     String getRemoteProperties();
     String getIOConfigSettings();
 
+    void handleConsoleCommand(String cmd);
+
     bool getSecureTransport();
     bool getIsAnonymous();
 

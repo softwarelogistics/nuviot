@@ -587,7 +587,7 @@ bool SIMModem::isModemOnline()
 {
     bool connected = false;
     connected = sendCommand("AT", S_OK, 0, 500, false) == S_OK;
-
+    return connected;
     if(connected) {
         return true;
     }

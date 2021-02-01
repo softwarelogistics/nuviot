@@ -19,7 +19,7 @@
 
 #define GP0O1_BRD_UART_NUMBER 1
 #define GP0O1_BRD_V2_IO1 17
-#define GP0O1_BRD_V2_IO2 5
+#define GP0O1_BRD_V2_IO2 14
 #define GP0O1_BRD_V2_IO3 34
 #define GP0O1_BRD_V2_IO4 18
 #define GP0O1_BRD_V2_IO5 38
@@ -52,7 +52,7 @@
 #define PROD_BRD_V1_TX 35
 
 #define PROD_BRD_V1_IO1 17
-#define PROD_BRD_V1_IO2 5
+#define PROD_BRD_V1_IO2 14
 #define PROD_BRD_V1_IO3 27
 #define PROD_BRD_V1_IO4 4
 #define PROD_BRD_V1_IO5 16
