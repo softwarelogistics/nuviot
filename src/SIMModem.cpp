@@ -497,6 +497,9 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
                     m_console->printVerbose(String(m_cmdIdx) + " [" + msg + "] - ok");
                     return S_ERROR;
                 }
+                else if (msg == "+CPIN: NOT INSERTED"){
+                    return S_NOSIM;
+                }
                 else if (msg == cmd)
                 {
                     m_console->printVerbose(String(m_cmdIdx) + " Returned original -> " + msg);
@@ -587,7 +590,7 @@ bool SIMModem::isModemOnline()
 {
     bool connected = false;
     connected = sendCommand("AT", S_OK, 0, 500, false) == S_OK;
-
+    return connected;
     if(connected) {
         return true;
     }
@@ -642,7 +645,29 @@ bool SIMModem::setLTE()
 
 bool SIMModem::resetModem()
 {
-    return sendCommand("AT+CFUN=1,1", "SMS Ready", 0, 15000, false) == S_OK;
+    String response = sendCommand("AT+CFUN=1,1", "SMS Ready", 0, 15000, false);
+    if(response == S_NOSIM) {
+        bool toggle = false;
+        while(true) {
+            m_display->drawStr("ERROR", "NO SIM INSERTED");
+            if(toggle) 
+                m_display->drawStr("ERROR", "NO SIM INSERTED", "!!!!!");
+            else 
+                    m_display->drawStr("ERROR", "NO SIM INSERTED");
+
+            m_console->printError("modemreset=error; // NO SIM INSERTED!");
+            toggle = !toggle;
+            delay(500);
+        }
+        return false;
+
+    } else if(response == S_OK)
+    {
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 bool SIMModem::setPDPContext()
