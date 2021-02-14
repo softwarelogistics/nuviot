@@ -1,6 +1,13 @@
 #ifndef OBJECTS_H
 #define OBJECTS_H
 
+#ifdef CORE_DEBUG_LEVEL
+#undef CORE_DEBUG_LEVEL
+#endif
+
+#define CORE_DEBUG_LEVEL 3
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 #include <Arduino.h>
 #include "Display.h"
 #include "NuvIoTState.h"
@@ -79,21 +86,17 @@ NuvIoTState state(&display, &ioConfig, &sysConfig, &ledManager, &btSerial, &SPIF
 MessagePayload *payload = new MessagePayload();
 GPSData *gps = NULL;
 
-#ifdef CELLULAR
 Channel channel(&gprsPort, &console);
 SIMModem modem(&display, &channel, &console, &hal);
 OtaServices ota(&display, &console, &modem, &hal);
-MQTT mqtt(&channel, &console);
-NuvIoTClient client(&modem, &mqtt, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
-#endif
 
-#ifdef WIFI
 WiFiClient wifiClient;
-OtaServices ota(&display, &console, &hal);
 WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &console, &sysConfig);
-NuvIoTMQTT mqtt(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
-NuvIoTClient client(&wifiMgr, &mqtt, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
-#endif
+
+MQTT cellMQTT(&channel, &console);
+NuvIoTMQTT wifiMQTT(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
+
+NuvIoTClient client(&modem, &wifiMgr, &cellMQTT, &wifiMQTT, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
 
 Telemetry telemetry(&btSerial);
 
@@ -207,33 +210,36 @@ void spinWhileNotCommissioned()
 //TODO: Not a lot of value here...
 void connect(bool reconnect = false, unsigned long baud = 115200)
 {
-  #ifdef WIFI
+  if (sysConfig.WiFiEnabled)
+  {
     if (!state.getIsConfigurationModeActive() && client.WifiConnect(reconnect))
     {
-      mqtt.addSubscriptions("nuviot/paw/" + sysConfig.DeviceId + "/#");
-      return;
-    }
-  #endif
-  #ifdef CELLULAR
-  while (state.isValid())
-  {
-    if (!state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
-    {
-      mqtt.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS0);
-
-      if (sysConfig.GPSEnabled)
-      {
-        modem.startGPS();
-      }
-
+      wifiMQTT.addSubscriptions("nuviot/paw/" + sysConfig.DeviceId + "/#");
       return;
     }
   }
-  #endif
+  else if (sysConfig.CellEnabled)
+  {
+    while (state.isValid())
+    {
+      if (!state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
+      {
+        cellMQTT.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS0);
+
+        if (sysConfig.GPSEnabled)
+        {
+          modem.startGPS();
+        }
+
+        return;
+      }
+    }
+  }
 }
 
 #ifdef BOARD_CONFIG
-void initPins() {
+void initPins()
+{
   configPins.init(BOARD_CONFIG);
 }
 #endif
@@ -246,7 +252,7 @@ void initPins() {
  * \param btEnabled Use Bluetooth Serial to send data.
  * 
  **/
-void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled= true)
+void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled = true)
 {
   consoleSerial.begin(baud, SERIAL_8N1);
   console.enableSerialOut(serialEnabled);
@@ -272,21 +278,86 @@ void reconnect()
   console.println("connection=lost;");
   console.println("connection=reconnecting;");
 
-  sendStatusUpdate("No MQTT Connection", "Restarting", "Message Loop", 1000);
+  connect(true);
 
-  int retryCount = 0;
-  while (!client.CellularConnect(true, sysConfig.GPRSModemBaudRate))
+  console.println("connection=reestablished;");
+}
+
+void handleError(String err, String details)
+{
+  if (sysConfig.WiFiEnabled)
   {
-    retryCount++;
-    console.println("connection=failreconnect; // connection attempt " + String(retryCount));
-    if (retryCount == MAX_RETRY_ATTEMPTS)
+    wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/raise", details);
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/raise", details, QOS0);
+  }
+}
+
+void clearError(String err, String details)
+{
+  if (sysConfig.WiFiEnabled)
+  {
+    wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/clear", details);
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/clear", details, QOS0);
+  }
+}
+
+long lastPing = 0;
+
+void ping()
+{
+  if (lastPing == 0 || ((millis() - lastPing) > sysConfig.PingRate * 1000))
+  {
+    lastPing = millis();
+
+    if (!cellMQTT.ping())
     {
-      hal.restart();
+      reconnect();
+      lastPing = 0;
     }
-    state.loop();
+
+    console.println("transmit=ping;");
+    ledManager.setOnlineFlashRate(-1);
   }
 
-  console.println("connection=reestablished;"); 
-  return;
+  if (cellMQTT.getIsClosed())
+  {
+    // Reconnect will either return connected or resteart the device.
+    reconnect();
+    lastPing = 0;
+  }
+}
+
+void commonLoop()
+{
+
+  if (sysConfig.WiFiEnabled)
+  {
+    wifiMQTT.loop();
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.loop();
+    ping();
+  }
+
+  state.loop();
+}
+
+void mqttPublish(String topic, String value)
+{
+  if (sysConfig.WiFiEnabled)
+  {
+    wifiMQTT.publish(topic, value);
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.publish(topic, value, QOS0);
+  }
 }
 #endif

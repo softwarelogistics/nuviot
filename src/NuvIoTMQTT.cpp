@@ -316,7 +316,7 @@ void NuvIoTMQTT::loop()
         m_console->printError("wifimqtt=clientconnectionlost;");
 
         m_display->clearBuffer();
-        m_display->drawString(0, 0, "MQTT Not Connected");
+        m_display->drawString(0, 0, "Client Not Connected");
         m_display->drawString(0, 16, resolveConnectFail().c_str());
         m_display->sendBuffer();
 
