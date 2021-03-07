@@ -38,7 +38,26 @@ NuvIoTClient::NuvIoTClient(SIMModem *modem, MQTT *mqtt, Console *console, Displa
     nuviotClient = this;
     m_sysConfig = sysConfig;
 
+    m_wifiConnectionHelper = NULL;
+    m_nuviotMqtt = NULL;
     mqtt->setMessageReceivedCallback(messagePublished_CallBack);
+}
+
+NuvIoTClient::NuvIoTClient(WiFiConnectionHelper *wifiConnectionHelper, NuvIoTMQTT *mqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal)
+{
+    m_modem = NULL;
+    m_mqtt = NULL;
+    m_wifiConnectionHelper = wifiConnectionHelper;
+    m_display = display;
+    m_ledManager = ledManager;
+    m_hal = hal;
+    m_console = console;    
+    m_state = state;
+    m_ota = ota;
+    nuviotClient = this;
+    m_sysConfig = sysConfig;
+    m_nuviotMqtt = mqtt;
+    m_nuviotMqtt->registerCallback(messagePublished_CallBack);
 }
 
 void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction, String title, int afterDelay)
@@ -90,6 +109,14 @@ void NuvIoTClient::delayAndCheckState(long ms)
         delay(1);
     }
 }
+
+bool NuvIoTClient::WifiConnect(bool isReconnect) {
+    m_wifiConnectionHelper->connect(isReconnect);
+    m_nuviotMqtt->connect();
+
+    return true;
+}
+
 
 bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, unsigned long baudRate)
 {
@@ -247,7 +274,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
 #define RETRY_COUNT 2
 
-bool NuvIoTClient::Connect(bool isReconnect, unsigned long baudRate)
+bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
 {
     m_console->setVerboseLogging(m_state->getVerboseLogging());
 
@@ -443,7 +470,14 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                 {
                     String payload = m_state->getIOConfigSettings();
                     String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/ioconfig";
-                    m_mqtt->publish(topic, payload, QOS0);
+                    if (m_nuviotMqtt != NULL)
+                    {
+                        m_nuviotMqtt->publish(topic, payload);
+                    }
+                    else if(m_mqtt != NULL)
+                    {
+                        m_mqtt->publish(topic, payload, QOS0);
+                    }
                 }
                 else
                 {
@@ -487,7 +521,15 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                     {
                         String payload = m_state->getRemoteProperties();
                         String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/state";
-                        m_mqtt->publish(topic, payload, QOS0);
+
+                        if (m_nuviotMqtt != NULL)
+                        {
+                            m_nuviotMqtt->publish(topic, payload);
+                        }
+                        else if(m_mqtt != NULL)
+                        {
+                            m_mqtt->publish(topic, payload, QOS0);
+                        }
                     }
                 }
             }

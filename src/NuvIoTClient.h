@@ -10,9 +10,12 @@
 #include "OtaServices.h"
 #include "SysConfig.h"
 #include "LedManager.h"
+#include "NuvIoTMQTT.h"
 
 class NuvIoTClient {
     private:
+        NuvIoTMQTT *m_nuviotMqtt = NULL;
+        WiFiConnectionHelper *m_wifiConnectionHelper;
         Display *m_display;
         Hal *m_hal;
         SIMModem *m_modem;
@@ -36,8 +39,10 @@ class NuvIoTClient {
 
     public:
         NuvIoTClient(SIMModem *modem, MQTT *mqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal);
+        NuvIoTClient(WiFiConnectionHelper *wifiConnectionHelper, NuvIoTMQTT *mqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal);
         bool ConnectToAPN(bool transparentMode, bool connectToAPN, unsigned long baudRate);
-        bool Connect(bool isReconnect, unsigned long baudRate);
+        bool CellularConnect(bool isReconnect, unsigned long baudRate);
+        bool WifiConnect(bool isReconnect);
         void messagePublished(String topic, unsigned char *payload, size_t length);
 
         void setMessageReceivedCallback(void (*callback)(String topic, byte buffer[], size_t buffer_length)) {
