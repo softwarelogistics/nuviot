@@ -588,8 +588,13 @@ bool SIMModem::isModemOnline()
     bool connected = false;
     connected = sendCommand("AT", S_OK, 0, 500, false) == S_OK;
     return connected;
-
-    m_console->printWarning("Checking for modem online");
+    if(connected) {
+        return true;
+    }
+    else
+    {
+        m_console->printWarning("modemonline=false;");
+    }
 
     int idx = 0;
     while (!connected && idx < 7)
@@ -598,7 +603,7 @@ bool SIMModem::isModemOnline()
 
         if (!connected)
         {
-            m_console->printWarning("Could not connect changing baud rate: " + String(baudRate[idx]));
+            m_console->printWarning("modemonline=false; // trying baud: " + String(baudRate[idx]));
             delay(500);
 
             m_channel->setBaudRate(baudRate[idx]);
@@ -606,8 +611,7 @@ bool SIMModem::isModemOnline()
         }
     }
 
-    m_console->printWarning("Out of loop " + String(connected));
-
+    m_console->printWarning("modemonline=" + connected ? "true" : "false");
     return connected;
 }
 

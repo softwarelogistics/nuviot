@@ -24,7 +24,8 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     m_firmwareVersion = firmwareVersion;
 
     String btSerialName = "NuvIoT - " + (m_sysConfig->DeviceId == "?" ? firmwareSku : m_sysConfig->DeviceId);
-    m_btSerial->begin(btSerialName); //Name of your Bluetooth Signal
+    m_btSerial->begin(btSerialName);
+    m_console->println("bluetooth=started; name=" + btSerialName);
 
     esp_err_t openStat = nvs_open_from_partition("nvs", "kvp", NVS_READWRITE, &m_nvsHandle);
     if (openStat != ESP_OK)
@@ -131,7 +132,7 @@ String NuvIoTState::getRemoteProperties()
     Param *pNext = m_pBoolParamHead;
     while (pNext != NULL)
     {
-        state += ",Boolean-" + String(pNext->getKey()) + "=" + getBool(pNext->getKey());
+        state += ",Boolean-" + String(pNext->getKey()) + "=" + getBool(pNext->getKey()) ? "true" : "false";
         pNext = pNext->pNext;
     }
 
@@ -222,7 +223,7 @@ void NuvIoTState::readFirmware()
     }
 
     short blockCount = m_btSerial->read() << 8 | m_btSerial->read();
-    byte buffer[512];
+    byte buffer[16384];
 
     m_console->println("Started reading [" + String(blockCount) + "] blocks");
     m_btSerial->print("fwupdate=ok-blocks=" + String(blockCount) + ";\n");
@@ -399,6 +400,7 @@ void NuvIoTState::loop()
     {
         m_paused = false;
         m_btSerial->println("DISCONNECTED");
+        m_console->enableBTOut(true);
         m_pauseTimeout = 0;
     }
     else if (m_paused)
@@ -439,6 +441,13 @@ void NuvIoTState::loop()
             else if (msg == "CONTINUE")
             {
                 m_paused = false;
+                m_configurationMode = false;
+
+                m_display->clearBuffer();
+                m_display->println("Completed");
+                m_display->println("Leaving Config Mode");
+                m_display->sendBuffer();
+                m_console->enableBTOut(true);
             }
             else if (msg == "FIRMWARE")
             {
@@ -570,6 +579,7 @@ void NuvIoTState::loop()
             else if (msg.substring(0) == "IOCONFIG-RECV-START")
             {
                 m_jsonBufferTail = 0;
+                m_console->enableBTOut(false);
             }
             else if (msg.substring(0) == "IOCONFIG-RECV-END")
             {
@@ -588,6 +598,7 @@ void NuvIoTState::loop()
                     m_btSerial->println("IOCONFIG-RECV-END:FAIL");
                     m_btSerial->flush();
                 }
+                m_console->enableBTOut(true);
             }
             else if (msg.substring(0, 13) == "IOCONFIG-RECV")
             {
@@ -848,37 +859,170 @@ void NuvIoTState::persistConfig()
     m_ioConfig->write();
 }
 
+void NuvIoTState::handleConsoleCommand(String msg)
+{
+    if (msg == "HELLO")
+    {
+        m_display->clearBuffer();
+        m_display->println("Welcome");
+        m_display->println("Configuration Mode");
+        m_display->sendBuffer();
+        m_configurationMode = true;
+        m_paused = true;
+    }
+    else if (msg == "PAUSE")
+    {
+        m_ledManager->setOnlineFlashRate(8);
+        m_pauseTimeout = millis() + (60 * 1000);
+        m_paused = true;
+    }
+    else if (msg == "CONTINUE")
+    {
+        m_paused = false;
+        m_configurationMode = false;
+
+        m_display->clearBuffer();
+        m_display->println("Completed");
+        m_display->println("Leaving Config Mode");
+        m_display->sendBuffer();
+        m_console->enableBTOut(true);
+    }
+    else if (msg == "REBOOT")
+    {
+        m_hal->restart();
+    }
+    else if (msg == "PROPERTIES")
+    {
+        m_console->println(getRemoteProperties());
+    }
+    else if (msg == "VERSION")
+    {
+        m_console->println(queryFirmwareVersion());
+    }
+    else if (msg.substring(0, 3) == "SET")
+    {
+        String setCommand = msg.substring(4);
+        int dashIdx = setCommand.indexOf('-');
+        int equalsIdx = setCommand.indexOf("=");
+        String type = setCommand.substring(0, dashIdx);
+        String key = setCommand.substring(dashIdx + 1, equalsIdx);
+        String value = setCommand.substring(equalsIdx + 1);
+        updateProperty(type, key, value);
+        m_console->println("set-ack:" + key);
+    }
+    else if (msg.substring(0, 5) == "BAUD=")
+    {
+        String strBaudRate = msg.substring(5);
+        unsigned long baud = atol(strBaudRate.c_str());
+        if (baud > 0)
+        {
+            m_sysConfig->GPRSModemBaudRate = baud;
+            m_sysConfig->write();
+            m_console->println("new baud rate:" + String(m_sysConfig->GPRSModemBaudRate));
+            m_console->println("rebooting in 2 seconds.");
+            delay(2000);
+            m_hal->restart();
+        }
+    }
+    else if (msg.substring(0, 3) == "ID=")
+    {
+        String deviceId = msg.substring(3);
+        if (deviceId.length() > 0)
+        {
+            m_sysConfig->DeviceId = deviceId;
+            m_sysConfig->write();
+
+            m_console->println("new device id:" + m_sysConfig->DeviceId);
+            m_console->println("rebooting in 2 seconds.");
+            delay(2000);
+            m_hal->restart();
+        }
+    }
+    else if (msg == "IOCONFIG-SEND")
+    {
+        String json = m_ioConfig->toJSON();
+        uint16_t remaining = json.length();
+        uint16_t chunkSize = 100;
+        uint16_t chunkIndex = 0;
+        while (remaining > 0)
+        {
+            int start = chunkIndex * 100;
+            int end = min((uint16_t)(start + chunkSize), (uint16_t)json.length());
+            remaining = json.length() - end;
+            m_console->print(json.substring(chunkIndex * 100, end));
+            delay(100);
+            chunkIndex++;
+        }
+
+        m_console->println("");
+    }
+    else if (msg == "SYSCONFIG-SEND")
+    {
+        String json = m_sysConfig->toJSON();
+        uint16_t remaining = json.length();
+        uint16_t chunkSize = 100;
+        uint16_t chunkIndex = 0;
+        while (remaining > 0)
+        {
+            int start = chunkIndex * 100;
+            int end = min((uint16_t)(start + chunkSize), (uint16_t)json.length());
+            remaining = json.length() - end;
+            m_console->print(json.substring(chunkIndex * 100, end));
+            delay(100);
+            chunkIndex++;
+        }
+
+        m_console->println("");
+    }
+    else
+    {
+        m_console->println("UNKNOWN COMMAND: " + msg);
+    }
+}
+
 void NuvIoTState::updateProperty(String fieldType, String field, String value)
 {
     if (fieldType == "Integer")
     {
-        Param *pParam = findKey(m_pIntParamHead, field.c_str());
-        if (pParam != NULL)
+        int32_t intValue = atol(value.c_str());
+        if (field == "updaterate")
         {
-            int32_t intValue = atol(value.c_str());
-            esp_err_t err = nvs_set_i32(m_nvsHandle, field.c_str(), intValue);
-            if (err == ESP_OK)
+            m_sysConfig->SendUpdateRate = intValue;
+        }
+        else if (field == "pingrate")
+        {
+            m_sysConfig->PingRate = intValue;
+        }
+        else
+        {
+            Param *pParam = findKey(m_pIntParamHead, field.c_str());
+            if (pParam != NULL)
             {
-                err = nvs_commit(m_nvsHandle);
+
+                esp_err_t err = nvs_set_i32(m_nvsHandle, field.c_str(), intValue);
                 if (err == ESP_OK)
                 {
-                    m_console->println("setint=success," + field + ";");
+                    err = nvs_commit(m_nvsHandle);
+                    if (err == ESP_OK)
+                    {
+                        m_console->println("setint=success," + field + ";");
+                    }
+                    else
+                    {
+                        String errMsg = resolveError(err);
+                        m_console->printError("setint=failed,commit" + field + "; // error: " + errMsg);
+                    }
                 }
                 else
                 {
                     String errMsg = resolveError(err);
-                    m_console->printError("setint=failed,commit" + field + "; // error: " + errMsg);
+                    m_console->printError("setint=failed,write," + field + "; // error: " + errMsg);
                 }
             }
             else
             {
-                String errMsg = resolveError(err);
-                m_console->printError("setint=failed,write," + field + "; // error: " + errMsg);
+                m_console->printError("setint=failed,find," + field + "; // error: could not find field.");
             }
-        }
-        else
-        {
-            m_console->printError("setint=failed,find," + field + "; // error: could not find field.");
         }
     }
     else if (fieldType == "Decimal")

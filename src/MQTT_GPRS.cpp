@@ -247,6 +247,8 @@ bool MQTT::readResponse(byte expected)
 
 bool MQTT::connect(String uid, String pwd, String clientId)
 {
+    m_console->setVerboseLogging(true);
+
     byte connectFlag = 0x03;
 
     bool isAuth = uid.length() > 0 && pwd.length() > 0;
@@ -294,11 +296,13 @@ bool MQTT::connect(String uid, String pwd, String clientId)
     {
         m_closed = false;
         m_console->printVerbose("mqttconnect=success;");
+        m_console->setVerboseLogging(true);
         return true;
     }
     else
     {
         m_console->printError("mqttconnect=fail; // invalid response.");
+        m_console->setVerboseLogging(true);
         return false;
     }
 }
@@ -441,7 +445,14 @@ bool MQTT::ping()
     writeByteArray(pingMsg, sizeof(pingMsg));
     if(!flush()) return false;
 
-    return readResponse(0xD0);
+    if(readResponse(0xD0))
+    {
+        return readResponse(0x00);
+    }
+    else
+    {
+        return false;
+    }
 }
 
 void MQTT::setMessageReceivedCallback(void (*callback)(String topic, unsigned char *buffer, size_t len))

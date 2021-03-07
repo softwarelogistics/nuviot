@@ -20,6 +20,8 @@ class WiFiConnectionHelper {
         bool isConnected();
         String getIPAddress();
         String getMACAddress();
+        String getWiFiStatus(int);
+        int getRSSI();
           
     private:
         Display *m_display;

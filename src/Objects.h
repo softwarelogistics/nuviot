@@ -1,6 +1,13 @@
 #ifndef OBJECTS_H
 #define OBJECTS_H
 
+#ifdef CORE_DEBUG_LEVEL
+#undef CORE_DEBUG_LEVEL
+#endif
+
+#define CORE_DEBUG_LEVEL 3
+#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
+
 #include <Arduino.h>
 #include "Display.h"
 #include "NuvIoTState.h"
@@ -35,8 +42,8 @@
 
 #ifdef PROD_BRD_V1
 #undef DEFAULT_BRD
-HardwareSerial gprsPort(0);
-HardwareSerial consoleSerial(1);
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
 #define BOARD_CONFIG 2
 #endif
@@ -46,7 +53,7 @@ TwoWire twoWire(1);
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
-#define BOARD_CONFIG 0
+#define BOARD_CONFIG 1
 #endif
 
 #ifdef GPIO_BRD_V2
@@ -80,57 +87,43 @@ MessagePayload *payload = new MessagePayload();
 GPSData *gps = NULL;
 
 
-
-
-
-#ifdef CELLULAR
 Channel channel(&gprsPort, &console);
 SIMModem modem(&display, &channel, &console, &hal);
 OtaServices ota(&display, &console, &modem, &hal);
-MQTT mqtt(&channel, &console);
-NuvIoTClient client(&modem, &mqtt, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
-#endif
 
-#ifdef WIFI
 WiFiClient wifiClient;
-OtaServices ota(&display, &console, &hal);
 WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &console, &sysConfig);
-NuvIoTMQTT mqtt(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
-NuvIoTClient client(&wifiMgr, &mqtt, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
-#endif
 
+MQTT cellMQTT(&channel, &console);
+NuvIoTMQTT wifiMQTT(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
 
+NuvIoTClient client(&modem, &wifiMgr, &cellMQTT, &wifiMQTT, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
 
 Telemetry telemetry(&btSerial);
 
 // drivers
 PulseCounter pulseCounter(&console, &configPins);
-ADC adc(&twoWire, &configPins, &console, payload);
+ADC adc(&twoWire, &state, &configPins, &console, &display, payload);
 TemperatureProbes probes(&console, &configPins, payload);
 
 RelayManager relayManager(&console, &configPins);
 OnOffDetector onOffDetector(&console, &configPins);
 
-PowerSensor powerSensor(&adc, &configPins, &console, payload, &state);
+PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
 
 void configureI2C()
 {
   if (!twoWire.begin(configPins.Sda1, configPins.Scl1, 400000))
   {
-    display.drawStr("Could not start I2C.");
-    console.println("Could not start I2C on pins 21 and 22");
-
     while (true)
     {
-      console.println("ic2=initfail;");
+      console.println("ic2=initfail; Pins SDA=" + String(configPins.Sda1) + ", SCL=" + String(configPins.Scl1) + ".");
       delay(1000);
     }
   }
   else
   {
-    console.println("sda=" + String(configPins.Sda1) + ";");
-    console.println("scl=" + String(configPins.Scl1) + ";");
-    console.println("i2c=initialized;");
+    console.println("i2c=initialized; Pins SDA=" + String(configPins.Sda1) + ", SCL=" + String(configPins.Scl1) + ".");
   }
 }
 
@@ -152,10 +145,17 @@ void configureFileSystem()
   }
 }
 
+void handleConsoleCommand(String cmd)
+{
+  state.handleConsoleCommand(cmd);
+}
+
 void configureModem(unsigned long baudRate = 115200)
 {
+  console.println("modem=configuring; // initial baud rate: " + String(baudRate));
   gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
   gprsPort.setRxBufferSize(16 * 1024);
+  console.println("modem=configured; // initial baud rate: " + String(baudRate));
 }
 
 void welcome(String firmwareSKU, String version)
@@ -206,36 +206,42 @@ void spinWhileNotCommissioned()
   }
 }
 
+#define MAX_RETRY_ATTEMPTS 4
+
 //TODO: Not a lot of value here...
-void connectXXX(bool reconnect = false, unsigned long baud = 115200)
+void connect(bool reconnect = false, unsigned long baud = 115200)
 {
-  #ifdef WIFI
+  if (sysConfig.WiFiEnabled)
+  {
     if (!state.getIsConfigurationModeActive() && client.WifiConnect(reconnect))
     {
-      mqtt.addSubscriptions("nuviot/paw/" + sysConfig.DeviceId + "/#");
+      wifiMQTT.addSubscriptions("nuviot/paw/" + sysConfig.DeviceId + "/#");
       return;
     }
-  #endif
-  #ifdef CELLULAR
-  while (state.isValid())
+  }
+  else if (sysConfig.CellEnabled)
   {
-    if (!state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
+    while (state.isValid())
     {
-      mqtt.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS0);
-
-      if (sysConfig.GPSEnabled)
+      if (!state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
       {
-        modem.startGPS();
-      }
+        cellMQTT.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS0);
 
-      return;
+        if (sysConfig.GPSEnabled)
+        {
+          modem.startGPS();
+        }
+
+        return;
+      }
     }
   }
   #endif
 }
 
 #ifdef BOARD_CONFIG
-void initPins() {
+void initPins()
+{
   configPins.init(BOARD_CONFIG);
 }
 #endif
@@ -248,12 +254,13 @@ void initPins() {
  * \param btEnabled Use Bluetooth Serial to send data.
  * 
  **/
-void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled= true)
+void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled = true)
 {
   consoleSerial.begin(baud, SERIAL_8N1);
   console.enableSerialOut(serialEnabled);
   console.enableBTOut(btEnabled);
   console.setVerboseLogging(true);
+  console.registerCallback(handleConsoleCommand);
 }
 
 void sendStatusUpdate(String currentState, String nextAction, String title = "Commo Starting", int afterDelay = 0)
@@ -265,6 +272,94 @@ void sendStatusUpdate(String currentState, String nextAction, String title = "Co
   if (afterDelay > 0)
   {
     delay(afterDelay);
+  }
+}
+
+void reconnect()
+{
+  console.println("connection=lost;");
+  console.println("connection=reconnecting;");
+
+  connect(true);
+
+  console.println("connection=reestablished;");
+}
+
+void handleError(String err, String details)
+{
+  if (sysConfig.WiFiEnabled)
+  {
+    wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/raise", details);
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/raise", details, QOS0);
+  }
+}
+
+void clearError(String err, String details)
+{
+  if (sysConfig.WiFiEnabled)
+  {
+    wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/clear", details);
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/clear", details, QOS0);
+  }
+}
+
+long lastPing = 0;
+
+void ping()
+{
+  if (lastPing == 0 || ((millis() - lastPing) > sysConfig.PingRate * 1000))
+  {
+    lastPing = millis();
+
+    if (!cellMQTT.ping())
+    {
+      reconnect();
+      lastPing = 0;
+    }
+
+    console.println("transmit=ping;");
+    ledManager.setOnlineFlashRate(-1);
+  }
+
+  if (cellMQTT.getIsClosed())
+  {
+    // Reconnect will either return connected or resteart the device.
+    reconnect();
+    lastPing = 0;
+  }
+}
+
+void commonLoop()
+{
+
+  if (sysConfig.WiFiEnabled)
+  {
+    wifiMQTT.loop();
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.loop();
+    ping();
+  }
+
+  state.loop();
+}
+
+void mqttPublish(String topic, String value)
+{
+  if (sysConfig.WiFiEnabled)
+  {
+    wifiMQTT.publish(topic, value);
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.publish(topic, value, QOS0);
   }
 }
 #endif

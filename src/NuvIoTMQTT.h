@@ -33,7 +33,7 @@ class NuvIoTMQTT {
         String m_subscriptions[MAX_SUBSCRIPTION_COUNT];
         bool m_transparentMode = true;
         int m_subscrptionCount;
-
+        long m_lastPing = 0;
 
         String resolveConnectFail();        
 

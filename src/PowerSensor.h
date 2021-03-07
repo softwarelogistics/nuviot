@@ -6,15 +6,16 @@
 #include "ADC.h"
 #include "AbstractSensor.h"
 #include "Console.h"
+#include "Display.h"
 #include "IOConfig.h"
 #include "ConfigPins.h"
 
-#define NUMBER_CTS 3
+#define NUMBER_CTS 8
 #define MAX_SAMPLE_COUNT 200
 
 class PowerSensor: public AbstractSensor {
     public:
-        PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, MessagePayload *payload, NuvIoTState *state);
+        PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, Display *display, MessagePayload *payload, NuvIoTState *state);
         void loop();
         void debugPrint();
 
@@ -59,6 +60,7 @@ class PowerSensor: public AbstractSensor {
         Console *m_console;
         NuvIoTState *m_state;
         MessagePayload *m_payload;    
+        Display *m_display;
 };
 
 #endif

@@ -25,22 +25,23 @@ void messagePublished_CallBack(String topic, unsigned char *payload, size_t leng
     nuviotClient->messagePublished(topic, payload, length);
 }
 
-NuvIoTClient::NuvIoTClient(SIMModem *modem, MQTT *mqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal)
+NuvIoTClient::NuvIoTClient(SIMModem *modem, WiFiConnectionHelper *wifiConnectionHelper, MQTT *cellMqtt, NuvIoTMQTT *wifiMqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal)
 {
     m_modem = modem;
     m_display = display;
     m_ledManager = ledManager;
     m_hal = hal;
     m_console = console;
-    m_mqtt = mqtt;
     m_state = state;
     m_ota = ota;
     nuviotClient = this;
     m_sysConfig = sysConfig;
+    m_wifiConnectionHelper = wifiConnectionHelper;
+    m_nuviotMqtt = wifiMqtt;
+    m_cellMqtt = cellMqtt;
 
-    m_wifiConnectionHelper = NULL;
-    m_nuviotMqtt = NULL;
-    mqtt->setMessageReceivedCallback(messagePublished_CallBack);
+    m_nuviotMqtt->registerCallback(messagePublished_CallBack);
+    m_cellMqtt->setMessageReceivedCallback(messagePublished_CallBack);
 }
 
 NuvIoTClient::NuvIoTClient(WiFiConnectionHelper *wifiConnectionHelper, NuvIoTMQTT *mqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal)
@@ -125,18 +126,19 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
     m_modem->isModemOnline();
 
-    m_console->println("connect=starting.");
+    m_console->println("connect=starting; // modem baud rate " + String(baudRate));
 
     int retryCount = 0;
     while (!m_modem->isModemOnline() && retryCount < 10)
     {
         handleWarning("MODEM001", "Fail - Find modem.", retryCount++);
+        m_state->loop();
     }
 
     if (retryCount == 10)
     {
         handleError("MODEM001", "Fail - Find modem");
-        return false;
+        m_hal->restart();
     }
 
     retryCount = 0;
@@ -150,12 +152,13 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     while (!m_modem->resetModem() && retryCount < 10)
     {
         handleWarning("MODEM002", "Fail - reset modem", retryCount++);
+        m_state->loop();
     }
 
     if (retryCount == 10)
     {
         handleError("MODEM002", "Fail - reset modem");
-        return false;
+        m_hal->restart();
     }
 
     retryCount = 0;
@@ -282,7 +285,7 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
 
     if (!m_modem->isServiceConnected() || !isReconnect)
     {
-        m_console->println("serviceconnected=false; // will connect to GRPS");
+        m_console->println("serviceconnected=false; // will connect to GRPS with baud rate " + String(baudRate));
         if (!ConnectToAPN(transparentMode, true, baudRate))
         {
             return false;
@@ -313,13 +316,15 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
 
     retryCount = 0;
     m_console->println("mqtt=connected;");
-    sendStatusUpdate("MQTT Connected", "MQTT Authorized");
+    sendStatusUpdate("MQTT", "MQTT Connected");
     delayAndCheckState(1000);
     m_ledManager->setErrFlashRate(0);
 
-    while (!m_mqtt->connect(m_sysConfig->SrvrUID, m_sysConfig->SrvrPWD, m_sysConfig->DeviceId) && retryCount < RETRY_COUNT)
+    m_console->println("Will connect to [" + m_sysConfig->SrvrUID +"] [" +  m_sysConfig->SrvrPWD + "] [" + m_sysConfig->DeviceId + "]");
+
+    while (!m_cellMqtt->connect(m_sysConfig->SrvrUID, m_sysConfig->SrvrPWD, m_sysConfig->DeviceId) && retryCount < RETRY_COUNT)
     {
-        handleWarning("MQTT002", "Failed to authenticate to m_mqtt server: " + m_sysConfig->SrvrHostName, retryCount++);
+        handleWarning("MQTT002", "Failed to authenticate to m_mqtt server: " + m_sysConfig->SrvrHostName + " with device id => ", retryCount++);
         delayAndCheckState(1000);
     }
 
@@ -328,7 +333,6 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
         handleError("MQTT002", "Failed to authenticate to m_mqtt: " + m_sysConfig->SrvrHostName);
         return false;
     }
-
     retryCount = 0;
     m_console->println("mqtt=authorized;");
     ;
@@ -339,7 +343,7 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
     String onlinePayload = "readonly-rssi=" + String(m_modem->getSignalQuality()) + ",readonly-reconnect=" + (isReconnect ? "true" : "false") + ",";
     onlinePayload += m_state->getRemoteProperties();
 
-    while (!m_mqtt->publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", onlinePayload, QOS0) && retryCount < RETRY_COUNT)
+    while (!m_cellMqtt->publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", onlinePayload, QOS0) && retryCount < RETRY_COUNT)
     {
         handleWarning("MQTT003", "Failed publish nuviot/dvconline.", retryCount++);
         delayAndCheckState(1000);
@@ -357,7 +361,7 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
     delayAndCheckState(1000);
     m_ledManager->setErrFlashRate(0);
 
-    while (m_mqtt->subscribe("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/#", QOS0) == -1 && retryCount < RETRY_COUNT)
+    while (m_cellMqtt->subscribe("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/#", QOS0) == -1 && retryCount < RETRY_COUNT)
     {
         handleWarning("MQTT004", "Failed subscribe to [nuviot/dvcsrvc].", retryCount++);
         delayAndCheckState(1000);
@@ -474,9 +478,9 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                     {
                         m_nuviotMqtt->publish(topic, payload);
                     }
-                    else if(m_mqtt != NULL)
+                    else if(m_cellMqtt != NULL)
                     {
-                        m_mqtt->publish(topic, payload, QOS0);
+                        m_cellMqtt->publish(topic, payload, QOS0);
                     }
                 }
                 else
@@ -526,11 +530,11 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                         {
                             m_nuviotMqtt->publish(topic, payload);
                         }
-                        else if(m_mqtt != NULL)
+                        else if(m_cellMqtt != NULL)
                         {
-                            m_mqtt->publish(topic, payload, QOS0);
+                            m_cellMqtt->publish(topic, payload, QOS0);
                         }
-                    }
+                        }
                 }
             }
             else if (action == "ioconfig")

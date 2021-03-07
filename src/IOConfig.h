@@ -31,7 +31,8 @@ class IOConfig {
     String ADC2Name;
     String ADC2Label;
     float ADC2Scaler;
-    uint8_t ADC3Config;
+
+    uint8_t ADC3Config = ADC_CONFIG_NONE;
     String ADC3Name;
     String ADC3Label;
     float ADC3Scaler;
