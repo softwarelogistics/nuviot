@@ -65,12 +65,12 @@ private:
     bool m_verboseLogging = false;
     FS *m_fs;
 
-    char m_jsonBuffer[4096];
+    char m_jsonBuffer[1024];
     uint16_t m_jsonBufferTail = 0;
 
     String readString(int add, int maxLength);
     String m_deviceAddress;
-    char m_messageBuffer[4096];
+    char m_messageBuffer[1024];
     char m_btAddress[20];
     uint16_t m_messageBufferTail = 0;
     int byteCount = 0;

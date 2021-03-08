@@ -515,6 +515,7 @@ void NuvIoTState::loop()
                 m_jsonBuffer[m_jsonBufferTail] = 0x00;
                 Serial.println(m_jsonBuffer);
                 m_jsonBufferTail = 0;
+                
 
                 if (m_sysConfig->parseJSON(m_jsonBuffer))
                 {

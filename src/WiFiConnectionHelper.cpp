@@ -18,7 +18,8 @@ void WiFiConnectionHelper::loop()
     }
 }
 
-String WiFiConnectionHelper::getWiFiStatus(int status){
+String WiFiConnectionHelper::getWiFiStatus(int status)
+{
     String statusMsg = "";
 
     switch (status)
@@ -53,15 +54,17 @@ String WiFiConnectionHelper::getWiFiStatus(int status){
 }
 
 void WiFiConnectionHelper::connect(bool isReconnect)
-{ 
+{
+    m_console->println("Start WiFi Connection.");
+
     int status = WiFi.status();
 
     int attempt = 0;
     int idx = 0;
 
-    WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
+   // WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
     m_console->println("wifi=connecting; // ssid=" + m_sysConfig->WiFiSSID + ", pwd=" + m_sysConfig->WiFiPWD.c_str());
-    
+
     while (status != WL_CONNECTED)
     {
         m_state->loop();
@@ -75,13 +78,10 @@ void WiFiConnectionHelper::connect(bool isReconnect)
         {
             attempt++;
             WiFi.disconnect();
-            WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
-
             m_display->clearBuffer();
             m_display->drawString(0, 0, "NuvIoT");
             m_display->drawString(0, 16, isReconnect ? "Reconnecting WiFi" : "Connecting WiFi");
             m_display->drawString(0, 32, m_sysConfig->WiFiSSID.c_str());
-            m_display->sendBuffer();
 
             if (idx == 0)
                 m_display->drawString(90, 0, "/");
@@ -96,14 +96,27 @@ void WiFiConnectionHelper::connect(bool isReconnect)
             if (idx == 3)
                 idx = 0;
 
-            delay(500);
-            status = WiFi.status();
-            String statusMsg = getWiFiStatus(status);
-  
 
-            m_display->drawString(0, 48, statusMsg);
-            m_console->println("wifi=connecting; // attempt=" + String(attempt) + ", status=" + statusMsg);
-            m_display->sendBuffer();
+            String statusMsg = "connecting";
+
+            if (!WiFi.enableSTA(true))
+            {
+                statusMsg = "Fail enable STA";
+                m_console->println("wifi=connecting; // attempt=" + String(attempt) + ", status=fail enable STA");
+                m_display->drawString(0, 48, "Fail enable STA");
+                m_display->sendBuffer();
+                delay(500);
+            }
+            else
+            {
+                int status = WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
+
+                delay(500);
+                statusMsg = getWiFiStatus(status);
+                m_display->drawString(0, 48, statusMsg);
+                m_display->sendBuffer();
+                m_console->println("wifi=connecting; // attempt=" + String(attempt) + ", status=" + statusMsg);
+            }
         }
     }
 
