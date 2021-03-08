@@ -141,6 +141,12 @@ void configureFileSystem()
   }
 }
 
+void handleConsoleCommand(String cmd)
+{
+  console.println("SENDING OFF COMMAND [" + cmd + "]");
+  state.handleConsoleCommand(cmd);
+}
+
 void configureModem(unsigned long baudRate = 115200)
 {  
   console.println("modem=configuring; // initial baud rate: " + String(baudRate));
@@ -149,6 +155,11 @@ void configureModem(unsigned long baudRate = 115200)
   delay(500);
   gprsPort.setRxBufferSize(16 * 1024);
   console.println("modem=configured; // initial baud rate: " + String(baudRate));
+
+  if(configPins.ModemResetPin != -1){
+    pinMode(configPins.ModemResetPin, OUTPUT);
+    digitalWrite(configPins.ModemResetPin, HIGH);
+  }
 }
 
 void welcome(String firmwareSKU, String version)
@@ -248,6 +259,7 @@ void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bo
   consoleSerial.begin(baud, SERIAL_8N1);
   console.enableSerialOut(serialEnabled);
   console.enableBTOut(btEnabled);
+  console.registerCallback(handleConsoleCommand);
 }
 
 void sendStatusUpdate(String currentState, String nextAction, String title = "Commo Starting", int afterDelay = 0)

@@ -20,12 +20,21 @@
 #define GP0O1_BRD_UART_NUMBER 1
 #define GP0O1_BRD_V2_IO1 17
 #define GP0O1_BRD_V2_IO2 5
-#define GP0O1_BRD_V2_IO3 34
+#define GP0O1_BRD_V2_IO3 19
 #define GP0O1_BRD_V2_IO4 18
 #define GP0O1_BRD_V2_IO5 38
 #define GP0O1_BRD_V2_IO6 37
 #define GP0O1_BRD_V2_IO7 25
 #define GP0O1_BRD_V2_IO8 18
+
+#define GP0O1_BRD_V1_IO1 17
+#define GP0O1_BRD_V1_IO2 14
+#define GP0O1_BRD_V1_IO3 19
+#define GP0O1_BRD_V1_IO4 18
+#define GP0O1_BRD_V1_IO5 38
+#define GP0O1_BRD_V1_IO6 37
+#define GP0O1_BRD_V1_IO7 25
+#define GP0O1_BRD_V1_IO8 18
 
 #define GP0O1_BRD_V2_ADC1 0
 #define GP0O1_BRD_V2_ADC2 1
@@ -35,7 +44,7 @@
 #define GP0O1_BRD_V2_ADC6 5
 #define GP0O1_BRD_V2_ADC7 6
 #define GP0O1_BRD_V2_ADC8 7
-
+#define MODEM_RESET_V2 26
 #define GP0O1_BRD_V2_RUNNING_LED 5
 #define GP0O1_BRD_V2_ONLINE_LED 5
 #define GP0O1_BRD_V2_ERR_LED 5
@@ -52,7 +61,7 @@
 #define PROD_BRD_V1_TX 35
 
 #define PROD_BRD_V1_IO1 17
-#define PROD_BRD_V1_IO2 5
+#define PROD_BRD_V1_IO2 14
 #define PROD_BRD_V1_IO3 27
 #define PROD_BRD_V1_IO4 4
 #define PROD_BRD_V1_IO5 16
@@ -116,6 +125,8 @@ public:
     int8_t ErrorLED = -1;
     int8_t OnlineLED = -1;
 
+    uint8_t ModemResetPin = -1;
+
     bool HasDisplay;
     bool HasRelays;
 
@@ -147,15 +158,14 @@ public:
             ADCChannel7 = GP0O1_BRD_V2_ADC7;
             ADCChannel8 = GP0O1_BRD_V2_ADC8;
 
-            Gpio0 = GP0O1_BRD_V2_IO1;
-            Gpio1 = GP0O1_BRD_V2_IO2;
-            Gpio2 = GP0O1_BRD_V2_IO3;
-            Gpio3 = GP0O1_BRD_V2_IO4;
-            Gpio4 = GP0O1_BRD_V2_IO5;
-            Gpio5 = GP0O1_BRD_V2_IO6;
-            Gpio6 = GP0O1_BRD_V2_IO7;
-            Gpio7 = GP0O1_BRD_V2_IO8;
-
+            Gpio0 = GP0O1_BRD_V1_IO1;
+            Gpio1 = GP0O1_BRD_V1_IO2;
+            Gpio2 = GP0O1_BRD_V1_IO3;
+            Gpio3 = GP0O1_BRD_V1_IO4;
+            Gpio4 = GP0O1_BRD_V1_IO5;
+            Gpio5 = GP0O1_BRD_V1_IO6;
+            Gpio6 = GP0O1_BRD_V1_IO7;
+            Gpio7 = GP0O1_BRD_V1_IO8;
             HasDisplay = true;
             HasRelays = true;
 
@@ -182,6 +192,8 @@ public:
             ADCChannel6 = GP0O1_BRD_V2_ADC6;
             ADCChannel7 = GP0O1_BRD_V2_ADC7;
             ADCChannel8 = GP0O1_BRD_V2_ADC8;
+
+            ModemResetPin = MODEM_RESET_V2;
 
             Gpio0 = GP0O1_BRD_V2_IO1;
             Gpio1 = GP0O1_BRD_V2_IO2;

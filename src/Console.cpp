@@ -4,18 +4,33 @@ Console::Console(Stream *stream)
 {
     m_stream = stream;
     m_btSerial = NULL;
+
+    for (int idx = 0; idx < CONSOLE_IN_BUFFER_LEN; ++idx)
+    {
+        m_consoleInBuffer[idx] = 0;
+    }
 }
 
 Console::Console(BluetoothSerial *btSerial, Stream *stream)
 {
     m_stream = stream;
     m_btSerial = btSerial;
+
+    for (int idx = 0; idx < CONSOLE_IN_BUFFER_LEN; ++idx)
+    {
+        m_consoleInBuffer[idx] = 0;
+    }
 }
 
 Console::Console(BluetoothSerial *btSerial)
 {
     m_stream = NULL;
     m_btSerial = btSerial;
+
+    for (int idx = 0; idx < CONSOLE_IN_BUFFER_LEN; ++idx)
+    {
+        m_consoleInBuffer[idx] = 0;
+    }
 }
 
 void Console::printByte(byte ch)
@@ -36,6 +51,39 @@ void Console::printByte(byte ch)
             m_btSerial->print("0x");
             sprintf(hexChar, "%02X", ch);
             m_btSerial->print(hexChar);
+        }
+    }
+}
+
+void Console::registerCallback(void (*callback)(String consoleline))
+{
+    m_callback = callback;
+}
+
+void Console::loop()
+{
+    int bytesToRead = m_stream->available();
+    if (bytesToRead)
+    {
+        for (int idx = 0; idx < bytesToRead; ++idx)
+        {
+            int ch = m_stream->read();
+            if (ch == '\n')
+            {
+                String cmd = String(m_consoleInBuffer);
+                m_stream->println("GOT A newline");
+                m_stream->println(cmd);
+                m_callback(cmd);
+                for (int idx = 0; idx < CONSOLE_IN_BUFFER_LEN; ++idx)
+                {
+                    m_consoleInBuffer[idx] = 0;
+                    m_consoleInBufferIdx = 0;
+                }
+            }
+            else
+            {
+                m_consoleInBuffer[m_consoleInBufferIdx++] = ch;
+            }
         }
     }
 }

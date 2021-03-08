@@ -3,12 +3,17 @@
 
 #include <Arduino.h>
 #include <BluetoothSerial.h>
+#define CONSOLE_IN_BUFFER_LEN 128
 
 class Console
 {
 private:
+    
     bool m_btEnabled = true;
     bool m_serialEnabled = true;
+    int m_consoleInBufferIdx = 0;
+    char m_consoleInBuffer[CONSOLE_IN_BUFFER_LEN];
+    void (*m_callback)(String topic) = NULL;
 
 public:
     Console(Stream *stream);
@@ -37,6 +42,9 @@ public:
 
     void enableBTOut(bool enabled);
     void enableSerialOut(bool enabled);
+     void registerCallback(void (*callback)(String topic));
+
+    void loop();
 
 private:
     BluetoothSerial *m_btSerial = NULL;
