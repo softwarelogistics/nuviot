@@ -7,11 +7,12 @@
 #include "NuvIoTState.h"
 #include "NuvIoTState.h"
 #include "Console.h"
+#include "Hal.h"
 
 class WiFiConnectionHelper {
     public:
         WiFiConnectionHelper();
-        WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state, Console *console, SysConfig *sysConfig);
+        WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state, Hal *hal, Console *console, SysConfig *sysConfig);
         void setup();
         void connect(bool isReconnecting);
         void disconnect();
@@ -29,6 +30,7 @@ class WiFiConnectionHelper {
         NuvIoTState *m_state;
         SysConfig *m_sysConfig;
         Console *m_console;
+        Hal *m_hal;
 };
 
 #endif

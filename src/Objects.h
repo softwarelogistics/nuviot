@@ -92,7 +92,7 @@ SIMModem modem(&display, &channel, &console, &hal);
 OtaServices ota(&display, &console, &modem, &hal);
 
 WiFiClient wifiClient;
-WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &console, &sysConfig);
+WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &hal, &console, &sysConfig);
 
 MQTT cellMQTT(&channel, &console);
 NuvIoTMQTT wifiMQTT(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
@@ -358,6 +358,17 @@ void commonLoop()
   state.loop();
 }
 
+void mqttSubscribe(String topic) {
+  if (sysConfig.WiFiEnabled)
+  {
+    wifiMQTT.addSubscriptions(topic);
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.subscribe(topic, QOS0);
+  }
+}
+
 void mqttPublish(String topic, String value)
 {
   if (sysConfig.WiFiEnabled)
@@ -369,4 +380,9 @@ void mqttPublish(String topic, String value)
     cellMQTT.publish(topic, value, QOS0);
   }
 }
-#endif
+
+void mqttPublish(String topic){
+  mqttPublish(topic, "");
+}
+
+

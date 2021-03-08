@@ -1,12 +1,13 @@
 #include "WiFiConnectionHelper.h"
 
-WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state, Console *console, SysConfig *sysConfig)
+WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state, Hal *hal, Console *console, SysConfig *sysConfig)
 {
     m_display = display;
     m_sysConfig = sysConfig;
     m_client = client;
     m_state = state;
     m_console = console;
+    m_hal = hal;
 }
 
 void WiFiConnectionHelper::loop()
@@ -116,6 +117,11 @@ void WiFiConnectionHelper::connect(bool isReconnect)
                 m_display->drawString(0, 48, statusMsg);
                 m_display->sendBuffer();
                 m_console->println("wifi=connecting; // attempt=" + String(attempt) + ", status=" + statusMsg);
+            }
+
+            if(attempt == 60)
+            {
+                m_hal->restart();
             }
         }
     }

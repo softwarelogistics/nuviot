@@ -44,23 +44,6 @@ NuvIoTClient::NuvIoTClient(SIMModem *modem, WiFiConnectionHelper *wifiConnection
     m_cellMqtt->setMessageReceivedCallback(messagePublished_CallBack);
 }
 
-NuvIoTClient::NuvIoTClient(WiFiConnectionHelper *wifiConnectionHelper, NuvIoTMQTT *mqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal)
-{
-    m_modem = NULL;
-    m_mqtt = NULL;
-    m_wifiConnectionHelper = wifiConnectionHelper;
-    m_display = display;
-    m_ledManager = ledManager;
-    m_hal = hal;
-    m_console = console;    
-    m_state = state;
-    m_ota = ota;
-    nuviotClient = this;
-    m_sysConfig = sysConfig;
-    m_nuviotMqtt = mqtt;
-    m_nuviotMqtt->registerCallback(messagePublished_CallBack);
-}
-
 void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction, String title, int afterDelay)
 {
     m_display->drawStr(title.c_str(), currentState.c_str());
