@@ -1,13 +1,6 @@
 #ifndef OBJECTS_H
 #define OBJECTS_H
 
-#ifdef CORE_DEBUG_LEVEL
-#undef CORE_DEBUG_LEVEL
-#endif
-
-#define CORE_DEBUG_LEVEL 3
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
-
 #include <Arduino.h>
 #include "Display.h"
 #include "NuvIoTState.h"
@@ -36,6 +29,7 @@
 #include "ConfigPins.h"
 #include "LedManager.h"
 #include "NuvIoTMQTT.h"
+#include "Rest.h"
 #include <PubSubClient.h>
 
 #define DEFAULT_BRD
@@ -46,6 +40,14 @@ HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
 #define BOARD_CONFIG 2
+#endif
+
+#ifdef RELAY_BRD_V1
+#undef DEFAULT_BRD
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+TwoWire twoWire(1);
+#define BOARD_CONFIG 3
 #endif
 
 #ifdef GPIO_BRD_V1
@@ -86,18 +88,19 @@ NuvIoTState state(&display, &ioConfig, &sysConfig, &ledManager, &btSerial, &SPIF
 MessagePayload *payload = new MessagePayload();
 GPSData *gps = NULL;
 
-
 Channel channel(&gprsPort, &console);
 SIMModem modem(&display, &channel, &console, &hal);
 OtaServices ota(&display, &console, &modem, &hal);
 
 WiFiClient wifiClient;
-WiFiConnectionHelper wifiMgr(&wifiClient, &display, &state, &hal, &console, &sysConfig);
+WiFiConnectionHelper wifiMgr(&wifiClient, &display, &ledManager, &state, &hal, &console, &sysConfig);
 
 MQTT cellMQTT(&channel, &console);
 NuvIoTMQTT wifiMQTT(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
 
 NuvIoTClient client(&modem, &wifiMgr, &cellMQTT, &wifiMQTT, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
+
+Rest rest(&client, &display, &modem, &wifiMgr, &sysConfig, &console);
 
 Telemetry telemetry(&btSerial);
 
@@ -153,12 +156,11 @@ void handleConsoleCommand(String cmd)
 
 void configureModem(unsigned long baudRate = 115200)
 {  
-  console.println("modem=configuring; // initial baud rate: " + String(baudRate));
+  console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", " + String(configPins.SimTx));
   delay(500);
   gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
   delay(500);
   gprsPort.setRxBufferSize(16 * 1024);
-  console.println("modem=configured; // initial baud rate: " + String(baudRate));
 
   if(configPins.ModemResetPin != -1){
     pinMode(configPins.ModemResetPin, OUTPUT);
@@ -344,17 +346,20 @@ void ping()
 
 void commonLoop()
 {
-
   if (sysConfig.WiFiEnabled)
   {
-    wifiMQTT.loop();
+    wifiMgr.loop();
+    if( wifiMgr.isConnected() &&
+        sysConfig.SrvrHostName != NULL && sysConfig.SrvrHostName.length() > 0) {
+      wifiMQTT.loop();
+    }
   }
   else if (sysConfig.CellEnabled)
   {
     cellMQTT.loop();
     ping();
   }
-
+  
   state.loop();
 }
 

@@ -26,7 +26,6 @@ extern void IRAM_ATTR onTimer();
 class LedManager : public AbstractSensor
 {
 private:
-    IOConfig *m_ioConfig;
     Console *m_console;
     ConfigPins *m_configPins;
     hw_timer_t *m_timer = NULL;
@@ -39,11 +38,9 @@ public:
         m_console = console;
         m_configPins = configPins;
     }
-
-    void setup(IOConfig *ioConfig)
+    
+    void setup(IOConfig *config)
     {
-        m_ioConfig = ioConfig;
-
         errPin = m_configPins->ErrorLED;
         onlinePin = m_configPins->OnlineLED;
 

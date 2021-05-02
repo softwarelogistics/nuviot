@@ -85,10 +85,12 @@
 class ConfigPins
 {
 public:
+    int8_t NumberRelays = 0;
     int8_t K1Ctl = -1;
     int8_t K2Ctl = -1;
     int8_t K3Ctl = -1;
     int8_t K4Ctl = -1;
+    int8_t K5Ctl = -1;
 
     int8_t SimRx = -1;
     int8_t SimTx = -1;    
@@ -129,6 +131,7 @@ public:
 
     bool HasDisplay;
     bool HasRelays;
+    bool HasLeds = false;
 
 public:
     ConfigPins()
@@ -137,10 +140,12 @@ public:
 
     void init(uint8_t boardType){
         if(boardType == 0) {
+            NumberRelays = 0;
             K1Ctl = GP0O1_BRD_V2_K4_CTL;
             K2Ctl = GP0O1_BRD_V2_K3_CTL;
             K3Ctl = GP0O1_BRD_V2_K2_CTL;
             K4Ctl = GP0O1_BRD_V2_K1_CTL;
+            K5Ctl = -1;
             UartNumber = GP0O1_BRD_UART_NUMBER;
 
             SimRx = GP0O1_BRD_V2_GPRS_RX;
@@ -237,6 +242,50 @@ public:
 
             HasDisplay = false;
             HasRelays = false;
+            HasLeds = true;
+
+            ErrorLED = 19;
+            OnlineLED = 23;
+
+            SerialPort = 1;
+        }
+        else if(boardType == 3) {
+            NumberRelays = 5;
+
+            K1Ctl = 25;
+            K2Ctl = 33;
+            K3Ctl = 26;
+            K4Ctl = 27;
+            K5Ctl = 15;
+
+            Scl1 = PROD_BRD_V1_SCL1;
+            Sda1 = PROD_BRD_V1_SDA1;
+
+            UartNumber = PROD_BRD_UART_NUMBER;
+            SimRx = PROD_BRD_V1_RX;
+            SimTx = PROD_BRD_V1_TX;
+
+            ADCChannel1 = PROD_BRD_V1_ADC1;
+            ADCChannel2 = PROD_BRD_V1_ADC2;
+            ADCChannel3 = PROD_BRD_V1_ADC3;
+            ADCChannel4 = PROD_BRD_V1_ADC4;
+            ADCChannel5 = PROD_BRD_V1_ADC5;
+            ADCChannel6 = PROD_BRD_V1_ADC6;
+            ADCChannel7 = PROD_BRD_V1_ADC7;
+            ADCChannel8 = PROD_BRD_V1_ADC8;
+
+            Gpio0 = PROD_BRD_V1_IO1;
+            Gpio1 = PROD_BRD_V1_IO2;
+            Gpio2 = PROD_BRD_V1_IO3;
+            Gpio3 = PROD_BRD_V1_IO4;
+            Gpio4 = PROD_BRD_V1_IO5;
+            Gpio5 = PROD_BRD_V1_IO6;
+            Gpio6 = PROD_BRD_V1_IO7;
+            Gpio7 = PROD_BRD_V1_IO8;
+
+            HasDisplay = false;
+            HasRelays = true;
+            HasLeds = true;
 
             ErrorLED = 19;
             OnlineLED = 23;

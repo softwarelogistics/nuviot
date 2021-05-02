@@ -42,7 +42,8 @@ class NuvIoTClient {
 
     public:
         NuvIoTClient(SIMModem *modem, WiFiConnectionHelper *wifiConnectionHelper, MQTT *cellMqtt, NuvIoTMQTT *wifiMqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal);
-        bool ConnectToAPN(bool transparentMode, bool connectToAPN, unsigned long baudRate);
+        bool connectToAPN(bool transparentMode, bool connectToAPN, unsigned long baudRate);
+        bool disconnectFromAPN();
         bool CellularConnect(bool isReconnect, unsigned long baudRate);
         bool WifiConnect(bool isReconnect);
         void messagePublished(String topic, unsigned char *payload, size_t length);

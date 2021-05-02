@@ -34,6 +34,7 @@ public:
     bool isServiceConnected();
     bool isModemOnline();
     bool connectGPRS();
+    bool disconnectGPRS();
     bool connectServer(String hostName, String port);
     bool resetModem();
     bool enableErrorMessages();
@@ -49,6 +50,10 @@ public:
     bool disableTransparentMode();
     bool exitDataMode();
     bool connect(String apn, String apnPwd, String apnUid);
+
+
+    String httpGet(String url);
+    String httpPost(String url, String payload);
 
     bool initGPS();
     void startGPS();
@@ -91,9 +96,13 @@ private:
     bool getCGREG();   
     int findRSSI();
 
+    bool setupHttpContext(String tag, String url);
+    String readHttpResponse(String tag);
+    void closeHttpContext(String tag);
+
     bool httpGetNoContent(String url);
     bool httpGetSetError(String url, String errMsg);
-    void httpCloseSession(String tag);
+    
   
     Hal *m_hal;
     Display *m_display;

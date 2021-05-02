@@ -131,11 +131,11 @@ void PowerSensor::configure(IOConfig *config)
     {
         m_console->println("adcbank2=disabled;");
     }
-    else if (!m_adc->isBankOneOnline())
-    if (m_adc->isBank2Enabled() && !m_adc->isBankTwoOnline())
+    else  if (!m_adc->isBankTwoOnline())
     {
         m_console->printError("adcbank2=notready;");
-                bool toggle = false;
+
+        bool toggle = false;
         while (1)
         {
             m_display->clearBuffer();
@@ -156,6 +156,7 @@ void PowerSensor::configure(IOConfig *config)
     {
         m_console->println("adcbank2=online;");
     }
+    
 
     m_adc->setConvesionDelay(10);
 }

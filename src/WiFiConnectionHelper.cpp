@@ -1,6 +1,7 @@
 #include "WiFiConnectionHelper.h"
 
-WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, NuvIoTState *state, Hal *hal, Console *console, SysConfig *sysConfig)
+WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, LedManager *ledManager, 
+                                           NuvIoTState *state, Hal *hal, Console *console, SysConfig *sysConfig)
 {
     m_display = display;
     m_sysConfig = sysConfig;
@@ -8,15 +9,7 @@ WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display,
     m_state = state;
     m_console = console;
     m_hal = hal;
-}
-
-void WiFiConnectionHelper::loop()
-{
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        m_console->printError("wifi=lostconnection; // Starting to reconnecting.");
-        connect(true);
-    }
+    m_ledManager = ledManager;
 }
 
 String WiFiConnectionHelper::getWiFiStatus(int status)
@@ -54,83 +47,137 @@ String WiFiConnectionHelper::getWiFiStatus(int status)
     return statusMsg;
 }
 
-void WiFiConnectionHelper::connect(bool isReconnect)
+void WiFiConnectionHelper::loop()
 {
-    m_console->println("Start WiFi Connection.");
+    // If WiFi isn't enabled, to bother trying to connect.
+    if(!m_sysConfig->WiFiEnabled)
+    {
+        return;
+    }
+
+    // If we aren't commissioned, then don't bother trying to connect.
+    if(!m_sysConfig->Commissioned)
+    {
+        return;
+    }
+
+    // While in configuration mode, we shut off wifi,
+    // it makes bluetooth work a little better since the ESP
+    // shares the same radio for WiFi and BT.
+    if (m_state->getIsConfigurationModeActive())
+    {
+        WiFi.disconnect();
+        return;
+    }
 
     int status = WiFi.status();
 
-    int attempt = 0;
-    int idx = 0;
-
-   // WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
-    m_console->println("wifi=connecting; // ssid=" + m_sysConfig->WiFiSSID + ", pwd=" + m_sysConfig->WiFiPWD.c_str());
-
-    while (status != WL_CONNECTED)
+    // If we are connected, life is good, just mark us as connected and bail.
+    if(status == WL_CONNECTED)
     {
-        m_state->loop();
-
-        if (m_state->getIsConfigurationModeActive())
+        if(m_wifiState != NuvIoTWiFi_Connected)
         {
-            WiFi.disconnect();
-            delay(5);
-        }
-        else
-        {
-            attempt++;
-            WiFi.disconnect();
             m_display->clearBuffer();
-            m_display->drawString(0, 0, "NuvIoT");
-            m_display->drawString(0, 16, isReconnect ? "Reconnecting WiFi" : "Connecting WiFi");
-            m_display->drawString(0, 32, m_sysConfig->WiFiSSID.c_str());
+            m_display->drawString(0, 0, "Connected to:");
+            m_display->drawString(80, 0, m_sysConfig->WiFiSSID.c_str());
+            m_display->sendBuffer();
+            m_console->println("wifi=connected;");
+            
 
-            if (idx == 0)
-                m_display->drawString(90, 0, "/");
-            else if (idx == 1)
-                m_display->drawString(90, 0, "-");
-            else if (idx == 2)
-                m_display->drawString(90, 0, "\\");
+            IPAddress ip = WiFi.localIP();
 
-            m_display->drawString(70, 0, String(attempt).c_str());
+            String sIPAddress = "";
+            for (int i=0; i<4; i++)
+                sIPAddress += i  ? "." + String(ip[i]) : String(ip[i]);
 
-            idx++;
-            if (idx == 3)
-                idx = 0;
+            m_console->println("wifi_ipaddress=" + sIPAddress + ";");
+            m_ledManager->setOnlineFlashRate(10);
 
-
-            String statusMsg = "connecting";
-
-            if (!WiFi.enableSTA(true))
-            {
-                statusMsg = "Fail enable STA";
-                m_console->println("wifi=connecting; // attempt=" + String(attempt) + ", status=fail enable STA");
-                m_display->drawString(0, 48, "Fail enable STA");
-                m_display->sendBuffer();
-                delay(500);
-            }
-            else
-            {
-                int status = WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
-
-                delay(500);
-                statusMsg = getWiFiStatus(status);
-                m_display->drawString(0, 48, statusMsg);
-                m_display->sendBuffer();
-                m_console->println("wifi=connecting; // attempt=" + String(attempt) + ", status=" + statusMsg);
-            }
-
-            if(attempt == 60)
-            {
-                m_hal->restart();
-            }
+            m_wifiState = NuvIoTWiFi_Connected;
         }
+        
+        // This is the state we normally want to be in.
+        return;
     }
 
+    if(m_wifiState == NuvIoTWiFi_NotConnected)
+    {
+        m_console->printError("wifi=notconnected; // Starting to connect.");
+        connect(false);
+    }
+
+    // If we are connected, then that means we have lost our connection.
+    if(m_wifiState == NuvIoTWiFi_Connected)
+    {
+        m_console->printError("wifi=lostconnection; // Starting to reconnecting.");        
+        connect(true);
+    }
+
+    m_attempt++;
     m_display->clearBuffer();
-    m_display->drawString(0, 0, "Connected to:");
-    m_display->drawString(80, 0, m_sysConfig->WiFiSSID.c_str());
+    m_display->drawString(0, 0, "NuvIoT");
+    m_display->drawString(0, 16, "Connecting WiFi");
+    m_display->drawString(0, 32, m_sysConfig->WiFiSSID.c_str());
+
+    if (m_spinnerIndex == 0)
+        m_display->drawString(90, 0, "/");
+    else if (m_spinnerIndex == 1)
+        m_display->drawString(90, 0, "-");
+    else if (m_spinnerIndex == 2)
+        m_display->drawString(90, 0, "\\");
+
+    m_display->drawString(70, 0, String(m_attempt).c_str());
+
+    m_spinnerIndex++;
+    if (m_spinnerIndex == 3)
+        m_spinnerIndex = 0;
+
+    String statusMsg = getWiFiStatus(status);
+    m_display->drawString(0, 48, statusMsg);
     m_display->sendBuffer();
-    m_console->println("wifi=connected;");
+    m_console->println("wifi=connecting; // attempt=" + String(m_attempt) + ", status=" + statusMsg);
+
+    if(m_attempt == 60)
+    {
+        m_hal->restart();
+    }    
+}
+
+
+void WiFiConnectionHelper::connect(bool isReconnect)
+{
+    m_isReconnect = isReconnect;
+    m_wifiState = NuvIoTWiFi_Connecting;
+    m_console->println("wifi=connect;");
+
+    m_attempt = 0;
+
+    int status = WiFi.status();
+
+    m_ledManager->setOnlineFlashRate(2);
+
+   // WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
+    if(status == WL_CONNECTED)
+    {
+        WiFi.disconnect();
+    }
+
+    String statusMsg = "connecting";
+
+    if (!WiFi.enableSTA(true))
+    {
+        statusMsg = "Fail enable STA";
+        m_console->println("wifi=connecting; // attempt=" + String(m_attempt) + ", status=fail enable STA");
+        m_display->drawString(0, 48, "Fail enable STA");
+        m_display->sendBuffer();
+        m_ledManager->setErrFlashRate(2);
+        return;
+    }
+
+    m_console->println("wifi=connecting; // ssid=" + m_sysConfig->WiFiSSID + ", pwd=" + m_sysConfig->WiFiPWD.c_str());   
+    WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
+
+    m_ledManager->setErrFlashRate(6);
 }
 
 int WiFiConnectionHelper::getRSSI()

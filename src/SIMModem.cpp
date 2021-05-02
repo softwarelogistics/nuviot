@@ -169,7 +169,7 @@ uint32_t SIMModem::configureForDownload(String url)
     return contentSize;
 }
 
-void SIMModem::httpCloseSession(String tag)
+void SIMModem::closeHttpContext(String tag)
 {
     int retryCount = 0;
     bool done = false;
@@ -189,6 +189,156 @@ void SIMModem::httpCloseSession(String tag)
     }
 
     m_isHttpSessionActive = false;
+}
+
+bool SIMModem::setupHttpContext(String tag, String url)
+{
+    setBearer();
+
+    int retryCount = 0;
+    String response;
+    bool done = false;
+    while (retryCount++ < 5 && done == false)
+    {
+        response = sendCommand("AT+HTTPINIT");
+        if (response != S_OK)
+        {
+            m_console->printWarning("http" + tag + "=unpexpectedresponse; // " + String(retryCount) + " failed http init err: " + response);
+            delay(1000);
+            m_channel->clearBuffers();
+            return false;
+        }
+        else
+        {
+            done = true;
+            m_isHttpSessionActive = true;
+        }
+    }
+
+    if (!done)
+    {
+        m_console->printError("http" + tag + "=failed; // could not init http service, err: " + response);
+    }
+
+    response = sendCommand("AT+HTTPPARA=\"CID\",1");
+    if (response != S_OK)
+    {
+        m_console->printError("http" + tag + "=failed; // failed set http param, cid=1, err: " + response);
+        return "";
+    }
+
+    String httpParam = "AT+HTTPPARA=\"URL\",\"" + url + "\"";
+    response = sendCommand(httpParam);
+    if (response != S_OK)
+    {
+        m_console->printError("http" + tag + "=failed; // could not set url " + url + " err: " + response);
+        return false;
+    }
+
+    return true;
+}
+
+String SIMModem::readHttpResponse(String tag)
+{
+    int retryCount = 0;
+    bool done = false;
+
+    String msg = "";
+    while (!done && retryCount++ < 5)
+    {
+        msg = m_channel->readStringUntil('\n', 5000);
+        msg.trim();
+        if (msg != "")
+        {
+            m_console->println("Response From Server: ");
+            m_console->println(msg);
+            done = true;
+        }
+
+        delay(retryCount * 500);
+    }
+
+    if (!done)
+    {
+        m_console->printError("http" + tag + "=failed; // could not begin download");
+        return "";
+    }
+
+    m_channel->transmit("AT+HTTPREAD\r\n");
+    String echoResponse = m_channel->readStringUntil('\n', 10000);
+    echoResponse.trim();
+
+    String readResponse = m_channel->readStringUntil('\n', 10000);
+    readResponse.trim();
+
+    m_console->println("http" + tag + "=succuss; ");
+
+    return readResponse;
+}
+
+String SIMModem::httpGet(String url)
+{
+    if (!setupHttpContext("get", url))
+    {
+        m_console->printError("httpget=failed; // could not setup http context.");
+        return "";
+    }
+
+    String response = sendCommand("AT+HTTPACTION=0");
+    if (response != S_OK)
+    {
+        m_console->printError("httpget=failed; // could not set http action, err: " + response);
+        return "";
+    }
+
+    response = readHttpResponse("get");
+
+    closeHttpContext("get");
+
+    return response;
+}
+
+String SIMModem::httpPost(String url, String payload)
+{
+    bool previousVerbose = m_console->getVerboseLogging();
+    m_console->setVerboseLogging(true);
+    
+
+    if (!setupHttpContext("post", url)){
+        m_console->printError("httppost=failed; // could not setup http context.");
+        return "";
+    }
+
+    String response = sendCommand("AT+HTTPDATA=" + String(payload.length()) + ",10000", "DOWNLOAD", 0, 500, false);
+    if (response != S_OK){
+        m_console->printError("httppost=failed; // could set http data, err: " + response);
+        return "";
+    }
+
+    m_console->println("httppost=uploaded payload;");
+
+    m_channel->enqueueString(payload);
+    m_channel->flush();
+
+    if(!waitForReply("OK", 100))
+    {
+        m_console->printError("httppost=failed; // error waiting for OK after post upload");
+        return "";
+    }
+
+    response = sendCommand("AT+HTTPACTION=1");
+    if (response != S_OK){
+        m_console->printError("httppost=failed; // could not set http action, err: " + response);
+        return "";
+    }
+
+    response = readHttpResponse("post");
+
+    closeHttpContext("post");
+
+    m_console->setVerboseLogging(previousVerbose);
+
+    return response;
 }
 
 #define BLOCK_SIZE 2 * 1024
@@ -308,7 +458,7 @@ bool SIMModem::beginDownload(String url)
     if (contentSize == -1)
     {
         httpGetSetError(url, "fail getting size.");
-        httpCloseSession("fail getting size");
+        closeHttpContext("fail getting size");
         m_hal->restart();
     }
 
@@ -358,7 +508,6 @@ bool SIMModem::beginDownload(String url)
             // ... set it as the download buffer size (not using ternary for clarity)
             downloadChunkSize = DOWNLOAD_BUFFER_SIZE;
 
-
         // couple of state variables for retry getting the chunk.
         bool chunkDownloaded = false;
         int downloadRetryCount = 0;
@@ -370,23 +519,23 @@ bool SIMModem::beginDownload(String url)
             String downloadQueryString = "?start=" + String(start) + "&length=" + String(downloadChunkSize);
             m_console->println("fwupdate=block; // uri= " + downloadQueryString + " chunk " + String(chunkIndex + 1) + " of " + String(chunks) + " chunks in file size of " + fullFileSize + ".");
             m_display->drawStr("Downloading firmware", String("Total: " + String(fullFileSize) + " bytes").c_str(), String("Part " + String(chunkIndex) + " of " + String(chunks)).c_str());
-            
+
             contentSize = configureForDownload(url + downloadQueryString);
             // will return the size of the block from the header, should match how much we are requesting.
             if (contentSize != downloadChunkSize)
             {
                 // we asked for XXXXX bytes, but the header response said content was NOT XXXXX bytes, close the session, and retry if applicable.
                 m_console->printWarning("fwupdate=blocksize // expected: " + String(downloadChunkSize) + " returned: " + String(contentSize) + ", attempt " + String(downloadRetryCount) + " of " + String(MAX_CHUNK_DOWNLOAD_TRIES) + ", may retry");
-                httpCloseSession("invalid content size");
+                closeHttpContext("invalid content size");
             }
             else
             {
-                long bytesDownloaded = downloadContent(contentSize, m_rxBuffer);                
+                long bytesDownloaded = downloadContent(contentSize, m_rxBuffer);
 
                 if (bytesDownloaded != contentSize)
                 {
                     m_console->printWarning("fwupdate=downloadchunk; // failed to download chunk, attempt " + String(downloadRetryCount) + " of " + String(MAX_CHUNK_DOWNLOAD_TRIES) + ", may retry");
-                    httpCloseSession("failed download chunk.");
+                    closeHttpContext("failed download chunk.");
                 }
                 else
                 {
@@ -413,7 +562,7 @@ bool SIMModem::beginDownload(String url)
         else
         {
             m_console->println("fwupdate=writeota; // write " + String(written) + ", block " + String(chunkIndex) + " out of " + String(chunks) + ".");
-        }        
+        }
 
         m_console->println("-");
     }
@@ -497,7 +646,8 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
                     m_console->printVerbose(String(m_cmdIdx) + " [" + msg + "] - ok");
                     return S_ERROR;
                 }
-                else if (msg == "+CPIN: NOT INSERTED"){
+                else if (msg == "+CPIN: NOT INSERTED")
+                {
                     return S_NOSIM;
                 }
                 else if (msg == cmd)
@@ -577,6 +727,11 @@ bool SIMModem::connectGPRS()
     return sendCommand("AT+CIICR", "", 0, 85000, false) == S_OK;
 }
 
+bool SIMModem::disconnectGPRS()
+{
+    return sendCommand("AT+CIPSHUT", S_SHUT_OK, 0, 85000, false) == S_OK;
+}
+
 bool SIMModem::isServiceConnected()
 {
     String response = sendCommand("AT+CGATT?");
@@ -591,7 +746,8 @@ bool SIMModem::isModemOnline()
     bool connected = false;
     connected = sendCommand("AT", S_OK, 0, 500, false) == S_OK;
     return connected;
-    if(connected) {
+    if (connected)
+    {
         return true;
     }
     else
@@ -646,26 +802,29 @@ bool SIMModem::setLTE()
 bool SIMModem::resetModem()
 {
     String response = sendCommand("AT+CFUN=1,1", "SMS Ready", 0, 15000, false);
-    if(response == S_NOSIM) {
+    if (response == S_NOSIM)
+    {
         bool toggle = false;
-        while(true) {
+        while (true)
+        {
             m_display->drawStr("ERROR", "NO SIM INSERTED");
-            if(toggle) 
+            if (toggle)
                 m_display->drawStr("ERROR", "NO SIM INSERTED", "!!!!!");
-            else 
-                    m_display->drawStr("ERROR", "NO SIM INSERTED");
+            else
+                m_display->drawStr("ERROR", "NO SIM INSERTED");
 
             m_console->printError("modemreset=error; // NO SIM INSERTED!");
             toggle = !toggle;
             delay(500);
         }
         return false;
-
-    } else if(response == S_OK)
+    }
+    else if (response == S_OK)
     {
         return true;
     }
-    else {
+    else
+    {
         return false;
     }
 }

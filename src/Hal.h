@@ -16,6 +16,9 @@ class Hal {
     public:
         void restart();
         void restart(long pause);
+        void enableHWWatchdog(long delaySeconds);
+        void disableHWWatchdog();
+        void feedHWWatchdog();
 };
 
 #endif

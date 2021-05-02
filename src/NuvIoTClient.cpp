@@ -101,8 +101,11 @@ bool NuvIoTClient::WifiConnect(bool isReconnect) {
     return true;
 }
 
+bool NuvIoTClient::disconnectFromAPN() {
+    return m_modem->disconnectGPRS();
+}
 
-bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, unsigned long baudRate)
+bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, unsigned long baudRate)
 {
     sendStatusUpdate("Ready", "Connecting to Modem");
     delay(1000);
@@ -230,6 +233,7 @@ bool NuvIoTClient::ConnectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     else
     {
         sendStatusUpdate("Modem Reset", "Connecting to APN");
+        m_console->println("transparentmode=notset;");
     }
 
     if (shouldConnectToAPN)
@@ -269,7 +273,7 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
     if (!m_modem->isServiceConnected() || !isReconnect)
     {
         m_console->println("serviceconnected=false; // will connect to GRPS with baud rate " + String(baudRate));
-        if (!ConnectToAPN(transparentMode, true, baudRate))
+        if (!connectToAPN(transparentMode, true, baudRate))
         {
             return false;
         }

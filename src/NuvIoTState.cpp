@@ -25,7 +25,7 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
 
     String btSerialName = "NuvIoT - " + (m_sysConfig->DeviceId == "?" ? firmwareSku : m_sysConfig->DeviceId);
     m_btSerial->begin(btSerialName);
-    m_console->println("bluetooth=started; name=" + btSerialName);
+    m_console->println("bluetooth=started; // name=" + btSerialName);    
 
     esp_err_t openStat = nvs_open_from_partition("nvs", "kvp", NVS_READWRITE, &m_nvsHandle);
     if (openStat != ESP_OK)
@@ -65,6 +65,14 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String device
     {
         m_console->printVerbose("eeprom=initialized;");
     }
+
+    int countDown = 5000;
+    m_console->println("pauseforbt=start;  // pause on startup.");
+    while(countDown-- > 0) {
+        loop();
+        delay(1);
+    }
+    m_console->println("pauseforbt=complete;  // pause on startup.");
 }
 
 bool NuvIoTState::isValid()
@@ -396,6 +404,7 @@ bool NuvIoTState::getIsPaused()
 void NuvIoTState::loop()
 {
     m_console->loop();
+    m_hal->feedHWWatchdog();
 
     // if we don't receive any inputs for the pause timeout period assume we should restart.
     if (m_paused && m_pauseTimeout < millis())
