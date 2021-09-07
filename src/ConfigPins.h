@@ -11,6 +11,9 @@
 #define GP0O1_BRD_V2_GPRS_RX 23
 #define GP0O1_BRD_V2_GPRS_TX 19
 
+#define CONSOLE_RX 5
+#define CONSOLE_TX 17
+
 #define GP0O1_BRD_V1_SCL1 15
 #define GP0O1_BRD_V1_SDA1 4
 
@@ -56,27 +59,29 @@
 #define PROD_BRD_V1_SCL1 22
 #define PROD_BRD_V1_SDA1 21
 
+#define PROD_BRD_MODEM_RESET_V2 18
+
 #define PROD_BRD_UART_NUMBER 0
 #define PROD_BRD_V1_RX 34
 #define PROD_BRD_V1_TX 35
 
-#define PROD_BRD_V1_IO1 17
-#define PROD_BRD_V1_IO2 14
-#define PROD_BRD_V1_IO3 27
-#define PROD_BRD_V1_IO4 4
-#define PROD_BRD_V1_IO5 16
-#define PROD_BRD_V1_IO6 -1
-#define PROD_BRD_V1_IO7 -1
-#define PROD_BRD_V1_IO8 -1
+#define PROD_BRD_V1_IO1 16
+#define PROD_BRD_V1_IO2 04
+#define PROD_BRD_V1_IO3 02
+#define PROD_BRD_V1_IO4 36
+#define PROD_BRD_V1_IO5 39
+#define PROD_BRD_V1_IO6 34
+#define PROD_BRD_V1_IO7 35
+#define PROD_BRD_V1_IO8 32
 
-#define PROD_BRD_V1_ADC1 5
-#define PROD_BRD_V1_ADC2 4
-#define PROD_BRD_V1_ADC3 6
-#define PROD_BRD_V1_ADC4 0
-#define PROD_BRD_V1_ADC5 1
-#define PROD_BRD_V1_ADC6 2
-#define PROD_BRD_V1_ADC7 7
-#define PROD_BRD_V1_ADC8 3
+#define PROD_BRD_V1_ADC1 5 // GOOD
+#define PROD_BRD_V1_ADC2 4 // GOOD
+#define PROD_BRD_V1_ADC3 6 // GOOD
+#define PROD_BRD_V1_ADC4 7 // GOOD 
+#define PROD_BRD_V1_ADC5 1 // GOOD
+#define PROD_BRD_V1_ADC6 0
+#define PROD_BRD_V1_ADC7 2
+#define PROD_BRD_V1_ADC8 3 // GOOD
 
 #define PROD_BRD_V1_RUNNING_LED 5
 #define PROD_BRD_V1_ONLINE_LED 5
@@ -94,6 +99,9 @@ public:
 
     int8_t SimRx = -1;
     int8_t SimTx = -1;    
+
+    int8_t ConsoleRx = CONSOLE_RX;
+    int8_t ConsoleTx = CONSOLE_TX;    
 
     int8_t UartNumber = -1;
 
@@ -240,6 +248,8 @@ public:
             Gpio6 = PROD_BRD_V1_IO7;
             Gpio7 = PROD_BRD_V1_IO8;
 
+            ModemResetPin = PROD_BRD_MODEM_RESET_V2;
+
             HasDisplay = false;
             HasRelays = false;
             HasLeds = true;
@@ -273,6 +283,8 @@ public:
             ADCChannel6 = PROD_BRD_V1_ADC6;
             ADCChannel7 = PROD_BRD_V1_ADC7;
             ADCChannel8 = PROD_BRD_V1_ADC8;
+
+            ModemResetPin = PROD_BRD_MODEM_RESET_V2;
 
             Gpio0 = PROD_BRD_V1_IO1;
             Gpio1 = PROD_BRD_V1_IO2;

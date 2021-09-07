@@ -22,8 +22,7 @@ class RelayManager : public AbstractSensor {
     public:
         RelayManager(Console *console, ConfigPins *configPins) {
             m_console = console;
-            m_configPins = configPins;
-    
+            m_configPins = configPins;    
         };
 
         void setup(IOConfig *ioConfig) {
@@ -38,6 +37,11 @@ class RelayManager : public AbstractSensor {
 
         void configure(IOConfig *ioConfig) {
             m_ioConfig = ioConfig; 
+        }
+
+        bool getRelayState(int relayIndex)
+        {
+            return m_state[relayIndex];
         }
 
         void setRelay(int relayIndex, bool on){

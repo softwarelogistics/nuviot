@@ -32,8 +32,8 @@ class WiFiConnectionHelper {
         bool isConnected();
         String getIPAddress();
         String getMACAddress();
-        String getWiFiStatus(int);
-        int getRSSI();
+        String getWiFiStatus();
+        uint8_t getRSSI();
           
     private:
         Display *m_display;
@@ -42,6 +42,8 @@ class WiFiConnectionHelper {
         SysConfig *m_sysConfig;
         Console *m_console;
         LedManager *m_ledManager;
+
+        long m_lastReconnect = 0;
         Hal *m_hal;
         int m_attempt = 0;
         int m_spinnerIndex = 0;

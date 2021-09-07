@@ -1,6 +1,6 @@
 #include "WiFiConnectionHelper.h"
 
-WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, LedManager *ledManager, 
+WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, LedManager *ledManager,
                                            NuvIoTState *state, Hal *hal, Console *console, SysConfig *sysConfig)
 {
     m_display = display;
@@ -12,106 +12,90 @@ WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display,
     m_ledManager = ledManager;
 }
 
-String WiFiConnectionHelper::getWiFiStatus(int status)
+String WiFiConnectionHelper::getWiFiStatus()
 {
-    String statusMsg = "";
-
-    switch (status)
+    switch (WiFi.status())
     {
     case WL_IDLE_STATUS:
-        statusMsg = "Idle";
-        break;
+        return "Idle";
     case WL_NO_SHIELD:
-        statusMsg = "No Shield";
-        break;
+        return "No Shield";
     case WL_NO_SSID_AVAIL:
-        statusMsg = "No SSID Available";
-        break;
+        return "No SSID Available";
     case WL_SCAN_COMPLETED:
-        statusMsg = "Scan Completed";
-        break;
+        return "Scan Completed";
     case WL_CONNECTED:
-        statusMsg = "Connected";
-        break;
+        return "Connected";
     case WL_CONNECT_FAILED:
-        statusMsg = "Connection Failed";
-        break;
+        return "Connection Failed";
     case WL_CONNECTION_LOST:
-        statusMsg = "Connection Lost";
-        break;
+        return "Connection Lost";
     case WL_DISCONNECTED:
-        statusMsg = "Disconnected";
-        break;
+        return "Disconnected";
     }
 
-    return statusMsg;
+    return "?";
 }
 
 void WiFiConnectionHelper::loop()
 {
     // If WiFi isn't enabled, to bother trying to connect.
-    if(!m_sysConfig->WiFiEnabled)
+    if (!m_sysConfig->WiFiEnabled)
     {
         return;
     }
 
     // If we aren't commissioned, then don't bother trying to connect.
-    if(!m_sysConfig->Commissioned)
+    if (!m_sysConfig->Commissioned)
     {
-        return;
-    }
-
-    // While in configuration mode, we shut off wifi,
-    // it makes bluetooth work a little better since the ESP
-    // shares the same radio for WiFi and BT.
-    if (m_state->getIsConfigurationModeActive())
-    {
-        WiFi.disconnect();
         return;
     }
 
     int status = WiFi.status();
 
     // If we are connected, life is good, just mark us as connected and bail.
-    if(status == WL_CONNECTED)
+    if (status == WL_CONNECTED)
     {
-        if(m_wifiState != NuvIoTWiFi_Connected)
+        m_attempt = 0;
+
+        if (m_wifiState != NuvIoTWiFi_Connected)
         {
             m_display->clearBuffer();
             m_display->drawString(0, 0, "Connected to:");
             m_display->drawString(80, 0, m_sysConfig->WiFiSSID.c_str());
             m_display->sendBuffer();
             m_console->println("wifi=connected;");
-            
 
             IPAddress ip = WiFi.localIP();
 
             String sIPAddress = "";
-            for (int i=0; i<4; i++)
-                sIPAddress += i  ? "." + String(ip[i]) : String(ip[i]);
+            for (int i = 0; i < 4; i++)
+                sIPAddress += i ? "." + String(ip[i]) : String(ip[i]);
 
             m_console->println("wifi_ipaddress=" + sIPAddress + ";");
             m_ledManager->setOnlineFlashRate(10);
 
             m_wifiState = NuvIoTWiFi_Connected;
         }
-        
+
         // This is the state we normally want to be in.
         return;
     }
 
-    if(m_wifiState == NuvIoTWiFi_NotConnected)
+    if (m_wifiState == NuvIoTWiFi_NotConnected)
     {
         m_console->printError("wifi=notconnected; // Starting to connect.");
         connect(false);
     }
 
     // If we are connected, then that means we have lost our connection.
-    if(m_wifiState == NuvIoTWiFi_Connected)
+    if (m_wifiState == NuvIoTWiFi_Connected)
     {
-        m_console->printError("wifi=lostconnection; // Starting to reconnecting.");        
+        m_console->printError("wifi=lostconnection; // Starting to reconnecting.");
         connect(true);
     }
+
+    connect(true);
 
     m_attempt++;
     m_display->clearBuffer();
@@ -132,33 +116,37 @@ void WiFiConnectionHelper::loop()
     if (m_spinnerIndex == 3)
         m_spinnerIndex = 0;
 
-    String statusMsg = getWiFiStatus(status);
+    String statusMsg = getWiFiStatus();
     m_display->drawString(0, 48, statusMsg);
     m_display->sendBuffer();
     m_console->println("wifi=connecting; // attempt=" + String(m_attempt) + ", status=" + statusMsg);
 
-    if(m_attempt == 60)
+    if (m_attempt == 60)
     {
         m_hal->restart();
-    }    
+    }
 }
-
 
 void WiFiConnectionHelper::connect(bool isReconnect)
 {
+    if(millis() - m_lastReconnect < 5000) {
+        m_console->println("wifi=pauseconnect;");
+        return;
+    }
+
+    m_lastReconnect = millis();
+
     m_isReconnect = isReconnect;
     m_wifiState = NuvIoTWiFi_Connecting;
     m_console->println("wifi=connect;");
-
-    m_attempt = 0;
 
     int status = WiFi.status();
 
     m_ledManager->setOnlineFlashRate(2);
 
-   // WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
-    if(status == WL_CONNECTED)
+    if (status == WL_CONNECTED)
     {
+        m_console->printError("wifi=disconnectingprevious; // Disconnecting previous connection.");     
         WiFi.disconnect();
     }
 
@@ -174,15 +162,15 @@ void WiFiConnectionHelper::connect(bool isReconnect)
         return;
     }
 
-    m_console->println("wifi=connecting; // ssid=" + m_sysConfig->WiFiSSID + ", pwd=" + m_sysConfig->WiFiPWD.c_str());   
-    WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
+    m_console->println("wifi=connecting; // ssid=" + m_sysConfig->WiFiSSID + ", pwd=" + m_sysConfig->WiFiPWD.c_str());
+    wl_status_t beginResult = WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
 
     m_ledManager->setErrFlashRate(6);
 }
 
-int WiFiConnectionHelper::getRSSI()
+uint8_t WiFiConnectionHelper::getRSSI()
 {
-    return WiFi.RSSI();
+    return (uint8_t)WiFi.RSSI();
 }
 
 bool WiFiConnectionHelper::isConnected()
@@ -202,7 +190,9 @@ String WiFiConnectionHelper::getMACAddress()
 
 void WiFiConnectionHelper::disconnect()
 {
+    m_client->stop();
     WiFi.disconnect();
+    
 }
 
 void WiFiConnectionHelper::setup()

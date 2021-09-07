@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 
 #include <SPIFFS.h>
+#include <Console.h>
 
 #define SYSCONFIG_FN "/sysconfig.json"
 #define FILE_READ "r"
@@ -12,7 +13,15 @@
 
 class SysConfig
 {
+private:
+    Console *m_pConsole;
+
 public:
+    SysConfig(Console *pConsole)
+    {
+        m_pConsole = pConsole;
+    }
+
     bool Commissioned;
 
     String DeviceId;
@@ -71,26 +80,36 @@ public:
         File file = SPIFFS.open(SYSCONFIG_FN, FILE_READ);
         if (file)
         {
+            m_pConsole->printVerbose("sysconfig=fileexits;");
             String json = file.readString();
             file.close();
-            
+
             if (json.length() == 0)
             {
+                m_pConsole->printVerbose("sysconfig=errorread; // file length = 0");
                 file.close();
                 setDefaults();
-          
+
                 write();
             }
             else
             {
-                if(!parseJSON(json)) {
+                if (!parseJSON(json))
+                {
+                    m_pConsole->printVerbose("sysconfig=errorread; //could not parse json");
+
                     setDefaults();
                     write();
+                }
+                else
+                {
+                    m_pConsole->printVerbose("sysconfig=fileread;");
                 }
             }
         }
         else
         {
+            m_pConsole->printVerbose("sysconfig=filedoesnotexists;");
             setDefaults();
             write();
         }
@@ -99,10 +118,26 @@ public:
     void write()
     {
         File file = SPIFFS.open(SYSCONFIG_FN, FILE_WRITE);
+        if (!file)
+        {
+            m_pConsole->printError("sysconfig=failwrite; // could not open file or write");
+        }
+        else
+        {
+            String json = toJSON();
+            size_t written = file.print(json);
+            file.flush();
+            file.close();
 
-        file.print(toJSON());
-        file.flush();
-        file.close();
+            if (written != json.length())
+            {
+                m_pConsole->printError("sysconfig=failwrite; // mismatch write, written: " + String(written) + " size: " + String(json.length()));
+            }
+            else
+            {
+                m_pConsole->printVerbose("sysconfig=writefile; // wrote " + String(written) + " bytes to " + String(file.name()));
+            }
+        }
     }
 
     void setDefaults()
@@ -142,7 +177,8 @@ public:
 
         ArduinoJson::DeserializationError err = deserializeJson(doc, str);
 
-        if(err == ArduinoJson::DeserializationError::Ok) {
+        if (err == ArduinoJson::DeserializationError::Ok)
+        {
             Commissioned = doc["commissioned"].as<bool>();
             CellEnabled = doc["cellEnabled"].as<bool>();
             WiFiEnabled = doc["wifiEnabled"].as<bool>();
@@ -159,18 +195,19 @@ public:
             GPSEnabled = doc["gpsEnabled"].as<bool>();
             SendUpdateRate = doc["sendUpdateRate"].as<uint32_t>();
             GPSUpdateRate = doc["gpsUpdateRate"].as<uint32_t>();
-            GPRSModemBaudRate = doc["baud"].as<unsigned long>();     
-            if(doc.containsKey("deviceAccessKey"))
+            GPRSModemBaudRate = doc["baud"].as<unsigned long>();
+            if (doc.containsKey("deviceAccessKey"))
             {
                 String tmpKey = doc["deviceAccessKey"].as<String>();
-                if(tmpKey.length() > 0)
+                if (tmpKey.length() > 0)
                 {
                     DeviceAccessKey = tmpKey;
                 }
             }
             return true;
         }
-        else {
+        else
+        {
             // TODO: Add back in error handling.
             //Serial.println("ERROR SYSCONFIG JSON");
             //Serial.println(str);

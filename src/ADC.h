@@ -170,7 +170,7 @@ public:
         {
             if(m_bank1Enabled)
             {
-            result = _bank1->readADC_Voltage(channel);
+                result = _bank1->readADC_Voltage(channel);
             }
             else
             {                  
@@ -238,13 +238,13 @@ public:
         if (!_bank1->isOnline() && m_bank1Enabled)
         {
             m_messagePayload->lastError = "ADC 1 Offline";
-            m_console->printError("ADC 1 Offline");
+            m_console->printError("adc1=offline;");
             m_messagePayload->status = "Error";
         }
         else if (!_bank2->isOnline() && m_bank2Enabled)
         {
             m_messagePayload->lastError = "ADC 2 Offline";
-            m_console->printError("ADC 2 Offline");
+            m_console->printError("adc2=offline;");
             m_messagePayload->status = "Error";
         }
 

@@ -302,15 +302,16 @@ String SIMModem::httpPost(String url, String payload)
 {
     bool previousVerbose = m_console->getVerboseLogging();
     m_console->setVerboseLogging(true);
-    
 
-    if (!setupHttpContext("post", url)){
+    if (!setupHttpContext("post", url))
+    {
         m_console->printError("httppost=failed; // could not setup http context.");
         return "";
     }
 
     String response = sendCommand("AT+HTTPDATA=" + String(payload.length()) + ",10000", "DOWNLOAD", 0, 500, false);
-    if (response != S_OK){
+    if (response != S_OK)
+    {
         m_console->printError("httppost=failed; // could set http data, err: " + response);
         return "";
     }
@@ -320,14 +321,15 @@ String SIMModem::httpPost(String url, String payload)
     m_channel->enqueueString(payload);
     m_channel->flush();
 
-    if(!waitForReply("OK", 100))
+    if (!waitForReply("OK", 100))
     {
         m_console->printError("httppost=failed; // error waiting for OK after post upload");
         return "";
     }
 
     response = sendCommand("AT+HTTPACTION=1");
-    if (response != S_OK){
+    if (response != S_OK)
+    {
         m_console->printError("httppost=failed; // could not set http action, err: " + response);
         return "";
     }
@@ -654,22 +656,23 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
                 {
                     m_console->printVerbose(String(m_cmdIdx) + " Returned original -> " + msg);
                 }
+                else if (msg == S_RDY)
+                {
+                    m_console->printVerbose(String(m_cmdIdx) + " Received -> " + msg);
+                }
+                else if (msg == S_CPIN_READY)
+                {
+                    m_console->printVerbose(String(m_cmdIdx) + " Received -> " + msg);
+                }
                 else if (msg == S_SMS_READY)
                 {
                     m_console->printVerbose(String(m_cmdIdx) + " Returned -> " + msg);
-                    if (waitForReply(S_CALL_READY, 5))
-                    {
-                        return S_RESET;
-                    }
+                    receivedSmsReady = true;
                 }
                 else if (msg == S_CALL_READY)
                 {
                     m_console->printVerbose(String(m_cmdIdx) + " Returned -> " + msg);
-
-                    if (waitForReply(S_SMS_READY, 5))
-                    {
-                        return S_RESET;
-                    }
+                    receivedCallReady = true;
                 }
                 else
                 {
@@ -777,13 +780,25 @@ bool SIMModem::isModemOnline()
 bool SIMModem::selectNetwork()
 {
     /* Connect to AT&T network */
-    return sendCommand("AT+COPS=4,2,\"310410\"", S_OK, 0, 500, false) == S_OK;
+    if (sendCommand("AT+COPS=4,2,\"310410\"", S_OK, 0, 500, false) == S_OK)
+    {
+        m_console->printVerbose("modem=network;");
+        return true;
+    }
+    else
+    {
+        m_lastError = "COMM018";
+        return false;
+    }
 }
 
 bool SIMModem::setNBIoTMode()
 {
     if (sendCommand("AT+CMNB=1", S_OK, 0, 500, false) == S_OK)
+    {
+        m_console->printVerbose("modem=setnbiot;");
         return true;
+    }
 
     m_lastError = "COMMS015";
     return false;
@@ -792,7 +807,10 @@ bool SIMModem::setNBIoTMode()
 bool SIMModem::setLTE()
 {
     if (sendCommand("AT+CNMP=38", S_OK, 0, 500, false) == S_OK)
+    {
+        m_console->printVerbose("modem=setlte;");
         return true;
+    }
 
     m_lastError = "COMMS014";
 
@@ -801,7 +819,7 @@ bool SIMModem::setLTE()
 
 bool SIMModem::resetModem()
 {
-    String response = sendCommand("AT+CFUN=1,1", "SMS Ready", 0, 15000, false);
+    String response = sendCommand("AT+CFUN=1,1", S_OK, 0, 15000, false);
     if (response == S_NOSIM)
     {
         bool toggle = false;
@@ -831,8 +849,25 @@ bool SIMModem::resetModem()
 
 bool SIMModem::setPDPContext()
 {
-    String str = "AT+CGDCONT=1,\"IP\",\"hologram\",\"0.0.0.0\",0,0,0,0";
-    return sendCommand(str) == S_OK;
+    sendCommand("AT+CGDCONT=?");
+    m_console->printVerbose("existingvalue;");
+    uint8_t retryCount = 0;
+    while (retryCount < 5)
+    {
+        String str = "AT+CGDCONT=1,\"IP\",\"hologram\",\"0.0.0.0\",0,0,0,0";
+        //String str = "AT+CGDCONT=1,\"IP\",,,0,0,0,0";
+        if (sendCommand(str) == S_OK)
+        {
+            m_console->printVerbose("modem=pdpcontext;");
+            return true;
+        }
+
+        delay(1500);
+    }
+
+    m_lastError = "COMMS0019";
+    m_console->printError("modem=couldnotsetpdpcontext;");
+    return false;
 }
 
 bool SIMModem::setBand()
@@ -842,19 +877,15 @@ bool SIMModem::setBand()
     {
         if (sendCommand("AT+CBAND=\"ALL_MODE\"") == S_OK)
         {
-            m_console->setVerboseLogging(false);
+            m_console->println("modem=setband;");
             return true;
         }
 
-        m_console->printError("ERROR SET BAND, Retry Count " + String(retry));
-        m_console->setVerboseLogging(true);
-
         delay(1500);
-
-        m_lastError = "COMMS016";
     }
 
-    m_console->printError("ERROR SET BAND, WONT RETRY");
+    m_lastError = "COMMS016";
+    m_console->printError("modem=couldnotsetband;");
 
     return false;
 }
@@ -877,7 +908,20 @@ bool SIMModem::setAPN()
 
     if (currentAPN != desiredAPN)
     {
-        return sendCommand("AT+CSTT=" + desiredAPN) == S_OK;
+        if (sendCommand("AT+CSTT=" + desiredAPN) == S_OK)
+        {
+            m_console->println("modem=setapn; // " + desiredAPN + ";");
+            return true;
+        }
+        else
+        {
+            m_lastError = "COMMS017";
+            return false;
+        }
+    }
+    else
+    {
+        m_console->println("modem=apncorrect; // " + currentAPN + ";");
     }
 
     return true;
@@ -941,6 +985,9 @@ bool SIMModem::init()
 {
     m_console->printVerbose("Initialization of SIM Modem Started.");
 
+    bool callReady = false;
+    bool smsReady = false;
+
     if (!setBand())
     {
         m_lastError = "Could not set band.";
@@ -961,6 +1008,8 @@ bool SIMModem::init()
         m_console->printError(m_lastError);
         return false;
     }
+
+    m_simId = getSIMId();
 
     if (!setPDPContext())
     {
@@ -1077,12 +1126,22 @@ bool SIMModem::initGPS()
 {
     if (sendCommand("AT+CGNSPWR=1", "OK", 0, 1500, false) != S_OK)
     {
-        m_console->printError("Could not power up GPS");
+        m_console->printError("gps=couldnotpoweron;");
         return false;
     }
     else
     {
-        m_console->printVerbose("Started up GPS");
+        m_console->println("gps=poweredon;");
+    }
+
+    if (sendCommand("AT+CGNSCOLD", "OK", 0, 1500, false) != S_OK)
+    {
+        m_console->printError("gps=couldnotcoldstart;");
+        return false;
+    }
+    else
+    {
+        m_console->println("gps=coldstart;");
     }
 
     return true;
@@ -1105,38 +1164,26 @@ GPSData *SIMModem::readGPS()
 {
     m_channel->print("AT+CGNSINF\r");
     String echo = m_channel->readStringUntil('\r', 100);
+    m_channel->waitForCRLF();
 
-    while (!m_channel->available())
-        ;
-    m_channel->readByte();
-    while (!m_channel->available())
-        ;
-    m_channel->readByte();
+    String gpsData = m_channel->readStringUntil('\r', 100);    
+    m_channel->waitForLF();
+    m_channel->waitForCRLF();
 
-    String gpsData = m_channel->readStringUntil('\r', 100);
-
-    while (!m_channel->available())
-        ;
-    m_channel->readByte();
-    while (!m_channel->available())
-        ;
-    m_channel->readByte();
-    while (!m_channel->available())
-        ;
-    m_channel->readByte();
+    m_console->println(gpsData);
 
     String ok = m_channel->readStringUntil('\r', 100);
-    while (!m_channel->available())
-        ;
-    m_channel->readByte();
+    m_channel->waitForLF();
 
     if (ok == "OK")
     {
+        m_console->printVerbose("gps=readdata;");
         m_gpsData->parse(gpsData + "\r");
         return m_gpsData;
     }
     else
     {
+        m_console->printError("gps=couldnotreaddata;");
         return NULL;
     }
 }
@@ -1157,8 +1204,6 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
     boolean connected = false;
     while (!connected)
     {
-        m_simId = getSIMId();
-
         start = millis();
         m_console->printVerbose("Connect to cell service.");
         while (!getCGREG())

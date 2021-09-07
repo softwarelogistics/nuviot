@@ -19,7 +19,10 @@ void handleMqttCallback(char *topic, byte *payload, unsigned int length);
 
 class NuvIoTMQTT {
     private:
-        void (*m_callback)(String topic, unsigned char *buffer, size_t len) = NULL;
+        void (*m_callback)(String topic, byte *buffer, size_t len) = NULL;
+
+        int m_spinnerIndex = 0;
+        int m_connectAttempt = 0;
 
         SysConfig *m_sysConfig = NULL;
         Console *m_console = NULL;
@@ -28,12 +31,12 @@ class NuvIoTMQTT {
         Display *m_display = NULL;
         OtaServices *m_ota = NULL;
         Hal *m_hal = NULL;
-        WiFiClient *m_client;
         WiFiConnectionHelper *m_wifi;
         String m_subscriptions[MAX_SUBSCRIPTION_COUNT];
         bool m_transparentMode = true;
-        int m_subscrptionCount;
+        int m_subscriptionCount;
         long m_lastPing = 0;
+        long m_lastConnectAttempt = 0;
 
         String resolveConnectFail();        
 
@@ -42,10 +45,12 @@ class NuvIoTMQTT {
         
         void setup();
         void connect();
+        void disconnect();
         void loop();
+        bool isConnected();
         void addSubscriptions(String subscription);
         void publish(String topic, String payload);        
-        void registerCallback(void (*callback)(String topic, unsigned char *buffer, size_t len));
-        void handleMqttCallback(char *topic, byte *payload, unsigned int length);
+        void setMessageReceivedCallback(void (*callback)(String topic, unsigned char *buffer, size_t len));
+        void handleMqttCallback(char *topic, byte *payload, unsigned int length);    
 };
 #endif

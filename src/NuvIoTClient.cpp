@@ -40,7 +40,7 @@ NuvIoTClient::NuvIoTClient(SIMModem *modem, WiFiConnectionHelper *wifiConnection
     m_nuviotMqtt = wifiMqtt;
     m_cellMqtt = cellMqtt;
 
-    m_nuviotMqtt->registerCallback(messagePublished_CallBack);
+    m_nuviotMqtt->setMessageReceivedCallback(messagePublished_CallBack);
     m_cellMqtt->setMessageReceivedCallback(messagePublished_CallBack);
 }
 
@@ -266,8 +266,6 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
 bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
 {
-    m_console->setVerboseLogging(m_state->getVerboseLogging());
-
     bool transparentMode = false;
 
     if (!m_modem->isServiceConnected() || !isReconnect)

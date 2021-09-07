@@ -5,6 +5,7 @@
 #define S_ERROR "ERROR"
 #define S_CALL_READY "Call Ready"
 #define S_SMS_READY "SMS Ready"
+#define S_RDY "RDY"
 #define S_TIMEOUT "TIMEOUT"
 #define S_OK "OK"
 #define S_AT "AT"
@@ -15,6 +16,7 @@
 #define S_CLOSED "CLOSED"
 #define S_RESET "RESET!"
 #define S_NOSIM "NOSIM"
+#define S_CPIN_READY "+CPIN: READY"
 
 #define TEMP_BUFFER_SIZE 2048
 #define DOWNLOAD_BUFFER_SIZE 16384l
@@ -51,6 +53,8 @@ public:
     bool exitDataMode();
     bool connect(String apn, String apnPwd, String apnUid);
 
+    bool receivedCallReady = false;
+    bool receivedSmsReady = false;
 
     String httpGet(String url);
     String httpPost(String url, String payload);

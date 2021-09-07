@@ -3,14 +3,15 @@
 
 #include <Arduino.h>
 #include <Stream.h>
+#include "BluetoothServer.h"
 
 class Telemetry
 {
 private:
-    Stream *m_stream;
+    BluetoothServer *m_stream;
 
 public:
-    Telemetry(Stream *stream)
+    Telemetry(BluetoothServer *stream)
     {
         m_stream = stream;
     }

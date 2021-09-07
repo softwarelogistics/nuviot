@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 #include <EEPROM.h>
-#include <BluetoothSerial.h>
+#include "BluetoothServer.h"
 #include "Display.h"
 #include "LedManager.h"
 #include "Hal.h"
@@ -28,12 +28,24 @@ private:
     int m_intDefault;
     float m_fltDefault;
     bool m_boolDefault;
-    const char *m_key;    
+    const char *m_key;
 
 public:
-    Param(const char *key, int value) { m_key = key; m_intDefault = value; }
-    Param(const char *key, float value) { m_key = key; m_fltDefault = value; }
-    Param(const char *key, bool value) { m_key = key; m_boolDefault = value; }
+    Param(const char *key, int value)
+    {
+        m_key = key;
+        m_intDefault = value;
+    }
+    Param(const char *key, float value)
+    {
+        m_key = key;
+        m_fltDefault = value;
+    }
+    Param(const char *key, bool value)
+    {
+        m_key = key;
+        m_boolDefault = value;
+    }
 
     const char *getKey() { return m_key; }
     void setIndex(int idx) { m_iIndex = idx; }
@@ -48,7 +60,6 @@ public:
 class NuvIoTState
 {
 private:
-    BluetoothSerial *m_btSerial;
     Display *m_display;
     LedManager *m_ledManager;
     Hal *m_hal;
@@ -58,6 +69,14 @@ private:
     SysConfig *m_sysConfig;
     nvs_handle m_nvsHandle;
 
+    uint8_t m_wifiRSSI = 0;
+    uint8_t m_cellRSSI = 0;
+
+    bool m_isCellConnected = false;
+    bool m_isWiFiConnected = false;
+
+    bool m_isCloudConnected = false;
+
     long m_pauseTimeout = 0;
 
     bool m_isInitialized = false;
@@ -66,17 +85,22 @@ private:
     FS *m_fs;
 
     char m_jsonBuffer[1024];
+
+#ifdef BT_SERIAL
+
+#endif
     uint16_t m_jsonBufferTail = 0;
 
     String readString(int add, int maxLength);
     String m_deviceAddress;
-    char m_messageBuffer[1024];
-    char m_btAddress[20];
-    uint16_t m_messageBufferTail = 0;
+
     int byteCount = 0;
 
     String m_firmwareSku;
     String m_firmwareVersion;
+    String m_hardwareRevision;
+    String m_ipAddress;
+
     bool m_paused;
 
     /* These three values use bit masking to signify that the value has
@@ -91,21 +115,42 @@ private:
     Param *appendValue(Param *pHead, Param *pNode);
 
     Param *findKey(Param *pHead, const char *key);
-
     String resolveError(esp_err_t err);
 
 public:
-    NuvIoTState(Display *display, IOConfig *ioConfig, SysConfig *sysConfig, LedManager *ledManager, BluetoothSerial *btSerial, FS *fs, Hal *hal, Console *console);
-    void init(String firmwareSku, String firmwareVersion, String deviceConfigKey, uint16_t deviceConfigVersion);
+    NuvIoTState(Display *display, IOConfig *ioConfig, SysConfig *sysConfig, LedManager *ledManager, FS *fs, Hal *hal, Console *console);
+    void init(String firmwareSku, String firmwareVersion, String hardwareRevision, String deviceConfigKey, uint16_t deviceConfigVersion);
     bool isValid();
     void loop();
+
+    uint16_t OTAState;
+    uint16_t OTAParam;
 
     String getDeviceId();
     String getDeviceAccessKey();
     String getWiFiSSID();
     String getWiFiPassword();
+    String getHardwareRevision();
     String getFirmwareVersion();
     String getFirmwareSKU();
+
+    bool getIsWiFiConnected() { return m_isWiFiConnected; }
+    void setIsWiFiConnected(bool connected) { m_isWiFiConnected = connected; }
+
+    bool getIsCellConnected() { return m_isCellConnected; }
+    void setIsCellConnected(bool connected) { m_isCellConnected = connected; };
+
+    String getIPAddress() { return m_ipAddress; }
+    void setIPAddress(String value) { m_ipAddress = value; };
+
+    uint8_t getCellRSSI() { return m_cellRSSI; }
+    void setCellRSSI(uint8_t value) { m_cellRSSI = value; };
+
+    uint8_t getWiFiRSSI() { return m_wifiRSSI; }
+    void setWiFiRSSI(uint8_t value) { m_wifiRSSI = value; };
+
+    bool getIsCloudConnected() {return m_isCloudConnected;}
+    void setIsCloudConnected(bool connected) {m_isCloudConnected = connected;}
 
     bool getVerboseLogging();
     bool getDebugMode();
@@ -126,7 +171,7 @@ public:
     void setADCConfig(int idx, uint8_t config, float scaler);
     void setIOCConfig(int idx, uint8_t config, float scaler);
     void persistConfig();
-    
+
     void updateProperty(String fieldType, String field, String value);
 
     void registerInt(const char *key, int32_t defaultValue);
@@ -138,7 +183,7 @@ public:
     float getFlt(String key);
 
 private:
-    void readFirmware();    
+    void readFirmware();
 };
 
 #endif

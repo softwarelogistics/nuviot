@@ -16,7 +16,7 @@ void Channel::enqueueByte(uint8_t byte)
     }
 }
 
-byte Channel::readByte() 
+byte Channel::readByte()
 {
     return (byte)m_stream->read();
 }
@@ -29,11 +29,13 @@ size_t Channel::available()
 size_t Channel::readBytes(byte *buffer, size_t length)
 {
     long start = millis();
-    while(m_stream->available() < length && ((millis() - start) < 5000));        
+    while (m_stream->available() < length && ((millis() - start) < 5000))
+        ;
 
-    if(m_stream->available() < length){
+    if (m_stream->available() < length)
+    {
         size_t bufflen = m_stream->available();
-        m_console->printError("channelreadbyte:failed; // Expected: " + String(length) + ", Actual " + String(bufflen) );
+        m_console->printError("channelreadbyte:failed; // Expected: " + String(length) + ", Actual " + String(bufflen));
         m_stream->readBytes(buffer, bufflen);
         bool isVerbose = m_console->getVerboseLogging();
         m_console->setVerboseLogging(true);
@@ -84,8 +86,39 @@ void Channel::println(String msg)
     m_stream->println(msg);
 }
 
-void Channel::setBaudRate(unsigned long baudRate) {
-    m_stream->flush();    
+bool Channel::waitForCH(uint8_t ch){
+    while (!m_stream->available())
+        ;
+    if(m_stream->available())
+    {
+        return m_stream->read() == ch;
+    }
+    return false;
+}
+
+bool Channel::waitForCRLF()
+{
+    if (waitForCR())
+    {
+        return waitForLF();
+    }
+
+    return false;
+}
+
+bool Channel::waitForCR()
+{
+    return waitForCH('\r');
+}
+
+bool Channel::waitForLF()
+{
+    return waitForCH('\n');
+}
+
+void Channel::setBaudRate(unsigned long baudRate)
+{
+    m_stream->flush();
     m_stream->end();
     m_stream->updateBaudRate(baudRate);
     delay(1000);
@@ -100,7 +133,8 @@ String Channel::readStringUntil(char ch, int timeout)
     return result;
 }
 
-void Channel::enqueueString(String str){
+void Channel::enqueueString(String str)
+{
     enqueueByteArray((uint8_t *)str.c_str(), str.length());
 }
 
@@ -112,18 +146,20 @@ void Channel::enqueueByteArray(uint8_t buffer[], size_t len)
     }
 }
 
-uint16_t Channel::getEnqueuedLength(){
+uint16_t Channel::getEnqueuedLength()
+{
     if (m_txTail < m_txHead)
     {
         return m_txTail + (TX_BUFFER_SIZE - m_txHead);
     }
-    else 
+    else
     {
         return m_txTail - m_txHead;
-    }    
+    }
 }
 
-bool Channel::flush() {
+bool Channel::flush()
+{
     uint16_t sendLength;
     uint16_t bytesWritten = 0;
 
@@ -152,7 +188,7 @@ bool Channel::flush() {
 
     m_txHead = m_txTail;
 
-    if(sendLength != bytesWritten)
+    if (sendLength != bytesWritten)
     {
         m_console->printError("channelflush=failed; // send/write mismatch, Sent:" + String(sendLength) + " Written" + String(bytesWritten) + ".");
         return false;
@@ -161,7 +197,6 @@ bool Channel::flush() {
     {
         m_console->printVerbose("channelflush=success; // send/wrote " + String(sendLength));
     }
-    
 
     return true;
 }

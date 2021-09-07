@@ -10,7 +10,6 @@
 #include "PowerSensor.h"
 #include "OtaServices.h"
 #include "RelayManager.h"
-#include "BLE.h"
 #include "Console.h"
 #include "Channel.h"
 #include "MQTT_GPRS.h"
@@ -38,8 +37,8 @@
 
 #ifdef PROD_BRD_V1
 #undef DEFAULT_BRD
-HardwareSerial gprsPort(0);
-HardwareSerial consoleSerial(1);
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
 #define BOARD_CONFIG 2
 #endif
@@ -75,14 +74,12 @@ TwoWire twoWire(1);
 #define BOARD_CONFIG 1
 #endif
 
-Console console(&consoleSerial);
-
-IOConfig ioConfig(&console);
-SysConfig sysConfig(&console);
+IOConfig ioConfig;
+SysConfig sysConfig;
 ConfigPins configPins;
-
+ 
 Hal hal;
-
+Console console(&consoleSerial);
 
 Display display(DISPLAY_U8G);
 LedManager ledManager(&console, &configPins);
@@ -105,16 +102,19 @@ NuvIoTClient client(&modem, &wifiMgr, &cellMQTT, &wifiMQTT, &console, &display, 
 
 Rest rest(&client, &display, &modem, &wifiMgr, &sysConfig, &console);
 
+RelayManager relayManager(&console, &configPins);
+
+/*
 // drivers
 PulseCounter pulseCounter(&console, &configPins);
 ADC adc(&twoWire, &state, &configPins, &console, &display, payload);
 TemperatureProbes probes(&console, &configPins, payload);
 
-RelayManager relayManager(&console, &configPins);
+
 OnOffDetector onOffDetector(&console, &configPins);
 
 PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
-
+*/
 void configureI2C()
 {
   if (!twoWire.begin(configPins.Sda1, configPins.Scl1, 400000))
@@ -149,6 +149,7 @@ void configureFileSystem()
   }
 }
 
+/*
 void handleConsoleCommand(String cmd)
 {
   console.println("SENDING OFF COMMAND [" + cmd + "]");
@@ -157,18 +158,15 @@ void handleConsoleCommand(String cmd)
 
 void configureModem(unsigned long baudRate = 115200)
 {  
-  console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX" + String(configPins.SimTx));
+  console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", " + String(configPins.SimTx));
   delay(500);
-  //gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
-  gprsPort.begin(baudRate, SERIAL_8N1);//, configPins.SimRx, configPins.SimTx);
+  gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
   delay(500);
-//  gprsPort.setRxBufferSize(16 * 1024);
+  gprsPort.setRxBufferSize(16 * 1024);
 
   if(configPins.ModemResetPin != -1){
-    console.println("modem=settingpowerkey; // pin: " + String(configPins.ModemResetPin));
-
     pinMode(configPins.ModemResetPin, OUTPUT);
-    digitalWrite(configPins.ModemResetPin, LOW);
+    digitalWrite(configPins.ModemResetPin, HIGH);
   }
 }
 
@@ -250,14 +248,7 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
       }
     }
   }
-  else if(sysConfig.GPSEnabled) {
-    modem.startGPS();
-  }  
   #endif
-}
-
-GPSData *readGPS() {
-  return modem.readGPS();
 }
 
 #ifdef BOARD_CONFIG
@@ -267,18 +258,10 @@ void initPins()
 }
 #endif
 
-/**
- * \brief Setup the console.
- * 
- * \param baud Baud rate for serial console (default 115200)
- * \param serialEnabled Use the confifugred serial port for transmitting data.
- * \param btEnabled Use Bluetooth Serial to send data.
- * 
- **/
+
 void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled = true)
 {
-  consoleSerial.begin(baud, SERIAL_8N1, configPins.ConsoleRx, configPins.ConsoleTx);
-  console.println("Pins on startup: " + String(configPins.ConsoleRx) + " " + String(configPins.ConsoleTx));
+  consoleSerial.begin(baud, SERIAL_8N1);
   console.enableSerialOut(serialEnabled);
   console.enableBTOut(btEnabled);
   console.registerCallback(handleConsoleCommand);
@@ -409,3 +392,6 @@ void mqttPublish(String topic){
 }
 
 
+*/
+
+#endif

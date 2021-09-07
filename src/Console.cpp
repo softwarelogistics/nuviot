@@ -3,29 +3,6 @@
 Console::Console(Stream *stream)
 {
     m_stream = stream;
-    m_btSerial = NULL;
-
-    for (int idx = 0; idx < CONSOLE_IN_BUFFER_LEN; ++idx)
-    {
-        m_consoleInBuffer[idx] = 0;
-    }
-}
-
-Console::Console(BluetoothSerial *btSerial, Stream *stream)
-{
-    m_stream = stream;
-    m_btSerial = btSerial;
-
-    for (int idx = 0; idx < CONSOLE_IN_BUFFER_LEN; ++idx)
-    {
-        m_consoleInBuffer[idx] = 0;
-    }
-}
-
-Console::Console(BluetoothSerial *btSerial)
-{
-    m_stream = NULL;
-    m_btSerial = btSerial;
 
     for (int idx = 0; idx < CONSOLE_IN_BUFFER_LEN; ++idx)
     {
@@ -39,25 +16,10 @@ void Console::printByte(byte ch)
     {
         char hexChar[2];
 
-        if (m_stream != NULL && m_serialEnabled)
-        {
-            m_stream->print("0x");
-            sprintf(hexChar, "%02X", ch);
-            m_stream->print(hexChar);
-        }
-
-        if (m_btSerial != NULL && m_btEnabled)
-        {
-            m_btSerial->print("0x");
-            sprintf(hexChar, "%02X", ch);
-            m_btSerial->print(hexChar);
-        }
+        print("0x");
+        sprintf(hexChar, "%02X", ch);
+        print(hexChar);
     }
-}
-
-void Console::registerCallback(void (*callback)(String consoleline))
-{
-    m_callback = callback;
 }
 
 void Console::loop()
@@ -71,9 +33,14 @@ void Console::loop()
             if (ch == '\n')
             {
                 String cmd = String(m_consoleInBuffer);
-                m_stream->println("GOT A newline");
-                m_stream->println(cmd);
-                m_callback(cmd);
+                newline();
+                println(cmd);
+
+                if (m_callback != NULL)
+                {
+                    m_callback(cmd);
+                }
+
                 for (int idx = 0; idx < CONSOLE_IN_BUFFER_LEN; ++idx)
                 {
                     m_consoleInBuffer[idx] = 0;
@@ -94,7 +61,8 @@ void Console::printByte(String prefix, byte byte, String suffix)
     {
         print(prefix);
         printByte(byte);
-        println(suffix);
+        print(suffix);
+        newline();
     }
 }
 
@@ -122,7 +90,8 @@ void Console::printVerbose(String msg)
 {
     if (m_verboseLogging)
     {
-        println(msg);
+        print(msg);
+        newline();
     }
 }
 
@@ -142,15 +111,8 @@ void Console::repeatFatalError(String error)
 
 void Console::println(String msg)
 {
-    if (m_stream != NULL && m_serialEnabled)
-    {
-        m_stream->println(msg);
-    }
-
-    if (m_btSerial != NULL && m_btEnabled)
-    {
-        m_btSerial->println(msg);
-    }
+    print(msg);
+    newline();
 }
 
 void Console::print(String msg)
@@ -160,49 +122,24 @@ void Console::print(String msg)
         m_stream->print(msg);
     }
 
-    if (m_btSerial != NULL && m_btEnabled)
+    if (m_bleCallback != NULL && m_btEnabled)
     {
-        m_btSerial->print(msg);
+        m_bleCallback(msg);
     }
 }
 
-void Console::newline()
-{
-    if (m_stream != NULL && m_serialEnabled)
-    {
-        m_stream->println();
-    }
-
-    if (m_btSerial != NULL && m_btEnabled)
-    {
-        m_btSerial->println();
-    }
-}
+void Console::newline() { print("\r\n"); }
 
 void Console::printError(String err)
 {
-    if (m_stream != NULL && m_serialEnabled)
-    {
-        m_stream->println("[error]=>" + err);
-    }
-
-    if (m_btSerial != NULL && m_btEnabled)
-    {
-        m_btSerial->println("[error]=>" + err);
-    }
+    print("[error] ");
+    println(err);
 }
 
 void Console::printWarning(String warning)
 {
-    if (m_stream != NULL && m_serialEnabled)
-    {
-        m_stream->println("[warning]=>" + warning);
-    }
-
-    if (m_btSerial != NULL && m_btEnabled)
-    {
-        m_btSerial->println("[warning]=>" + warning);
-    }
+    print("[warning] ");
+    println(warning);
 }
 
 void Console::printByteArray(byte buffer[])
@@ -224,10 +161,7 @@ void Console::printByteArray(String prefix, byte buffer[], size_t len)
 {
     if (m_verboseLogging)
     {
-        if (m_stream != NULL && m_serialEnabled)
-        {
-            m_stream->print(prefix);
-        }
+        print(prefix);
 
         if (len == -1)
         {
@@ -235,8 +169,8 @@ void Console::printByteArray(String prefix, byte buffer[], size_t len)
             byte ch = buffer[idx];
             while (ch != 0x00)
             {
-                if (idx > 0 && m_stream != NULL && m_serialEnabled)
-                    m_stream->print(" ");
+                if (idx > 0)
+                    print(" ");
 
                 printByte(ch);
 
@@ -249,14 +183,11 @@ void Console::printByteArray(String prefix, byte buffer[], size_t len)
             for (int idx = 0; idx < len; ++idx)
             {
                 printByte(buffer[idx]);
-                if (idx < len - 1 && m_stream != NULL && m_serialEnabled)
-                    m_stream->print(" ");
+                if (idx < len - 1)
+                    print(" ");
             }
         }
 
-        if (m_stream != NULL && m_serialEnabled)
-        {
-            m_stream->println(";");
-        }
+        println(";");
     }
 }

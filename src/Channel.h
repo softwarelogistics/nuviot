@@ -39,6 +39,11 @@ public:
     byte readByte();
     void loop();
 
+    bool waitForCH(uint8_t ch);
+    bool waitForCRLF();
+    bool waitForCR();
+    bool waitForLF();
+
 private:
     int m_txHead = 0;
     int m_txTail = 0;

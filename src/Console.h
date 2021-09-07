@@ -2,23 +2,26 @@
 #define CONSOLE_H
 
 #include <Arduino.h>
-#include <BluetoothSerial.h>
+#include <Stream.h>
 #define CONSOLE_IN_BUFFER_LEN 128
+#define CONSOLE_OUT_BUFFER 2048
 
 class Console
 {
-private:
-    
+private:    
     bool m_btEnabled = true;
     bool m_serialEnabled = true;
     int m_consoleInBufferIdx = 0;
     char m_consoleInBuffer[CONSOLE_IN_BUFFER_LEN];
+    char m_consoleOutBuffer[CONSOLE_OUT_BUFFER];
     void (*m_callback)(String topic) = NULL;
+    void (*m_bleCallback)(String topic) = NULL;
 
-public:
+    uint16_t m_consoleOutBufferHead = 0;
+    uint16_t m_consoleOutBufferTail = 0;
+
+public:    
     Console(Stream *stream);
-    Console(BluetoothSerial *btSerial, Stream *stream);
-    Console(BluetoothSerial *btSerial);
 
     void printByte(byte byte);
     void printByte(String prefix, byte byte, String suffix);
@@ -42,12 +45,17 @@ public:
 
     void enableBTOut(bool enabled);
     void enableSerialOut(bool enabled);
-     void registerCallback(void (*callback)(String topic));
+    void registerCallback(void (*callback)(String topic)) {
+        m_callback = callback;
+    }
+
+    void registerBLEWriter(void (*callback)(String message)) {
+        m_bleCallback = callback;
+    }
 
     void loop();
 
 private:
-    BluetoothSerial *m_btSerial = NULL;
     Stream *m_stream;
     bool m_verboseLogging = false;
 };
