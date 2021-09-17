@@ -158,9 +158,12 @@ void handleConsoleCommand(String cmd)
 void configureModem(unsigned long baudRate = 115200)
 {  
   console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX" + String(configPins.SimTx));
+
   delay(500);
   //gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
   gprsPort.begin(baudRate, SERIAL_8N1);//, configPins.SimRx, configPins.SimTx);
+
+  console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000))) ;
   delay(500);
 //  gprsPort.setRxBufferSize(16 * 1024);
 

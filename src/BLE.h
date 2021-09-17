@@ -102,6 +102,10 @@ public:
     m_isConnected = false;
   }
 
+  bool getIsConnected(){
+    return m_isConnected;
+  }
+
   void update();
 
   void stop();

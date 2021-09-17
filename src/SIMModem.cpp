@@ -352,7 +352,7 @@ uint32_t SIMModem::downloadContent(uint32_t contentSize, unsigned char *buffer)
     long start = millis();
 
     int loopCount = 1;
-    while (contentSize > 0 && loopCount < 500)
+    while (contentSize > 0 && loopCount < 100)
     {
         long toRead = BLOCK_SIZE < contentSize ? BLOCK_SIZE : contentSize;
 
@@ -499,6 +499,8 @@ bool SIMModem::beginDownload(String url)
         m_hal->restart(2000);
     }
 
+    long totalDownloaded = 0;
+
     for (int chunkIndex = 0; chunkIndex < chunks; ++chunkIndex)
     {
         // identify the beginning of the chunk to ask for from the server.
@@ -554,6 +556,8 @@ bool SIMModem::beginDownload(String url)
             m_hal->restart(2000);
         }
 
+        totalDownloaded += contentSize;
+
         int written = Update.write(m_rxBuffer, contentSize);
         if (written < contentSize)
         {
@@ -563,7 +567,7 @@ bool SIMModem::beginDownload(String url)
         }
         else
         {
-            m_console->println("fwupdate=writeota; // write " + String(written) + ", block " + String(chunkIndex) + " out of " + String(chunks) + ".");
+            m_console->println("fwupdate=writeota; // write " + String(written) + ", block " + String(chunkIndex + 1) + " out of " + String(chunks) + " bytes: " + String(totalDownloaded) + " of " + String(fullFileSize));
         }
 
         m_console->println("-");

@@ -29,7 +29,7 @@ size_t Channel::available()
 size_t Channel::readBytes(byte *buffer, size_t length)
 {
     long start = millis();
-    while (m_stream->available() < length && ((millis() - start) < 5000))
+    while (m_stream->available() < length && ((millis() - start) < 1000))
         ;
 
     if (m_stream->available() < length)
@@ -37,10 +37,15 @@ size_t Channel::readBytes(byte *buffer, size_t length)
         size_t bufflen = m_stream->available();
         m_console->printError("channelreadbyte:failed; // Expected: " + String(length) + ", Actual " + String(bufflen));
         m_stream->readBytes(buffer, bufflen);
-        bool isVerbose = m_console->getVerboseLogging();
-        m_console->setVerboseLogging(true);
-        m_console->printByteArray(buffer, bufflen);
-        m_console->setVerboseLogging(isVerbose);
+
+        if (bufflen > 0)
+        {
+            bool isVerbose = m_console->getVerboseLogging();
+            m_console->setVerboseLogging(true);
+            m_console->printByteArray(buffer, bufflen);
+            m_console->setVerboseLogging(isVerbose);
+        }
+
         return -1;
     }
 
@@ -49,14 +54,27 @@ size_t Channel::readBytes(byte *buffer, size_t length)
 
 void Channel::clearBuffers()
 {
-    bool isVerbose = m_console->getVerboseLogging();
-    m_console->setVerboseLogging(true);
+
     size_t bufflen = m_stream->available();
-    m_stream->readBytes(m_rxBuffer, bufflen);
-    m_console->printByteArray(m_rxBuffer, bufflen);
+    if (bufflen > 0)
+    {
+        bool isVerbose = m_console->getVerboseLogging();
+        m_console->setVerboseLogging(true);
+        m_console->println("channel=clearbuffer;  // start");
+        m_console->println("channel=remaining;  // Bytes left in buffer " + String(bufflen));
+        size_t bytes_to_read = bufflen > RX_BUFFER_SIZE ? RX_BUFFER_SIZE : bufflen;
+        while (bufflen > 0)
+        {
+            m_stream->readBytes(m_rxBuffer, bytes_to_read);
+            m_console->printByteArray(m_rxBuffer, bufflen);
+            bufflen -= bytes_to_read;
+            if (bufflen > 0)
+                bytes_to_read = bufflen > RX_BUFFER_SIZE ? RX_BUFFER_SIZE : bufflen;
+        }
+        m_console->println("channel=clearbuffer;  // complete");
 
-    m_console->setVerboseLogging(isVerbose);
-
+        m_console->setVerboseLogging(isVerbose);
+    }
     m_txHead = 0;
     m_txTail = 0;
 }
@@ -86,10 +104,11 @@ void Channel::println(String msg)
     m_stream->println(msg);
 }
 
-bool Channel::waitForCH(uint8_t ch){
+bool Channel::waitForCH(uint8_t ch)
+{
     while (!m_stream->available())
         ;
-    if(m_stream->available())
+    if (m_stream->available())
     {
         return m_stream->read() == ch;
     }

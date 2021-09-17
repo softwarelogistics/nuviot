@@ -229,6 +229,8 @@ void BLE::handleReadCharacteristic(BLECharacteristic *characteristic)
 
 void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
 {
+  m_lastClientActviity = millis();
+
   String input = String(characteristic->getValue().c_str());
   const char *uuid = characteristic->getUUID().toString().c_str();
   String charId = String(characteristic->getUUID().toString().c_str());
@@ -237,6 +239,8 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
   {
     pConsole->println("ble=read; // char=sysstate; value=" + input);
     // pSysConfig->Commissioned = characteristic->getData()[0] == '1';
+
+    refreshCharacteristics();
   }
 
   if (0 == strcmp(uuid, CHAR_UUID_IOCONFIG))
@@ -410,21 +414,17 @@ void BLE::update()
 
   if (m_isConnected)
   {
-    pConsole->println(F("ble=connected;"));
-    /*    uint8_t adcValues[8] = {(uint8_t)idx, HARDWARE_VERSION_MINOR, SOFTWARE_VERSION_MAJOR, SOFTWARE_VERSION_MINOR, SOFTWARE_VERSION_PATCH, 5, 6, 7};
-    pSensorADCCharecteristics->setValue(adcValues, 8);
-    pSensorADCCharecteristics->notify(true);
-    pRelaysCharacteristics->setValue(adcValues, 8);
-    pRelaysCharacteristics->notify(true);
-    pSensorGPIIOCharecteristics->setValue(adcValues, 8);
-    pSensorGPIIOCharecteristics->notify(true);*/
-
     pCharState->notify(true);
     pCharRelay->notify(true);
     pCharIOValue->notify(true);
 
     if(millis() - m_lastClientActviity > 3000) {
       pServer->disconnect(m_connectionId);
+      pConsole->println("ble=activitytimeout;");
+    }
+    else
+    {
+      pConsole->println(F("ble=connected;"));
     }
   }
   else
