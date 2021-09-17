@@ -308,7 +308,13 @@ bool MQTT::connect(String uid, String pwd, String clientId)
 }
 
 bool MQTT::disconnect()
-{
+{  
+    byte disconnectMessage[] = {
+        0x0E,
+        0x00
+    };
+
+    writeByteArray(disconnectMessage, 2);
     return true;
 }
 

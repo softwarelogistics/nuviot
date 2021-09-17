@@ -378,6 +378,7 @@ void commonLoop()
     ping();
   }
   
+  console.loop();  
   state.loop();
 }
 

@@ -28,7 +28,7 @@ public:
 
     void setBaudRate(unsigned long baudRate);
 
-    bool flush();
+    bool flush(bool transparentMode = false);
     
     uint16_t getEnqueuedLength(); 
 

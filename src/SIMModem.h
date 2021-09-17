@@ -37,6 +37,8 @@ public:
     bool isModemOnline();
     bool connectGPRS();
     bool disconnectGPRS();
+    bool DisconnectMQTT();
+    bool disconnectServer();
     bool connectServer(String hostName, String port);
     bool resetModem();
     bool enableErrorMessages();

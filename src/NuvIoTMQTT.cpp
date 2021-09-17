@@ -221,8 +221,6 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
                     String url = "http://api.nuviot.com/api/firmware/download/" + parts[4];
                     publish(String("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/fwupdate/start"), String("{'url':'" + url + "'}"));
                     m_ota->start(url);
-                    /* if we succeed we automatically restart, if we got here it was a failure. */
-                    publish(String("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/fwupdate/fail"), String("{'url':'" + url + "'}"));
                 }
             }
         }

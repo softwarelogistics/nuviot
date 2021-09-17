@@ -1,7 +1,9 @@
 #include "SIMModem.h"
 #include "Utils.h"
 #include <Update.h>
-
+#include <esp_spi_flash.h>
+#include <esp_ota_ops.h>
+#include <esp_image_format.h>
 SIMModem::SIMModem(Display *display, Channel *channel, Console *console, Hal *hal)
 {
     m_hal = hal;
@@ -388,6 +390,7 @@ uint32_t SIMModem::downloadContent(uint32_t contentSize, unsigned char *buffer)
         waitForReply("OK", 10);
     }
 
+    m_channel->waitForCRLF();
     return totalBytesRead;
 }
 
@@ -425,8 +428,69 @@ bool SIMModem::httpGetSetError(String url, String errorMsg)
 
 #define MAX_CHUNK_DOWNLOAD_TRIES 5
 
+bool SIMModem::DisconnectMQTT()
+{
+      uint8_t disconnectMessage[] = {
+        0xE0,
+        0x00};
+        
+    m_channel->enqueueByteArray(disconnectMessage, 2);
+
+    m_console->printVerbose("NOT TRANSPARENT MODE - CIPSEND");
+
+    uint16_t enqueuedBytes = m_channel->getEnqueuedLength();
+    String sendMessage = "AT+CIPSEND=" + String(enqueuedBytes);
+    m_channel->println(sendMessage);
+
+    String response = m_channel->readStringUntil('\n', 3000);
+
+    m_console->printVerbose("AT+CIPSEND= response: " + response);
+
+    uint8_t ch = 0x00;
+    uint16_t retryCount = 0;
+    while(ch != '>' && retryCount++ < 500)
+    {
+        while(m_channel->available() > 0 && ch != '>') {
+            ch = m_channel->readByte();
+            m_console->printVerbose("UNEXPECTED RESPONSE: [" + String(ch) + "]");
+        }
+        delay(1);
+    } 
+
+    if(ch != '>')
+    {
+        m_console->printError("mqttflush=fail; //timeout waiting for > ");
+        return false;
+    }
+
+    m_console->printVerbose("RECEIVED: [" + String(ch) + "] Will continue");
+
+    
+    if (!m_channel->flush())
+    {
+        m_console->printError("mqttdisconnect=false;");
+        return false;
+    }
+    else
+    {
+        m_console->println("mqttdisconnect=true;");
+        delay(1000);
+        return true;
+    }    
+}
+
 bool SIMModem::beginDownload(String url)
 {
+    // send a command to the MQTT server to say...graceful shutdown
+    DisconnectMQTT();
+
+    // disconnect the socket from the MQTT server.
+    disconnectServer();
+    delay(1000);
+
+    m_channel->clearBuffers();
+    delay(1000);
+
     m_display->drawStr("Starting firware", "update process.");
 
     m_console->println("fwupdate=start; // url=" + url);
@@ -518,6 +582,7 @@ bool SIMModem::beginDownload(String url)
 
         while (!chunkDownloaded && downloadRetryCount++ < MAX_CHUNK_DOWNLOAD_TRIES)
         {
+            m_channel->clearBuffers();
             // start a timer for each chunk.
             long startMS = millis();
             String downloadQueryString = "?start=" + String(start) + "&length=" + String(downloadChunkSize);
@@ -581,6 +646,12 @@ bool SIMModem::beginDownload(String url)
     }
     else
     {
+        //const esp_partition_t *_partition = esp_ota_get_next_update_partition(NULL);
+        //esp_err_t result = esp_ota_set_boot_partition(_partition);
+
+        //m_console->println("setbootpartion=done; // Value: " + String(result));
+        delay(1000);
+
         if (Update.end())
         {
             m_display->drawStr("Success flashing", "Rebooting in 2 seconds.");
@@ -1103,7 +1174,7 @@ bool SIMModem::connectServer(String hostName, String port)
     // todo: get CIPSTATUS working, maybe that will clean this up a little.
     if (response != S_OK && response != S_ERROR)
     {
-        m_console->printError("connectserver=fail; // CLOSE OK unepected response - " + response);
+        m_console->printError("connectserver=fail; // CLOSE OK unexpected response - " + response);
         return false;
     }
 
@@ -1113,10 +1184,25 @@ bool SIMModem::connectServer(String hostName, String port)
 
     if (response != S_OK)
     {
-        m_console->printError("connectserver=fail; // CONNECT OK unepected response - " + response);
+        m_console->printError("connectserver=fail; // CONNECT OK unexpected response - " + response);
         return false;
     }
 
+    return true;
+}
+
+bool SIMModem::disconnectServer()
+{
+    String connect = "AT+CIPCLOSE";
+    String response = sendCommand(connect, S_CLOSE_OK, 0, 5000, false);
+
+    if (response != S_OK && response != S_CLOSE_OK)
+    {
+        m_console->printError("disconnectserver=fail; // Disconnect OK unexpected response - " + response);
+        return false;
+    }
+
+    m_console->println("disconnectserver=success;");
     return true;
 }
 
@@ -1170,7 +1256,7 @@ GPSData *SIMModem::readGPS()
     String echo = m_channel->readStringUntil('\r', 100);
     m_channel->waitForCRLF();
 
-    String gpsData = m_channel->readStringUntil('\r', 100);    
+    String gpsData = m_channel->readStringUntil('\r', 100);
     m_channel->waitForLF();
     m_channel->waitForCRLF();
 

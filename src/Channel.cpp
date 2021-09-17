@@ -177,7 +177,7 @@ uint16_t Channel::getEnqueuedLength()
     }
 }
 
-bool Channel::flush()
+bool Channel::flush(bool transparentMode)
 {
     uint16_t sendLength;
     uint16_t bytesWritten = 0;

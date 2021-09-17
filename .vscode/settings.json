@@ -9,6 +9,10 @@
         "vector": "cpp",
         "xhash": "cpp",
         "xtree": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "algorithm": "cpp",
+        "iomanip": "cpp",
+        "xlocmon": "cpp",
+        "xlocnum": "cpp"
     }
 }
