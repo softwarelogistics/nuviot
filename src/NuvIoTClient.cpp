@@ -284,86 +284,91 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
     int retryCount = 0;
 
     m_state->loop();
+    if(m_sysConfig->SrvrType == "mqtt") {
+        retryCount = 0;
+        sendStatusUpdate("Connected to APN", "Connecting to MQTT");
+        while (!m_modem->connectServer(m_sysConfig->SrvrHostName, "1883") && retryCount < RETRY_COUNT)
+        {
+            handleWarning("MQTT001", "Failed to connect to mqtt server: " + m_sysConfig->SrvrHostName, retryCount++);
+            delayAndCheckState(1000);
+        }
 
-    retryCount = 0;
-    sendStatusUpdate("Connected to APN", "Connecting to MQTT");
-    while (!m_modem->connectServer(m_sysConfig->SrvrHostName, "1883") && retryCount < RETRY_COUNT)
-    {
-        handleWarning("MQTT001", "Failed to connect to mqtt server: " + m_sysConfig->SrvrHostName, retryCount++);
+        if (retryCount == RETRY_COUNT)
+        {
+            handleError("MQTT001", "Failed to connect to mqtt server: " + m_sysConfig->SrvrHostName);
+            return false;
+        }
+
+        retryCount = 0;
+        m_console->println("mqtt=connected;");
+        sendStatusUpdate("MQTT", "MQTT Connected");
         delayAndCheckState(1000);
-    }
+        m_ledManager->setErrFlashRate(0);
 
-    if (retryCount == RETRY_COUNT)
-    {
-        handleError("MQTT001", "Failed to connect to mqtt server: " + m_sysConfig->SrvrHostName);
-        return false;
-    }
+        m_console->println("Will connect to [" + m_sysConfig->SrvrUID +"] [" +  m_sysConfig->SrvrPWD + "] [" + m_sysConfig->DeviceId + "]");
 
-    retryCount = 0;
-    m_console->println("mqtt=connected;");
-    sendStatusUpdate("MQTT", "MQTT Connected");
-    delayAndCheckState(1000);
-    m_ledManager->setErrFlashRate(0);
+        while (!m_cellMqtt->connect(m_sysConfig->SrvrUID, m_sysConfig->SrvrPWD, m_sysConfig->DeviceId) && retryCount < RETRY_COUNT)
+        {
+            handleWarning("MQTT002", "Failed to authenticate to m_mqtt server: " + m_sysConfig->SrvrHostName + " with device id => ", retryCount++);
+            delayAndCheckState(1000);
+        }
 
-    m_console->println("Will connect to [" + m_sysConfig->SrvrUID +"] [" +  m_sysConfig->SrvrPWD + "] [" + m_sysConfig->DeviceId + "]");
-
-    while (!m_cellMqtt->connect(m_sysConfig->SrvrUID, m_sysConfig->SrvrPWD, m_sysConfig->DeviceId) && retryCount < RETRY_COUNT)
-    {
-        handleWarning("MQTT002", "Failed to authenticate to m_mqtt server: " + m_sysConfig->SrvrHostName + " with device id => ", retryCount++);
+        if (retryCount == RETRY_COUNT)
+        {
+            handleError("MQTT002", "Failed to authenticate to m_mqtt: " + m_sysConfig->SrvrHostName);
+            return false;
+        }
+        retryCount = 0;
+        m_console->println("mqtt=authorized;");
+        ;
+        sendStatusUpdate("MQTT Authorized", "Publish Connect");
         delayAndCheckState(1000);
-    }
+        m_ledManager->setErrFlashRate(0);
 
-    if (retryCount == RETRY_COUNT)
-    {
-        handleError("MQTT002", "Failed to authenticate to m_mqtt: " + m_sysConfig->SrvrHostName);
-        return false;
-    }
-    retryCount = 0;
-    m_console->println("mqtt=authorized;");
-    ;
-    sendStatusUpdate("MQTT Authorized", "Publish Connect");
-    delayAndCheckState(1000);
-    m_ledManager->setErrFlashRate(0);
+        String onlinePayload = "readonly-rssi=" + String(m_modem->getSignalQuality()) + ",readonly-reconnect=" + (isReconnect ? "true" : "false") + ",";
+        onlinePayload += m_state->getRemoteProperties();
 
-    String onlinePayload = "readonly-rssi=" + String(m_modem->getSignalQuality()) + ",readonly-reconnect=" + (isReconnect ? "true" : "false") + ",";
-    onlinePayload += m_state->getRemoteProperties();
+        while (!m_cellMqtt->publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", onlinePayload, QOS0) && retryCount < RETRY_COUNT)
+        {
+            handleWarning("MQTT003", "Failed publish nuviot/dvconline.", retryCount++);
+            delayAndCheckState(1000);
+        }
 
-    while (!m_cellMqtt->publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", onlinePayload, QOS0) && retryCount < RETRY_COUNT)
-    {
-        handleWarning("MQTT003", "Failed publish nuviot/dvconline.", retryCount++);
+        if (retryCount == RETRY_COUNT)
+        {
+            handleError("MQTT003", "Failed publish [nuviot/dvconline].");
+            return false;
+        }
+
+        retryCount = 0;
+        m_console->println("mqtt=publishonline;");
+        sendStatusUpdate("Published Connect", "Subscribe to sys msgs");
         delayAndCheckState(1000);
-    }
+        m_ledManager->setErrFlashRate(0);
 
-    if (retryCount == RETRY_COUNT)
-    {
-        handleError("MQTT003", "Failed publish [nuviot/dvconline].");
-        return false;
-    }
+        while (m_cellMqtt->subscribe("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/#", QOS0) == -1 && retryCount < RETRY_COUNT)
+        {
+            handleWarning("MQTT004", "Failed subscribe to [nuviot/dvcsrvc].", retryCount++);
+            delayAndCheckState(1000);
+        }
 
-    retryCount = 0;
-    m_console->println("mqtt=publishonline;");
-    sendStatusUpdate("Published Connect", "Subscribe to sys msgs");
-    delayAndCheckState(1000);
-    m_ledManager->setErrFlashRate(0);
+        if (retryCount == RETRY_COUNT)
+        {
+            handleError("MQTT004", "Failed subscribe to [nuviot/dvcsrvc].");
+            return false;
+        }
 
-    while (m_cellMqtt->subscribe("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/#", QOS0) == -1 && retryCount < RETRY_COUNT)
-    {
-        handleWarning("MQTT004", "Failed subscribe to [nuviot/dvcsrvc].", retryCount++);
+        retryCount = 0;
+        m_console->println("mqtt=subscribed;");
+        sendStatusUpdate("Subscribed to sys msgs", "Ready");
         delayAndCheckState(1000);
+        m_ledManager->setErrFlashRate(0);
     }
-
-    if (retryCount == RETRY_COUNT)
+    else 
     {
-        handleError("MQTT004", "Failed subscribe to [nuviot/dvcsrvc].");
-        return false;
+        m_modem->setBearer();
     }
-
-    retryCount = 0;
-    m_console->println("mqtt=subscribed;");
-    sendStatusUpdate("Subscribed to sys msgs", "Ready");
-    delayAndCheckState(1000);
-    m_ledManager->setErrFlashRate(0);
-
+    
     return true;
 }
 

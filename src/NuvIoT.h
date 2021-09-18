@@ -83,7 +83,6 @@ ConfigPins configPins;
 
 Hal hal;
 
-
 Display display(DISPLAY_U8G);
 LedManager ledManager(&console, &configPins);
 NuvIoTState state(&display, &ioConfig, &sysConfig, &ledManager, &SPIFFS, &hal, &console);
@@ -156,18 +155,19 @@ void handleConsoleCommand(String cmd)
 }
 
 void configureModem(unsigned long baudRate = 115200)
-{  
+{
   console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX" + String(configPins.SimTx));
 
   delay(500);
   //gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
-  gprsPort.begin(baudRate, SERIAL_8N1);//, configPins.SimRx, configPins.SimTx);
+  gprsPort.begin(baudRate, SERIAL_8N1); //, configPins.SimRx, configPins.SimTx);
 
-  console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000))) ;
+  console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000)));
   delay(500);
-//  gprsPort.setRxBufferSize(16 * 1024);
+  //  gprsPort.setRxBufferSize(16 * 1024);
 
-  if(configPins.ModemResetPin != -1){
+  if (configPins.ModemResetPin != -1)
+  {
     console.println("modem=settingpowerkey; // pin: " + String(configPins.ModemResetPin));
 
     pinMode(configPins.ModemResetPin, OUTPUT);
@@ -242,7 +242,10 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
     {
       if (!state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
       {
-        cellMQTT.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS0);
+        if (sysConfig.SrvrType == "mqtt")
+        {
+          cellMQTT.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS0);
+        }
 
         if (sysConfig.GPSEnabled)
         {
@@ -253,13 +256,15 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
       }
     }
   }
-  else if(sysConfig.GPSEnabled) {
+  else if (sysConfig.GPSEnabled)
+  {
     modem.startGPS();
-  }  
-  #endif
+  }
+#endif
 }
 
-GPSData *readGPS() {
+GPSData *readGPS()
+{
   return modem.readGPS();
 }
 
@@ -335,6 +340,21 @@ void clearError(String err, String details)
 
 long lastPing = 0;
 
+bool httpGetNoContent(String url)
+{
+  return modem.httpGetNoContent(url);
+}
+
+String httpGet(String url)
+{
+  return modem.httpGet(url);
+}
+
+String httpPost(String url, String body)
+{
+  return modem.httpPost(url, body);
+}
+
 void ping()
 {
   if (lastPing == 0 || ((millis() - lastPing) > sysConfig.PingRate * 1000))
@@ -359,7 +379,8 @@ void ping()
   }
 }
 
-void mqttCallback(String topic, byte *buffer, size_t len) {
+void mqttCallback(String topic, byte *buffer, size_t len)
+{
   console.println("RECIVE TOPIC" + topic);
 }
 
@@ -368,21 +389,29 @@ void commonLoop()
   if (sysConfig.WiFiEnabled)
   {
     wifiMgr.loop();
-    if( wifiMgr.isConnected() && sysConfig.SrvrHostName != NULL && sysConfig.SrvrHostName.length() > 0) {      
-      wifiMQTT.loop();    
+    if (sysConfig.SrvrType == "mqtt")
+    {
+      if (wifiMgr.isConnected() && sysConfig.SrvrHostName != NULL && sysConfig.SrvrHostName.length() > 0)
+      {
+        wifiMQTT.loop();
+      }
     }
   }
   else if (sysConfig.CellEnabled)
   {
-    cellMQTT.loop();    
-    ping();
+    if (sysConfig.SrvrType == "mqtt")
+    {
+      cellMQTT.loop();
+      ping();
+    }
   }
-  
-  console.loop();  
+
+  console.loop();
   state.loop();
 }
 
-void mqttSubscribe(String topic) {
+void mqttSubscribe(String topic)
+{
   if (sysConfig.WiFiEnabled)
   {
     wifiMQTT.addSubscriptions(topic);
@@ -408,8 +437,7 @@ void mqttPublish(String topic, String value)
   }
 }
 
-void mqttPublish(String topic){
+void mqttPublish(String topic)
+{
   mqttPublish(topic, "");
 }
-
-

@@ -4,6 +4,7 @@
 #include <esp_spi_flash.h>
 #include <esp_ota_ops.h>
 #include <esp_image_format.h>
+
 SIMModem::SIMModem(Display *display, Channel *channel, Console *console, Hal *hal)
 {
     m_hal = hal;
@@ -186,6 +187,8 @@ void SIMModem::closeHttpContext(String tag)
         }
         else
         {
+            String echoResponse = m_channel->readStringUntil('\n', 5000);
+            echoResponse.trim();
             done = true;
         }
     }
@@ -195,7 +198,7 @@ void SIMModem::closeHttpContext(String tag)
 
 bool SIMModem::setupHttpContext(String tag, String url)
 {
-    setBearer();
+    m_console->println("http" + tag + "=start; // URL: " + url);
 
     int retryCount = 0;
     String response;
@@ -250,11 +253,25 @@ String SIMModem::readHttpResponse(String tag)
     {
         msg = m_channel->readStringUntil('\n', 5000);
         msg.trim();
+
         if (msg != "")
         {
-            m_console->println("Response From Server: ");
-            m_console->println(msg);
-            done = true;
+            if(msg.startsWith("+HTTPACTION:"))
+            {
+                int first = msg.indexOf(" ");
+                int second = msg.indexOf(",", first);
+                int third = msg.indexOf(",", second + 1);
+                
+                String actionType = msg.substring(first + 1, second);
+                String httpResponseCode = msg.substring(second + 1, third);                
+                if(!httpResponseCode.startsWith("2"))
+                {
+                    m_console->printError("http" + tag + "=failed; // Non-Success HTTP Response Code: " + httpResponseCode);
+                }
+                String msgLen = msg.substring(third + 1);
+                m_console->printVerbose(msg + " - Action Type=" + actionType + ", HTTP Result Code: " + httpResponseCode + ", Response Length: " + msgLen + ";");
+                done = true;
+            }           
         }
 
         delay(retryCount * 500);
@@ -273,8 +290,18 @@ String SIMModem::readHttpResponse(String tag)
     String readResponse = m_channel->readStringUntil('\n', 10000);
     readResponse.trim();
 
-    m_console->println("http" + tag + "=succuss; ");
+    String lenStr = readResponse.substring(11);
 
+    memset(m_rxBuffer, 0, RX_BUFFER_SIZE);
+
+    long contentLen = atol(lenStr.c_str());
+    m_channel->readBytes(m_rxBuffer, contentLen);
+
+    String content = String((char*)m_rxBuffer);
+    m_console->println("http" + tag + "=succuss; // Length: " + lenStr + ", Content Response: " + content);
+
+    m_channel->readStringUntil('\n', 5000);
+    String finalOK = m_channel->readStringUntil('\n', 5000);
     return readResponse;
 }
 
@@ -302,9 +329,6 @@ String SIMModem::httpGet(String url)
 
 String SIMModem::httpPost(String url, String payload)
 {
-    bool previousVerbose = m_console->getVerboseLogging();
-    m_console->setVerboseLogging(true);
-
     if (!setupHttpContext("post", url))
     {
         m_console->printError("httppost=failed; // could not setup http context.");
@@ -318,7 +342,7 @@ String SIMModem::httpPost(String url, String payload)
         return "";
     }
 
-    m_console->println("httppost=uploaded payload;");
+    delay(1000);
 
     m_channel->enqueueString(payload);
     m_channel->flush();
@@ -336,11 +360,11 @@ String SIMModem::httpPost(String url, String payload)
         return "";
     }
 
+    m_console->println("httppost=uploadedpayload; // Length: " + String(payload.length()) + ", Payload: " + payload);
+
     response = readHttpResponse("post");
 
     closeHttpContext("post");
-
-    m_console->setVerboseLogging(previousVerbose);
 
     return response;
 }
@@ -416,14 +440,13 @@ bool SIMModem::httpGetNoContent(String url)
     return true;
 }
 
-bool SIMModem::httpGetSetError(String url, String errorMsg)
+String SIMModem::httpGetSetError(String url, String errorMsg)
 {
     errorMsg.replace(" ", "_");
     errorMsg.replace(".", "_");
     errorMsg.replace(",", "_");
-    httpGetNoContent(url + "/failed?err=" + errorMsg);
 
-    return httpGetNoContent(url + "/failed?err=" + errorMsg);
+    return httpGet(url + "/failed?err=" + errorMsg);
 }
 
 #define MAX_CHUNK_DOWNLOAD_TRIES 5
@@ -656,7 +679,7 @@ bool SIMModem::beginDownload(String url)
         {
             m_display->drawStr("Success flashing", "Rebooting in 2 seconds.");
             m_console->println("fwupdate=success; // rebooting");
-            httpGetNoContent(url + "/success");
+            httpGet(url + "/success");
             m_hal->restart(2000);
         }
         else
@@ -1026,15 +1049,17 @@ bool SIMModem::setBearer()
         }
     }
 
-    if (sendCommand("AT+SAPBR=1,1") != S_OK)
+    String response = sendCommand("AT+SAPBR=1,1");
+    if (response != S_OK)
     {
-        m_console->printError("Could not open Bearer");
+        m_console->printError("openbearer=failed; // Response: " + response);
         return false;
     }
 
-    if (sendCommand("AT+SAPBR=2,1", S_OK, 0, 1500, false) != S_OK)
+    response = sendCommand("AT+SAPBR=2,1", S_OK, 0, 1500, false);
+    if (response != S_OK)
     {
-        m_console->printError("Could not open Bearer");
+        m_console->printError("querybearer=failed; // Response: " + response);
         return false;
     }
 

@@ -47,6 +47,7 @@ public:
     String getNetwork();
     String getIPAddress();
     int getSignalQuality();    
+    bool setBearer();
 
     bool beginDownload(String url);
     bool init();
@@ -59,6 +60,7 @@ public:
     bool receivedSmsReady = false;
 
     String httpGet(String url);
+    bool httpGetNoContent(String url);
     String httpPost(String url, String payload);
 
     bool initGPS();
@@ -89,8 +91,7 @@ private:
     String parseIPAddress();
     
     uint32_t downloadContent(uint32_t contentSize, unsigned char * buffer);
-    uint32_t configureForDownload(String url);
-    bool setBearer();
+    uint32_t configureForDownload(String url);    
     bool setLTE();
     bool selectNetwork();
     bool setAPN();
@@ -104,10 +105,8 @@ private:
 
     bool setupHttpContext(String tag, String url);
     String readHttpResponse(String tag);
-    void closeHttpContext(String tag);
-
-    bool httpGetNoContent(String url);
-    bool httpGetSetError(String url, String errMsg);
+    void closeHttpContext(String tag);    
+    String httpGetSetError(String url, String errMsg);
     
   
     Hal *m_hal;
