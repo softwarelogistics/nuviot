@@ -154,25 +154,63 @@ void handleConsoleCommand(String cmd)
   state.handleConsoleCommand(cmd);
 }
 
+void modemPowerOn()
+{
+  if (configPins.ModemResetPin != -1)
+  {
+    console.println("modem=poweron; // pin: " + String(configPins.ModemResetPin) + " set to low");
+
+    digitalWrite(configPins.ModemResetPin,  HIGH);   
+    delay(1600);
+    digitalWrite(configPins.ModemResetPin,  LOW);    
+    delay(500);
+    digitalWrite(configPins.ModemResetPin,  HIGH);   
+
+    console.println("modem=poweron; // pin: " + String(configPins.ModemResetPin) + " back high.");
+
+  }
+  else
+  {
+    console.println("modem=poweron; // Power pin not configured.");
+  }
+}
+
+void modemPowerOff()
+{
+  if (configPins.ModemResetPin != -1)
+  {
+    console.println("modem=poweroff; // pin: " + String(configPins.ModemResetPin) + " set to low.");
+
+    digitalWrite(configPins.ModemResetPin,  HIGH);    
+    delay(1600);
+//    modem.sendPowerOff();
+    digitalWrite(configPins.ModemResetPin,  LOW);    
+    delay(1600);
+    digitalWrite(configPins.ModemResetPin,  HIGH);    
+
+    console.println("modem=poweroff; // pin: " + String(configPins.ModemResetPin) + " back to high.");
+  }
+  else
+  {
+    console.println("modem=poweroff; // Power pin not configured.");
+  }
+}
+
 void configureModem(unsigned long baudRate = 115200)
 {
+  pinMode(configPins.ModemResetPin, OUTPUT);
+
+  modemPowerOff();
   console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX" + String(configPins.SimTx));
 
-  delay(500);
+  delay(1500);
+  modemPowerOn();
   //gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
   gprsPort.begin(baudRate, SERIAL_8N1); //, configPins.SimRx, configPins.SimTx);
 
   console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000)));
   delay(500);
   //  gprsPort.setRxBufferSize(16 * 1024);
-
-  if (configPins.ModemResetPin != -1)
-  {
-    console.println("modem=settingpowerkey; // pin: " + String(configPins.ModemResetPin));
-
-    pinMode(configPins.ModemResetPin, OUTPUT);
-    digitalWrite(configPins.ModemResetPin, LOW);
-  }
 }
 
 void welcome(String firmwareSKU, String version)
@@ -244,7 +282,7 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
       {
         if (sysConfig.SrvrType == "mqtt")
         {
-          cellMQTT.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS0);
+          cellMQTT.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS1);
         }
 
         if (sysConfig.GPSEnabled)
@@ -279,14 +317,13 @@ void initPins()
  * \brief Setup the console.
  * 
  * \param baud Baud rate for serial console (default 115200)
- * \param serialEnabled Use the confifugred serial port for transmitting data.
+ * \param serialEnabled Use the configured serial port for transmitting data.
  * \param btEnabled Use Bluetooth Serial to send data.
  * 
  **/
 void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled = true)
 {
   consoleSerial.begin(baud, SERIAL_8N1, configPins.ConsoleRx, configPins.ConsoleTx);
-  console.println("Pins on startup: " + String(configPins.ConsoleRx) + " " + String(configPins.ConsoleTx));
   console.enableSerialOut(serialEnabled);
   console.enableBTOut(btEnabled);
   console.registerCallback(handleConsoleCommand);
@@ -367,7 +404,6 @@ void ping()
       lastPing = 0;
     }
 
-    console.println("transmit=ping;");
     ledManager.setOnlineFlashRate(-1);
   }
 
@@ -381,7 +417,7 @@ void ping()
 
 void mqttCallback(String topic, byte *buffer, size_t len)
 {
-  console.println("RECIVE TOPIC" + topic);
+  console.println("mqtt=handltopic; // Topic: " + topic);
 }
 
 void commonLoop()

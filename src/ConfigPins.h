@@ -134,8 +134,10 @@ public:
 
     int8_t ErrorLED = -1;
     int8_t OnlineLED = -1;
+    int8_t Buzzer = -1;
 
     uint8_t ModemResetPin = -1;
+    bool    InvertModemPower = false;
 
     bool HasDisplay;
     bool HasRelays;
@@ -206,7 +208,8 @@ public:
             ADCChannel7 = GP0O1_BRD_V2_ADC7;
             ADCChannel8 = GP0O1_BRD_V2_ADC8;
 
-            ModemResetPin = MODEM_RESET_V2;
+            ModemResetPin = PROD_BRD_MODEM_RESET_V2;
+            InvertModemPower = true;
 
             Gpio0 = GP0O1_BRD_V2_IO1;
             Gpio1 = GP0O1_BRD_V2_IO2;
@@ -256,6 +259,7 @@ public:
 
             ErrorLED = 19;
             OnlineLED = 23;
+            Buzzer = 15;
 
             SerialPort = 1;
         }
@@ -285,6 +289,7 @@ public:
             ADCChannel8 = PROD_BRD_V1_ADC8;
 
             ModemResetPin = PROD_BRD_MODEM_RESET_V2;
+            
 
             Gpio0 = PROD_BRD_V1_IO1;
             Gpio1 = PROD_BRD_V1_IO2;
@@ -301,6 +306,8 @@ public:
 
             ErrorLED = 19;
             OnlineLED = 23;
+            Buzzer = 15;
+
 
             SerialPort = 1;
         }

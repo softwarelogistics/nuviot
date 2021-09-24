@@ -69,7 +69,7 @@ private:
     void writeRemainingLength(unsigned int remaining_length);
     int readRemainingLength();
     void writeByteArray(byte *buffer, int length);
-    void handlePublishedMessage();
+    void handlePublishedMessage(byte qos);
 
     void checkForReceivedMessages();
 

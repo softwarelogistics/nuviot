@@ -94,14 +94,16 @@ void NuvIoTClient::delayAndCheckState(long ms)
     }
 }
 
-bool NuvIoTClient::WifiConnect(bool isReconnect) {
+bool NuvIoTClient::WifiConnect(bool isReconnect)
+{
     m_wifiConnectionHelper->connect(isReconnect);
     m_nuviotMqtt->connect();
 
     return true;
 }
 
-bool NuvIoTClient::disconnectFromAPN() {
+bool NuvIoTClient::disconnectFromAPN()
+{
     return m_modem->disconnectGPRS();
 }
 
@@ -223,7 +225,7 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
         }
 
         retryCount = 0;
-        m_console->println("transparentmode=set;");
+        m_console->println("transparentmode=enabled;");
         m_display->drawStr("COMM7", "Set transparent mode.");
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
@@ -232,8 +234,26 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     }
     else
     {
-        sendStatusUpdate("Modem Reset", "Connecting to APN");
-        m_console->println("transparentmode=notset;");
+        sendStatusUpdate("Modem Reset", "Disabling Transprent Mode");
+        while (!m_modem->disableTransparentMode() && retryCount < 10)
+        {
+            handleWarning("COMMS007", "Fail - disable transparent mode.", retryCount++);
+        }
+
+        if (retryCount == 10)
+        {
+            handleError("COMMS007", "Fail - disable transparent mode.");
+            return false;
+        }
+
+        retryCount = 0;
+        m_console->println("transparentmode=disabled;");
+
+        m_display->drawStr("COMM7", "Disabled transparent mode.");
+        delayAndCheckState(1000);
+        m_ledManager->setErrFlashRate(0);
+
+        sendStatusUpdate("Disabled transparent mode", "Connecting to APN");
     }
 
     if (shouldConnectToAPN)
@@ -284,7 +304,8 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
     int retryCount = 0;
 
     m_state->loop();
-    if(m_sysConfig->SrvrType == "mqtt") {
+    if (m_sysConfig->SrvrType == "mqtt")
+    {
         retryCount = 0;
         sendStatusUpdate("Connected to APN", "Connecting to MQTT");
         while (!m_modem->connectServer(m_sysConfig->SrvrHostName, "1883") && retryCount < RETRY_COUNT)
@@ -305,7 +326,7 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
 
-        m_console->println("Will connect to [" + m_sysConfig->SrvrUID +"] [" +  m_sysConfig->SrvrPWD + "] [" + m_sysConfig->DeviceId + "]");
+        m_console->println("Will connect to [" + m_sysConfig->SrvrUID + "] [" + m_sysConfig->SrvrPWD + "] [" + m_sysConfig->DeviceId + "]");
 
         while (!m_cellMqtt->connect(m_sysConfig->SrvrUID, m_sysConfig->SrvrPWD, m_sysConfig->DeviceId) && retryCount < RETRY_COUNT)
         {
@@ -346,7 +367,7 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
 
-        while (m_cellMqtt->subscribe("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/#", QOS0) == -1 && retryCount < RETRY_COUNT)
+        while (m_cellMqtt->subscribe("nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/#", QOS1) == -1 && retryCount < RETRY_COUNT)
         {
             handleWarning("MQTT004", "Failed subscribe to [nuviot/dvcsrvc].", retryCount++);
             delayAndCheckState(1000);
@@ -364,11 +385,11 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
     }
-    else 
+    else
     {
         m_modem->setBearer();
     }
-    
+
     return true;
 }
 
@@ -405,7 +426,7 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
 
     for (int idx = 0; idx < partIdx; ++idx)
     {
-        m_console->printVerbose(parts[idx]);
+        m_console->printVerbose(String(idx) + ". " + parts[idx]);
     }
 
     if (partIdx >= 4)
@@ -468,7 +489,7 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                     {
                         m_nuviotMqtt->publish(topic, payload);
                     }
-                    else if(m_cellMqtt != NULL)
+                    else if (m_cellMqtt != NULL)
                     {
                         m_cellMqtt->publish(topic, payload, QOS0);
                     }
@@ -492,8 +513,6 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
 
                         charPointer++;
 
-                        m_console->println("VALUE " + config + " " + scaler);
-
                         int32_t configValue = atoi(config.c_str());
                         float scalerValue = atof(scaler.c_str());
 
@@ -508,23 +527,19 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
             }
             else if (action == "properties")
             {
-                if (partIdx >= 5)
+                if (parts[4] == "query")
                 {
-                    if (parts[3] == "properties" &&
-                        parts[4] == "query")
-                    {
-                        String payload = m_state->getRemoteProperties();
-                        String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/state";
+                    String payload = m_state->getRemoteProperties();
+                    String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/state";
+                    m_console->println(payload);
 
-                        if (m_nuviotMqtt != NULL)
-                        {
-                            m_nuviotMqtt->publish(topic, payload);
-                        }
-                        else if(m_cellMqtt != NULL)
-                        {
-                            m_cellMqtt->publish(topic, payload, QOS0);
-                        }
-                        }
+                    if(m_sysConfig->CellEnabled) {
+                        m_cellMqtt->publish(topic, payload, QOS0);
+                    }
+
+                    if(m_sysConfig->WiFiEnabled) {
+                        m_nuviotMqtt->publish(topic, payload);
+                    }
                 }
             }
             else if (action == "ioconfig")

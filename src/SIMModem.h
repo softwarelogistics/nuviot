@@ -46,8 +46,12 @@ public:
     bool setBaudRate(unsigned long baudRate);
     String getNetwork();
     String getIPAddress();
+    String getDeviceModel();
+
     int getSignalQuality();    
     bool setBearer();
+
+    bool sendPowerOff();
 
     bool beginDownload(String url);
     bool init();

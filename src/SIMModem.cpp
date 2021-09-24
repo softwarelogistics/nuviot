@@ -256,22 +256,22 @@ String SIMModem::readHttpResponse(String tag)
 
         if (msg != "")
         {
-            if(msg.startsWith("+HTTPACTION:"))
+            if (msg.startsWith("+HTTPACTION:"))
             {
                 int first = msg.indexOf(" ");
                 int second = msg.indexOf(",", first);
                 int third = msg.indexOf(",", second + 1);
-                
+
                 String actionType = msg.substring(first + 1, second);
-                String httpResponseCode = msg.substring(second + 1, third);                
-                if(!httpResponseCode.startsWith("2"))
+                String httpResponseCode = msg.substring(second + 1, third);
+                if (!httpResponseCode.startsWith("2"))
                 {
                     m_console->printError("http" + tag + "=failed; // Non-Success HTTP Response Code: " + httpResponseCode);
                 }
                 String msgLen = msg.substring(third + 1);
                 m_console->printVerbose(msg + " - Action Type=" + actionType + ", HTTP Result Code: " + httpResponseCode + ", Response Length: " + msgLen + ";");
                 done = true;
-            }           
+            }
         }
 
         delay(retryCount * 500);
@@ -297,7 +297,7 @@ String SIMModem::readHttpResponse(String tag)
     long contentLen = atol(lenStr.c_str());
     m_channel->readBytes(m_rxBuffer, contentLen);
 
-    String content = String((char*)m_rxBuffer);
+    String content = String((char *)m_rxBuffer);
     m_console->println("http" + tag + "=succuss; // Length: " + lenStr + ", Content Response: " + content);
 
     m_channel->readStringUntil('\n', 5000);
@@ -453,10 +453,10 @@ String SIMModem::httpGetSetError(String url, String errorMsg)
 
 bool SIMModem::DisconnectMQTT()
 {
-      uint8_t disconnectMessage[] = {
+    uint8_t disconnectMessage[] = {
         0xE0,
         0x00};
-        
+
     m_channel->enqueueByteArray(disconnectMessage, 2);
 
     m_console->printVerbose("NOT TRANSPARENT MODE - CIPSEND");
@@ -471,16 +471,17 @@ bool SIMModem::DisconnectMQTT()
 
     uint8_t ch = 0x00;
     uint16_t retryCount = 0;
-    while(ch != '>' && retryCount++ < 500)
+    while (ch != '>' && retryCount++ < 500)
     {
-        while(m_channel->available() > 0 && ch != '>') {
+        while (m_channel->available() > 0 && ch != '>')
+        {
             ch = m_channel->readByte();
             m_console->printVerbose("UNEXPECTED RESPONSE: [" + String(ch) + "]");
         }
         delay(1);
-    } 
+    }
 
-    if(ch != '>')
+    if (ch != '>')
     {
         m_console->printError("mqttflush=fail; //timeout waiting for > ");
         return false;
@@ -488,7 +489,6 @@ bool SIMModem::DisconnectMQTT()
 
     m_console->printVerbose("RECEIVED: [" + String(ch) + "] Will continue");
 
-    
     if (!m_channel->flush())
     {
         m_console->printError("mqttdisconnect=false;");
@@ -499,7 +499,7 @@ bool SIMModem::DisconnectMQTT()
         m_console->println("mqttdisconnect=true;");
         delay(1000);
         return true;
-    }    
+    }
 }
 
 bool SIMModem::beginDownload(String url)
@@ -695,6 +695,16 @@ bool SIMModem::beginDownload(String url)
     return true;
 }
 
+String SIMModem::getDeviceModel()
+{
+    return sendCommand("AT+CGMM", "", 0, 1250, true);
+}
+
+bool SIMModem::sendPowerOff()
+{
+    sendCommand("AT+CPOWD=1");
+}
+
 String SIMModem::sendCommand(String cmd)
 {
     return sendCommand(cmd, "", 0, 500, false);
@@ -717,7 +727,7 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
     {
         if (millis() - start > timeout)
         {
-            m_console->printWarning(S_TIMEOUT);
+            m_console->printWarning("sendcommand=warning; // Command " + cmd);
             return "-1";
         }
 
@@ -846,15 +856,18 @@ bool SIMModem::isModemOnline()
 {
     bool connected = false;
     connected = sendCommand("AT", S_OK, 0, 500, false) == S_OK;
-    return connected;
+    
     if (connected)
     {
+        m_console->println("modemonline=true;");
         return true;
     }
     else
-    {
-        m_console->printWarning("modemonline=false;");
+    {    
+        m_console->printError("modemonline=false;");
     }
+
+    return connected;
 
     int idx = 0;
     while (!connected && idx < 7)
