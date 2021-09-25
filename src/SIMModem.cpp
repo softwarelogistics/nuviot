@@ -5,21 +5,23 @@
 #include <esp_ota_ops.h>
 #include <esp_image_format.h>
 
-SIMModem::SIMModem(Display *display, Channel *channel, Console *console, Hal *hal)
+SIMModem::SIMModem(Display *display, Channel *channel, Console *console, Hal *hal, ConfigPins *configPins)
 {
     m_hal = hal;
     m_channel = channel;
     m_console = console;
     m_display = display;
+    m_configPins = configPins;
     m_gpsData = new GPSData();
 }
 
-SIMModem::SIMModem(Channel *channel, Console *console, Hal *hal)
+SIMModem::SIMModem(Channel *channel, Console *console, Hal *hal, ConfigPins *configPins)
 {
     m_hal = hal;
     m_channel = channel;
     m_console = console;
     m_display = NULL;
+    m_configPins = configPins;
     m_gpsData = new GPSData();
 }
 
@@ -695,14 +697,123 @@ bool SIMModem::beginDownload(String url)
     return true;
 }
 
+void SIMModem::hardwareReset()
+{
+    m_console->println("modem=starthardwareset; // Start Hardware Reset.");
+
+    if (isModemOnline())
+    {
+        softwarePowerOff();
+    }
+
+    int retryCount = 0;
+    while (isModemOnline() && retryCount++ < 5)
+    {
+        delay(1000);
+    }
+
+    if (isModemOnline())
+    {
+        m_console->printError("modem=swpwrofffail; // Software Power Off Failed, trying Hardware Power Off.");
+        hardwarePowerOff();
+
+        while (isModemOnline() && retryCount++ < 5)
+        {
+            delay(500);
+        }
+
+        if (isModemOnline())
+        {
+            m_console->printError("modem=hwpwrofffail; // Hardware Power Off failed, resetting.");
+            delay(1000);
+            m_hal->restart();
+        }
+    }
+    else
+    {
+        delay(2000);
+        m_console->println("modem=poweroff; // Modem is powered down.");
+        hardwarePowerOn();
+
+        while (!isModemOnline() && retryCount++ < 5)
+        {
+            delay(500);
+        }
+
+        if (!isModemOnline())
+        {
+            m_console->printError("modem=hwpwronfail; // Hardware Power on failed, resetting.");
+            m_hal->restart();
+        }
+        else
+        {
+            m_console->println("modem=poweron; // Performed hardware reset of modem.");
+        }
+    }
+}
+
 String SIMModem::getDeviceModel()
 {
     return sendCommand("AT+CGMM", "", 0, 1250, true);
 }
 
-bool SIMModem::sendPowerOff()
+bool SIMModem::hardwarePowerOn()
 {
-    sendCommand("AT+CPOWD=1");
+    if (m_configPins->ModemResetPin != -1)
+    {
+        m_console->println("modem=poweron; // pin: " + String(m_configPins->ModemResetPin) + " set to low");
+
+        pinMode(m_configPins->ModemResetPin, OUTPUT);
+        digitalWrite(m_configPins->ModemResetPin, HIGH);
+        delay(1600);
+        digitalWrite(m_configPins->ModemResetPin, LOW);
+        delay(500);
+        digitalWrite(m_configPins->ModemResetPin, HIGH);
+
+        m_console->println("modem=poweron; // pin: " + String(m_configPins->ModemResetPin) + " back high.");
+        return true;
+    }
+    else
+    {
+        m_console->println("modem=poweron; // Power pin not configured.");
+        return false;
+    }
+}
+
+bool SIMModem::hardwarePowerOff()
+{
+    if (m_configPins->ModemResetPin != -1)
+    {
+        m_console->println("modem=poweroff; // pin: " + String(m_configPins->ModemResetPin) + " set to low.");
+
+        pinMode(m_configPins->ModemResetPin, OUTPUT);
+        digitalWrite(m_configPins->ModemResetPin, HIGH);
+        delay(1600);
+        digitalWrite(m_configPins->ModemResetPin, LOW);
+        delay(1600);
+        digitalWrite(m_configPins->ModemResetPin, HIGH);
+
+        m_console->println("modem=poweroff; // pin: " + String(m_configPins->ModemResetPin) + " back to high.");
+        return true;
+    }
+    else
+    {
+        m_console->println("modem=poweroff; // Power pin not configured.");
+        return false;
+    }
+}
+
+bool SIMModem::softwarePowerOff()
+{
+    if (isModemOnline())
+    {
+        sendCommand("AT+CPOWD=1");
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 String SIMModem::sendCommand(String cmd)
@@ -856,15 +967,15 @@ bool SIMModem::isModemOnline()
 {
     bool connected = false;
     connected = sendCommand("AT", S_OK, 0, 500, false) == S_OK;
-    
+
     if (connected)
     {
-        m_console->println("modemonline=true;");
+        m_console->println("modem=online;");
         return true;
     }
     else
-    {    
-        m_console->printError("modemonline=false;");
+    {
+        m_console->printError("modem=offline;");
     }
 
     return connected;
@@ -876,7 +987,7 @@ bool SIMModem::isModemOnline()
 
         if (!connected)
         {
-            m_console->printWarning("modemonline=false; // trying baud: " + String(baudRate[idx]));
+            m_console->printWarning("modem=offline; // trying baud: " + String(baudRate[idx]));
             delay(500);
 
             m_channel->setBaudRate(baudRate[idx]);
@@ -1097,9 +1208,6 @@ bool SIMModem::getCGREG()
 bool SIMModem::init()
 {
     m_console->printVerbose("Initialization of SIM Modem Started.");
-
-    bool callReady = false;
-    bool smsReady = false;
 
     if (!setBand())
     {

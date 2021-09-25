@@ -26,12 +26,13 @@
 #include "Console.h"
 #include "Channel.h"
 #include "Display.h"
+#include "ConfigPins.h"
 #include "GPSData.h"
 
 class SIMModem {
 public:
-    SIMModem(Display *display, Channel *channel, Console *console, Hal *hal);
-    SIMModem(Channel *channel, Console *console, Hal *hal);
+    SIMModem(Display *display, Channel *channel, Console *console, Hal *hal, ConfigPins *pins);
+    SIMModem(Channel *channel, Console *console, Hal *hal, ConfigPins *pins);
 
     bool isServiceConnected();
     bool isModemOnline();
@@ -51,7 +52,10 @@ public:
     int getSignalQuality();    
     bool setBearer();
 
-    bool sendPowerOff();
+    void hardwareReset();
+    bool hardwarePowerOn();
+    bool hardwarePowerOff();
+    bool softwarePowerOff();
 
     bool beginDownload(String url);
     bool init();
@@ -87,6 +91,7 @@ private:
     int m_rssi;
 
     GPSData *m_gpsData;
+    ConfigPins *m_configPins;
 
     bool waitForReply(String expectedReply, int iterations);
   

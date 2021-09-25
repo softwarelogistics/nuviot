@@ -91,7 +91,7 @@ MessagePayload *payload = new MessagePayload();
 GPSData *gps = NULL;
 
 Channel channel(&gprsPort, &console);
-SIMModem modem(&display, &channel, &console, &hal);
+SIMModem modem(&display, &channel, &console, &hal, &configPins);
 OtaServices ota(&display, &console, &modem, &hal);
 
 WiFiClient wifiClient;
@@ -154,63 +154,13 @@ void handleConsoleCommand(String cmd)
   state.handleConsoleCommand(cmd);
 }
 
-void modemPowerOn()
-{
-  if (configPins.ModemResetPin != -1)
-  {
-    console.println("modem=poweron; // pin: " + String(configPins.ModemResetPin) + " set to low");
-
-    digitalWrite(configPins.ModemResetPin,  HIGH);   
-    delay(1600);
-    digitalWrite(configPins.ModemResetPin,  LOW);    
-    delay(500);
-    digitalWrite(configPins.ModemResetPin,  HIGH);   
-
-    console.println("modem=poweron; // pin: " + String(configPins.ModemResetPin) + " back high.");
-
-  }
-  else
-  {
-    console.println("modem=poweron; // Power pin not configured.");
-  }
-}
-
-void modemPowerOff()
-{
-  if (configPins.ModemResetPin != -1)
-  {
-    console.println("modem=poweroff; // pin: " + String(configPins.ModemResetPin) + " set to low.");
-
-    digitalWrite(configPins.ModemResetPin,  HIGH);    
-    delay(1600);
-//    modem.sendPowerOff();
-    digitalWrite(configPins.ModemResetPin,  LOW);    
-    delay(1600);
-    digitalWrite(configPins.ModemResetPin,  HIGH);    
-
-    console.println("modem=poweroff; // pin: " + String(configPins.ModemResetPin) + " back to high.");
-  }
-  else
-  {
-    console.println("modem=poweroff; // Power pin not configured.");
-  }
-}
-
 void configureModem(unsigned long baudRate = 115200)
 {
-  pinMode(configPins.ModemResetPin, OUTPUT);
-
-  modemPowerOff();
   console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX" + String(configPins.SimTx));
 
-  delay(1500);
-  modemPowerOn();
-  //gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
   gprsPort.begin(baudRate, SERIAL_8N1); //, configPins.SimRx, configPins.SimTx);
-
   console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000)));
   delay(500);
-  //  gprsPort.setRxBufferSize(16 * 1024);
 }
 
 void welcome(String firmwareSKU, String version)
