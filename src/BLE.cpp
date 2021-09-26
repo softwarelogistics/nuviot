@@ -97,7 +97,7 @@
    *
    */
 
-#define CHAR_UUID_CONSOLE "d804b639-6ce7-5e88-9f88-ce0f699085eb"
+#define CHAR_UUID_CONSOLE "d804b639-6ce7-5e88-9f88-ce0f699085eb"                           
 /* RELAY Config
    * 
    * 16 slots
@@ -139,17 +139,22 @@ void otaCallback::onWrite(BLECharacteristic *pCharacteristic)
 
 void BLECustomServerCallbacks::onConnect(BLEServer *pServer)
 {
-  delay(1000);
+  delay(250);
   pBle->clientConnected(pServer->getConnId());
 };
 
-int tempIndex = 0;
+
+void BLECustomServerCallbacks::onDisconnect(BLEServer *pServer)
+{
+  BLEDevice::startAdvertising();
+  pBle->clientDisconnected(pServer->getConnId());
+}
 
 void BLE::writeConsoleOutput(String msg)
 {
   if (pCharConsole != NULL && m_isConnected)
   {
-    const char *str = msg.c_str();    
+    const char *str = msg.c_str();
 
     for (uint8_t idx = 0; idx < msg.length(); idx++)
     {
@@ -175,8 +180,8 @@ void BLE::writeConsoleOutput(String msg)
 
 void BLE::refreshCharacteristics()
 {
-  String state = 
-      pState->getFirmwareSKU() + "," +      
+  String state =
+      pState->getFirmwareSKU() + "," +
       pState->getFirmwareVersion() + "," +
       pState->getHardwareRevision() + "," +
       (pSysConfig->Commissioned ? "1," : "0,") +
@@ -192,7 +197,7 @@ void BLE::refreshCharacteristics()
 
   String config =
       pSysConfig->DeviceId + "," +
-      String(_deviceModelId) + "," + 
+      String(_deviceModelId) + "," +
       pSysConfig->DeviceAccessKey + "," +
       (pSysConfig->CellEnabled ? "1," : "0,") +
       (pSysConfig->WiFiEnabled ? "1," : "0,") +
@@ -200,7 +205,7 @@ void BLE::refreshCharacteristics()
       pSysConfig->WiFiPWD + "," +
       String(pSysConfig->PingRate) + "," +
       String(pSysConfig->SendUpdateRate) + "," +
-      (pSysConfig->GPSEnabled ? "1," : "0,")  + 
+      (pSysConfig->GPSEnabled ? "1," : "0,") +
       String(pSysConfig->GPSUpdateRate);
 
   pCharConfig->setValue(config.c_str());
@@ -212,14 +217,12 @@ void BLE::refreshCharacteristics()
       (pRelayManager->getRelayState(3) ? "1," : "0,") +
       (pRelayManager->getRelayState(4) ? "1" : "0");
 
-  pCharRelay->setValue(relay.c_str());
-}
+  //pCharRelay->setValue(relay.c_str());
 
-void BLECustomServerCallbacks::onDisconnect(BLEServer *pServer)
-{
-  BLEDevice::startAdvertising();
-  pConsole->println("ble=disconnected;");
-  pBle->clientDisconnected();
+  String values = 
+      "1,1,1,0,0,1,1,0,0,1,0,0";
+  
+  pCharIOValue->setValue(values.c_str());
 }
 
 void BLE::handleReadCharacteristic(BLECharacteristic *characteristic)
@@ -229,7 +232,7 @@ void BLE::handleReadCharacteristic(BLECharacteristic *characteristic)
 
 void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
 {
-  m_lastClientActviity = millis();
+  m_lastClientActivity = millis();
 
   String input = String(characteristic->getValue().c_str());
   const char *uuid = characteristic->getUUID().toString().c_str();
@@ -237,7 +240,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
 
   if (0 == strcmp(uuid, CHAR_UUID_STATE))
   {
-    pConsole->println("ble=read; // char=sysstate; value=" + input);
+    pConsole->println("ble=read; // char=sysstate; value=" + input + ";");
     // pSysConfig->Commissioned = characteristic->getData()[0] == '1';
 
     refreshCharacteristics();
@@ -250,29 +253,32 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
     String key = input.substring(0, equalDelimiter);
     String value = input.substring(equalDelimiter + 1, valueEnd);
 
-    pConsole->println(key + " - " + value);
+    pConsole->println("ble=read; // char=ioconfig; " + key + "=" + value + ";");
 
     char tmp[120];
 
-    if(key == "readadc") {
+    if (key == "readadc")
+    {
       pIOConfig->getADC(tmp, 1);
       pConsole->println("BACK");
       delay(15);
       pConsole->println(String(tmp));
       delay(15);
-      pCharIOConfig->setValue((uint8_t*)tmp,strlen(tmp));
+      pCharIOConfig->setValue((uint8_t *)tmp, strlen(tmp));
     }
-    else if(key == "readgpio") {
-      
+    else if (key == "readgpio")
+    {
       pIOConfig->getADC(tmp, 1);
-      pCharIOConfig->setValue((uint8_t*)tmp,strlen(tmp));
+      pCharIOConfig->setValue((uint8_t *)tmp, strlen(tmp));
     }
-    else if(key == "writeadc") {
+    else if (key == "writeadc")
+    {
       strcpy(tmp, value.c_str());
       pIOConfig->setADC(tmp);
       pIOConfig->write();
     }
-    else if(key == "writegpio") {
+    else if (key == "writegpio")
+    {
       strcpy(tmp, value.c_str());
       pIOConfig->setGPIO(tmp);
       pIOConfig->write();
@@ -293,7 +299,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
       String key = input.substring(lastEnd, equalDelimiter);
       String value = input.substring(equalDelimiter + 1, valueEnd == -1 ? final : valueEnd);
 
-      pConsole->println(key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final));
+      pConsole->println("bleread=read; // char=sysconfig; key=" + key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
 
       // if we don't have a , that means we are past the final item
       done = valueEnd == -1;
@@ -331,10 +337,10 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
         pSysConfig->SendUpdateRate = atoi(value.c_str());
       else if (key == "commissioned")
         pSysConfig->Commissioned = value != "0";
-    }    
+    }
 
     pSysConfig->write();
-    pState->loop();    
+    pState->loop();
   }
 }
 
@@ -354,7 +360,7 @@ void BLE::handleNotifyCharacteristic(BLECharacteristic *characteristic)
 // begin
 bool BLE::begin(const char *localName, const char *deviceModelId)
 {
-  _deviceModelId = deviceModelId;  
+  _deviceModelId = deviceModelId;
 
   uint32_t freeHeep = ESP.getFreeHeap();
 
@@ -381,13 +387,12 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
   pCharIOConfig = pService->createCharacteristic(CHAR_UUID_IOCONFIG, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
   pCharIOConfig->setCallbacks(_characteristicCallback);
 
-  pCharRelay = pService->createCharacteristic(CHAR_UUID_RELAY, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
-  pCharRelay->setCallbacks(_characteristicCallback);
-  pCharRelay->addDescriptor(new BLE2902());
-
-  pCharConsole = pService->createCharacteristic(CHAR_UUID_CONSOLE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY | BLECharacteristic::PROPERTY_INDICATE);
+  pCharConsole = pService->createCharacteristic(CHAR_UUID_CONSOLE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   pCharConsole->setCallbacks(_characteristicCallback);
   pCharConsole->addDescriptor(new BLE2902());
+
+//  pCharRelay = pService->createCharacteristic(CHAR_UUID_RELAY, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+//  pCharRelay->setCallbacks(_characteristicCallback);
 
   BLEAdvertising *pAdvertising = pServer->getAdvertising();
   pAdvertising->addServiceUUID(SVC_UUID_NUVIOT);
@@ -399,9 +404,8 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
   pAdvertising->start();
 
   pServer->getConnectedCount();
-  
 
-  pConsole->println("ALLOCATED FOR BLE " + String(freeHeep - ESP.getFreeHeap()));
+  pConsole->println("ble=allocated; // Bytes allocated for BLE: " + String(freeHeep - ESP.getFreeHeap()) + ";");
 
   refreshCharacteristics();
 
@@ -410,26 +414,20 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
 void BLE::update()
 {
-  idx++;
-
   if (m_isConnected)
   {
-    pCharState->notify(true);
-    pCharRelay->notify(true);
-    pCharIOValue->notify(true);
-
-    if(millis() - m_lastClientActviity > 3000) {
-      pServer->disconnect(m_connectionId);
-      pConsole->println("ble=activitytimeout;");
-    }
-    else
+    if (m_nextNotify < millis())
     {
-      pConsole->println(F("ble=connected;"));
+      m_nextNotify = pSysConfig->SendUpdateRate + millis();
+      pCharState->notify(true);
+      pCharIOValue->notify(true);
     }
-  }
-  else
-  {
-//    pConsole->println(F("ble=disconnected;"));
+
+    if (millis() - m_lastClientActivity > 5000)
+    {
+      pServer->disconnect(m_connectionId);
+      pConsole->printWarning(F("ble=activitytimeout;"));      
+    }
   }
 }
 

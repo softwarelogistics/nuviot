@@ -92,14 +92,16 @@ public:
   void clientConnected(int connectionId)
   {
     m_connectionId = connectionId;
-    m_lastClientActviity = millis();
-    m_isConnected = true;
+    pConsole->println("ble=connected; // Conenction Id: " + String(connectionId));
     refreshCharacteristics();
+    m_lastClientActivity = millis();
+    m_isConnected = true;    
   }
 
-  void clientDisconnected()
+  void clientDisconnected(int connectionId)
   {
     m_isConnected = false;
+    pConsole->println("ble=disconnected; // Conenction Id: " + String(connectionId));    
   }
 
   bool getIsConnected(){
@@ -107,7 +109,6 @@ public:
   }
 
   void update();
-
   void stop();
 
 private:
@@ -123,22 +124,10 @@ private:
   RelayManager *pRelayManager;
 
   long m_lastConsoleNotify = 0;
-  long m_lastClientActviity = 0;
+  long m_lastClientActivity = 0;
+  long m_nextNotify = 0;
   int m_connectionId;
   const char *_deviceModelId;
-  int idx = 0;
-
-  // char gpioConfigOut[30];
-  // char gpioLabelsOut[256];
-  // char gpioNamesOut[256];
-  // char gpioScalerOut[128];
-  // char gpioZeroOut[128];
-
-  // char adcConfigOut[30];
-  // char adcLabelsOut[256];
-  // char adcNamesOut[256];
-  // char adcScalerOut[128];
-  // char adcZeroOut[128];
 
   char gpioConfigOut[1];
   char gpioLabelsOut[1];
