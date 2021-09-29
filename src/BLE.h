@@ -15,6 +15,7 @@
 #include <SysConfig.h>
 #include <Hal.h>
 #include <NuvIoTState.h>
+#include <MessagePayload.h>
 
 #define SOFTWARE_VERSION_MAJOR 0
 #define SOFTWARE_VERSION_MINOR 1
@@ -48,7 +49,7 @@ class otaCallback : public BLECharacteristicCallbacks
 {
 private:
   BLE *pBle;
-  Console *pConsole;
+  Console *pConsole;  
 
 public:
   otaCallback(BLE *ble, Console *console)
@@ -65,7 +66,7 @@ public:
 class BLE
 {
 public:
-  BLE(Console *console, Hal *hal, NuvIoTState *state, IOConfig *ioConfig, SysConfig *sysConfig, RelayManager *relayManager)
+  BLE(Console *console, Hal *hal, NuvIoTState *state, IOConfig *ioConfig, SysConfig *sysConfig, RelayManager *relayManager, MessagePayload *payload)
   {
     pConsole = console;
     pHal = hal;
@@ -73,6 +74,7 @@ public:
     pIOConfig = ioConfig;
     pState = state;
     pRelayManager = relayManager;
+    pPayload = payload;
     _characteristicCallback = new otaCallback(this, console);
     pConsole->registerBLEWriter(bleWriteConsoleValue);
     __BLEInstance = this;
@@ -115,6 +117,7 @@ private:
   BLEAdvertising *m_pAdvertising;
   otaCallback *_characteristicCallback;
   String outBuffer;
+  MessagePayload *pPayload;
 
   Console *pConsole;
   SysConfig *pSysConfig;
@@ -151,10 +154,7 @@ private:
   BLECharacteristic *pCharState = NULL;
   BLECharacteristic *pCharConfig = NULL;
   BLECharacteristic *pCharIOConfig = NULL;
-  BLECharacteristic *pCharADCConfig = NULL;
   BLECharacteristic *pCharIOValue = NULL;
-  BLECharacteristic *pCharADCValue = NULL;
-  BLECharacteristic *pCharRelay = NULL;
   BLECharacteristic *pCharConsole = NULL;
 };
 

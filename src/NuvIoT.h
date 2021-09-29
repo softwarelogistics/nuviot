@@ -6,6 +6,7 @@
 #include "NuvIoTState.h"
 #include "Hal.h"
 #include "IOConfig.h"
+#include "IOValues.h"
 #include "SysConfig.h"
 #include "PowerSensor.h"
 #include "OtaServices.h"
@@ -77,6 +78,8 @@ TwoWire twoWire(1);
 
 Console console(&consoleSerial);
 
+IOValues ioValues(&console);
+
 IOConfig ioConfig(&console);
 SysConfig sysConfig(&console);
 ConfigPins configPins;
@@ -87,7 +90,7 @@ Display display(DISPLAY_U8G);
 LedManager ledManager(&console, &configPins);
 NuvIoTState state(&display, &ioConfig, &sysConfig, &ledManager, &SPIFFS, &hal, &console);
 
-MessagePayload *payload = new MessagePayload();
+MessagePayload *payload = new MessagePayload(&ioValues);
 GPSData *gps = NULL;
 
 Channel channel(&gprsPort, &console);

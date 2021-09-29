@@ -155,10 +155,9 @@ void PowerSensor::configure(IOConfig *config)
     else
     {
         m_console->println("adcbank2=online;");
-    }
-    
+    }    
 
-    m_adc->setConvesionDelay(10);
+    m_adc->setConversionDelay(10);
 }
 
 void PowerSensor::enableChannel(uint8_t channel, String name, float scaler)

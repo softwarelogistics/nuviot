@@ -33,6 +33,7 @@ class TemperatureProbes: public AbstractSensor{
         void configure(IOConfig *ioConfig);
         void debugPrint();
         void loop();
+        void loop(double values[]);
 
         float getTemperature(int idx);
         float getHumidity(int idx);

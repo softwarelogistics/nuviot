@@ -69,6 +69,7 @@ void TemperatureProbes::readTemperatures()
                 }
                 else
                 {
+                    m_payload->ioValues->setValue(idx + 8, temperature);
                     success = true;
                 }
             }
@@ -93,6 +94,7 @@ void TemperatureProbes::readTemperatures()
                 }
                 else {
                     success = true;
+                    m_payload->ioValues->setValue(idx + 8, temperature);                    
                 }
             }
 
@@ -105,6 +107,7 @@ void TemperatureProbes::readTemperatures()
 
         if (humidity != MIN_VALUE)
             m_humidities[idx] = humidity;
+            
 
         if (m_payload != NULL)
         {
@@ -144,6 +147,15 @@ void TemperatureProbes::readTemperatures()
 
 
             }
+        }
+    }
+}
+
+void TemperatureProbes::loop(double values[])
+{
+    for(int idx = 0; idx < 8; ++idx){
+        if(m_sensorConfigurations[idx] != None){
+            m_payload->ioValues->setValue(idx + 8, values[idx]);
         }
     }
 }

@@ -217,12 +217,8 @@ void BLE::refreshCharacteristics()
       (pRelayManager->getRelayState(3) ? "1," : "0,") +
       (pRelayManager->getRelayState(4) ? "1" : "0");
 
-  //pCharRelay->setValue(relay.c_str());
-
-  String values = 
-      "1,1,1,0,0,1,1,0,0,1,0,0";
   
-  pCharIOValue->setValue(values.c_str());
+  pCharIOValue->setValue(pPayload->ioValues->toString().c_str());
 }
 
 void BLE::handleReadCharacteristic(BLECharacteristic *characteristic)
@@ -246,6 +242,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
     refreshCharacteristics();
   }
 
+  /*
   if (0 == strcmp(uuid, CHAR_UUID_IOCONFIG))
   {
     int equalDelimiter = input.indexOf("=");
@@ -253,11 +250,17 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
     String key = input.substring(0, equalDelimiter);
     String value = input.substring(equalDelimiter + 1, valueEnd);
 
-    pConsole->println("ble=read; // char=ioconfig; " + key + "=" + value + ";");
+    
 
     char tmp[120];
 
-    if (key == "readadc")
+    if(key == "AT+IOCFG"){
+
+    }
+    else if(key == "AT+ADCCFG"){
+
+    }
+    else if (key == "readadc")
     {
       pIOConfig->getADC(tmp, 1);
       pConsole->println("BACK");
@@ -283,7 +286,11 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
       pIOConfig->setGPIO(tmp);
       pIOConfig->write();
     }
-  }
+    else{
+      pConsole->println("ble=read; // char=ioconfig; " + key + "=" + value + ";");
+      pCharIOConfig->setValue("UKNOWN");
+    }
+  }*/
 
   if (0 == strcmp(uuid, CHAR_UUID_SYS_CONFIG))
   {
@@ -377,15 +384,13 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
   pCharState->setCallbacks(_characteristicCallback);
   pCharState->addDescriptor(new BLE2902());
 
-  pCharConfig = pService->createCharacteristic(CHAR_UUID_SYS_CONFIG, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  pCharConfig = pService->createCharacteristic(CHAR_UUID_SYS_CONFIG, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   pCharConfig->setCallbacks(_characteristicCallback);
+  pCharConfig->addDescriptor(new BLE2902());
 
   pCharIOValue = pService->createCharacteristic(CHAR_UUID_IO_VALUE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   pCharIOValue->setCallbacks(_characteristicCallback);
   pCharIOValue->addDescriptor(new BLE2902());
-
-  pCharIOConfig = pService->createCharacteristic(CHAR_UUID_IOCONFIG, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  pCharIOConfig->setCallbacks(_characteristicCallback);
 
   pCharConsole = pService->createCharacteristic(CHAR_UUID_CONSOLE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   pCharConsole->setCallbacks(_characteristicCallback);

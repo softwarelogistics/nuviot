@@ -2,15 +2,17 @@
 #define MessagePayload_h
 
 #include <ArduinoJson.h>
+#include <IOValues.h>
 
 class MessagePayload
 {
+
 public:
-    MessagePayload()
+    MessagePayload(IOValues *values)
     {
         status = "ok";
         lastError = "none";
-
+        ioValues = values;
         hasCurrent1 = false;
         hasCurrent2 = false;
         hasCurrent3 = false;
@@ -36,6 +38,8 @@ public:
         hasVoltage7 = false;
         hasVoltage8 = false;
     }
+
+    IOValues *ioValues;
 
     String timeStamp;
 
