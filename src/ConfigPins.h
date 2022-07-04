@@ -142,6 +142,7 @@ public:
     bool HasDisplay;
     bool HasRelays;
     bool HasLeds = false;
+    bool HasI2C = true;
 
 public:
     ConfigPins()
@@ -308,6 +309,25 @@ public:
             OnlineLED = 23;
             Buzzer = 15;
 
+
+            SerialPort = 1;
+        } else if(boardType == 3) {
+            NumberRelays = 0;
+
+            UartNumber = PROD_BRD_UART_NUMBER;
+            SimRx = PROD_BRD_V1_RX;
+            SimTx = PROD_BRD_V1_TX;
+
+            ModemResetPin = PROD_BRD_MODEM_RESET_V2;
+            
+            HasDisplay = false;
+            HasRelays = false;
+            HasLeds = true;
+            HasI2C = false;
+
+            ErrorLED = 32;
+            OnlineLED = 33;
+            Buzzer = -1;
 
             SerialPort = 1;
         }

@@ -129,6 +129,15 @@ public:
     float GPIO8Scaler;
     float GPIO8Zero;
 
+    String Relay1Name;
+    String Relay2Name;
+    String Relay3Name;
+    String Relay4Name;
+    String Relay5Name;
+    String Relay6Name;
+    String Relay7Name;
+    String Relay8Name;
+
     String toJSON()
     {
         const size_t capacity = JSON_OBJECT_SIZE(4096);
@@ -223,6 +232,15 @@ public:
         doc["io7z"] = GPIO7Zero;
         doc["io8z"] = GPIO8Zero;
 
+        doc["rn1"] = Relay1Name;
+        doc["rn2"] = Relay2Name;
+        doc["rn3"] = Relay3Name;
+        doc["rn4"] = Relay4Name;
+        doc["rn5"] = Relay5Name;
+        doc["rn6"] = Relay6Name;
+        doc["rn7"] = Relay7Name;
+        doc["rn8"] = Relay8Name;        
+
         String output;
         serializeJson(doc, output);
         return output;
@@ -234,11 +252,12 @@ public:
         if (file)
         {
             m_pConsole->printVerbose("ioconfig=fileexits;");
-
+            m_pConsole->print("PATH1");
             String json = file.readString();
             file.close();
             if (json.length() == 0)
             {
+                m_pConsole->print("PATH2");
                 m_pConsole->printWarning("ioconfig=errorread; // file length = 0");
                 setDefaults();
                 write();
@@ -247,18 +266,21 @@ public:
             {
                 if (!parseJSON(json.c_str()))
                 {
+                    m_pConsole->print("PATH3");
                     m_pConsole->printError("sysconfig=errorread; //could not parse json");
                     setDefaults();
                     write();
                 }
                 else
                 {
+                    m_pConsole->print("PATH4");
                     m_pConsole->printVerbose("sysconfig=fileread;");
                 }
             }
         }
         else
         {
+            m_pConsole->print("PATH5");
             m_pConsole->printWarning("ioconfig=filedoesnotexists;");
             setDefaults();
             write();
@@ -316,6 +338,15 @@ public:
             ADC7Name = doc["adc7n"].as<String>();
             ADC8Name = doc["adc8n"].as<String>();
 
+            if(ADC1Name == NULL || ADC1Name == "null") ADC1Name = "ADC1";
+            if(ADC2Name == NULL || ADC2Name == "null") ADC2Name = "ADC2";
+            if(ADC3Name == NULL || ADC3Name == "null") ADC3Name = "ADC3";
+            if(ADC4Name == NULL || ADC4Name == "null") ADC4Name = "ADC4";
+            if(ADC5Name == NULL || ADC5Name == "null") ADC5Name = "ADC5";
+            if(ADC6Name == NULL || ADC6Name == "null") ADC6Name = "ADC6";
+            if(ADC7Name == NULL || ADC7Name == "null") ADC7Name = "ADC7";
+            if(ADC8Name == NULL || ADC8Name == "null") ADC8Name = "ADC8";
+
             ADC1Calibration = doc["adc1l"].as<float>();
             ADC2Calibration = doc["adc2l"].as<float>();
             ADC3Calibration = doc["adc3l"].as<float>();
@@ -361,6 +392,15 @@ public:
             GPIO7Name = doc["io7n"].as<String>();
             GPIO8Name = doc["io8n"].as<String>();
 
+            if(GPIO1Name == NULL || GPIO1Name == "null") GPIO1Name = "IO1";
+            if(GPIO2Name == NULL || GPIO2Name == "null") GPIO2Name = "IO2";
+            if(GPIO3Name == NULL || GPIO3Name == "null") GPIO3Name = "IO3";
+            if(GPIO4Name == NULL || GPIO4Name == "null") GPIO4Name = "IO4";
+            if(GPIO5Name == NULL || GPIO5Name == "null") GPIO5Name = "IO5";
+            if(GPIO6Name == NULL || GPIO6Name == "null") GPIO6Name = "IO6";
+            if(GPIO7Name == NULL || GPIO7Name == "null") GPIO7Name = "IO7";
+            if(GPIO8Name == NULL || GPIO8Name == "null") GPIO8Name = "IO8";
+
             GPIO1Calibration = doc["io1l"].as<float>();
             GPIO2Calibration = doc["io2l"].as<float>();
             GPIO3Calibration = doc["io3l"].as<float>();
@@ -387,6 +427,18 @@ public:
             GPIO6Zero = doc["io6z"].as<float>();
             GPIO7Zero = doc["io7z"].as<float>();
             GPIO8Zero = doc["io8z"].as<float>();
+
+            Relay1Name = doc["rn1"].as<String>();
+            Relay2Name = doc["rn2"].as<String>();
+            Relay3Name = doc["rn3"].as<String>();
+            Relay4Name = doc["rn4"].as<String>();
+            Relay5Name = doc["rn5"].as<String>();
+            Relay6Name = doc["rn6"].as<String>();
+            Relay7Name = doc["rn7"].as<String>();
+            Relay8Name = doc["rn8"].as<String>();
+
+            m_pConsole->print("ADC NAME: " + ADC1Name);
+
             return true;
         }
 
@@ -457,6 +509,15 @@ public:
         GPIO6Name = "io6";
         GPIO7Name = "io7";
         GPIO8Name = "io8";
+
+        Relay1Name = "relay1";
+        Relay2Name = "relay2";
+        Relay3Name = "relay3";
+        Relay4Name = "relay4";
+        Relay5Name = "relay5";
+        Relay6Name = "relay6";
+        Relay7Name = "relay7";
+        Relay8Name = "relay8";
 
         GPIO1Calibration = 1.0;
         GPIO2Calibration = 1.0;

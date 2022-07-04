@@ -37,7 +37,6 @@ private:
     hw_timer_t *m_timer = NULL;
     long _beepComplete;
 
-
     volatile uint32_t interruptCounter;
 
 public:
@@ -53,7 +52,7 @@ public:
         _beepComplete = millis() + delayMS;
         digitalWrite(beeperPin, HIGH);
     }
-    
+
     void setup(IOConfig *config)
     {
         errPin = m_configPins->ErrorLED;
@@ -66,16 +65,24 @@ public:
         timerAlarmWrite(m_timer, 1000000, true);
         timerAlarmEnable(m_timer);
 
-        pinMode(m_configPins->ErrorLED, OUTPUT);
-        pinMode(m_configPins->OnlineLED, OUTPUT);
-        if(m_configPins->Buzzer != -1) pinMode(m_configPins->Buzzer, OUTPUT);
+        if (errPin != -1)
+            pinMode(m_configPins->ErrorLED, OUTPUT);
+        if (onlinePin != -1)
+            pinMode(m_configPins->OnlineLED, OUTPUT);
+        if (m_configPins->Buzzer != -1)
+            pinMode(m_configPins->Buzzer, OUTPUT);
 
         errPinState = HIGH;
         onlinePinState = HIGH;
 
-        digitalWrite(m_configPins->ErrorLED, errPinState);
-        digitalWrite(m_configPins->OnlineLED, onlinePinState);
-        digitalWrite(m_configPins->Buzzer, beeperPinState);
+        if (errPin != -1)
+            digitalWrite(m_configPins->ErrorLED, errPinState);
+
+        if (onlinePin != -1)
+            digitalWrite(m_configPins->OnlineLED, onlinePinState);
+
+        if (beeperPin != -1)
+            digitalWrite(m_configPins->Buzzer, beeperPinState);
 
         errFlashRate = 0;
         beepRate = 0;
@@ -84,11 +91,12 @@ public:
 
     void loop()
     {
-        if(isManualBeep && millis() > _beepComplete)
+        if (isManualBeep && millis() > _beepComplete)
         {
             isManualBeep = false;
             _beepComplete = 0;
-            digitalWrite(beeperPin, LOW);
+            if (beeperPin != -1)
+                digitalWrite(beeperPin, LOW);
         }
     }
 

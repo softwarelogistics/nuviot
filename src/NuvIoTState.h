@@ -72,6 +72,9 @@ private:
     uint8_t m_wifiRSSI = 0;
     uint8_t m_cellRSSI = 0;
 
+    float m_batteryLevel = 0;
+    bool m_isPluggedIn = true;
+
     bool m_isCellConnected = false;
     bool m_isWiFiConnected = false;
 
@@ -133,6 +136,8 @@ public:
     String getHardwareRevision();
     String getFirmwareVersion();
     String getFirmwareSKU();
+
+    
 
     bool getIsWiFiConnected() { return m_isWiFiConnected; }
     void setIsWiFiConnected(bool connected) { m_isWiFiConnected = connected; }

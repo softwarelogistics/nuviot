@@ -49,8 +49,16 @@ TwoWire twoWire(1);
 #undef DEFAULT_BRD
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
-TwoWire twoWire(1);
+TwoWire twoWire(0);
 #define BOARD_CONFIG 3
+#endif
+
+#ifdef TEMP_SNSR_BOARD_V3
+#undef DEFAULT_BRD
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+TwoWire twoWire(0);
+#define BOARD_CONFIG 4
 #endif
 
 #ifdef GPIO_BRD_V1
@@ -263,6 +271,9 @@ GPSData *readGPS()
 void initPins()
 {
   configPins.init(BOARD_CONFIG);
+  
+  if(configPins.HasI2C)
+    twoWire.setPins(configPins.Sda1, configPins.Scl1);
 }
 #endif
 

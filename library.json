@@ -1,5 +1,5 @@
 {
-    "name": "NuvIoT_Utils",
+    "name": "nuviot",
     "keywords": "iot, nuviot",
     "description": "A set of libraries that make it easy to work with hardware and connect to NuvIoT",
     "repository": {

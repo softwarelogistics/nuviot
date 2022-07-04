@@ -146,16 +146,22 @@ private:
 
   bool m_isConnected = false;
 
+  String m_currentConfigPort = "adc1";
   String local_name;
 
   BLEServer *pServer = NULL;
 
   BLEService *pService = NULL;
+
   BLECharacteristic *pCharState = NULL;
+  
   BLECharacteristic *pCharConfig = NULL;
+
   BLECharacteristic *pCharIOConfig = NULL;
   BLECharacteristic *pCharIOValue = NULL;
+
   BLECharacteristic *pCharConsole = NULL;
+  BLECharacteristic *pCharRelay = NULL;  
 };
 
 #endif
