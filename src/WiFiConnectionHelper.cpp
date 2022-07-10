@@ -1,4 +1,5 @@
 #include "WiFiConnectionHelper.h"
+#include <HTTPClient.h>
 
 WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, LedManager *ledManager,
                                            NuvIoTState *state, Hal *hal, Console *console, SysConfig *sysConfig)
@@ -74,7 +75,7 @@ void WiFiConnectionHelper::loop()
 
             m_console->println("wifi_ipaddress=" + sIPAddress + ";");
             m_ledManager->setOnlineFlashRate(10);
-
+            m_state->setWiFiState(WiFi_Connected);
             m_wifiState = NuvIoTWiFi_Connected;
         }
 
@@ -84,6 +85,7 @@ void WiFiConnectionHelper::loop()
 
     if (m_wifiState == NuvIoTWiFi_NotConnected)
     {
+        m_state->setWiFiState(WiFi_Disconnected);
         m_console->printError("wifi=notconnected; // Starting to connect.");
         connect(false);
     }
@@ -94,8 +96,6 @@ void WiFiConnectionHelper::loop()
         m_console->printError("wifi=lostconnection; // Starting to reconnecting.");
         connect(true);
     }
-
-    connect(true);
 
     m_attempt++;
     m_display->clearBuffer();
@@ -191,8 +191,21 @@ String WiFiConnectionHelper::getMACAddress()
 void WiFiConnectionHelper::disconnect()
 {
     m_client->stop();
-    WiFi.disconnect();
-    
+    WiFi.disconnect(); 
+}
+
+void WiFiConnectionHelper::post(String addr, uint16_t port, String path, String body){
+    HTTPClient client;
+
+    client.begin(addr, port, path);
+    client.addHeader("Content-Type", "application/json");
+    int responseCode = client.POST(body);
+    m_console->println("HTTP Response: " + String(responseCode));
+    client.end();
+  
+    if(m_client->connect(addr.c_str(), port ) > 0) {
+        m_client->println("POST " + path + "HTTP/1.0"); 
+    }
 }
 
 void WiFiConnectionHelper::setup()

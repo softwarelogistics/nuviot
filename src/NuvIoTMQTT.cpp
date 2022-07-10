@@ -285,7 +285,6 @@ void NuvIoTMQTT::loop()
     if (!m_wifi->isConnected())
     {
         m_state->setIsCloudConnected(false);
-        m_state->setIsWiFiConnected(false);
         m_console->printError("wifimqtt=notconnected;");
 
         m_display->clearBuffer();
@@ -296,7 +295,6 @@ void NuvIoTMQTT::loop()
     else if (!m_mqtt->connected())
     {
         m_state->setWiFiRSSI(m_wifi->getRSSI());
-        m_state->setIsWiFiConnected(true);
         m_state->setIsCloudConnected(false);
         m_console->printError("wifimqtt=notconnected;");
 
@@ -311,8 +309,6 @@ void NuvIoTMQTT::loop()
     else
     {
         m_state->setIsCloudConnected(true);
-        m_state->setWiFiRSSI(m_wifi->getRSSI());
-        m_state->setIsWiFiConnected(true);
         /* this client automatically does ping */
         m_mqtt->loop();
     }

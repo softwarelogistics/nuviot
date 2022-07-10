@@ -162,11 +162,13 @@ void BLE::refreshCharacteristics()
       pState->getFirmwareVersion() + "," +
       pState->getHardwareRevision() + "," +
       (pSysConfig->Commissioned ? "1," : "0,") +
-      (pState->getIsWiFiConnected() ? "1," : "0,") +
+      String(pState->getWiFiState()) +
       String(pState->getWiFiRSSI()) + "," +
       (pState->getIsCellConnected() ? "1," : "0,") +
       String(pState->getCellRSSI()) + "," +
       (pState->getIsCloudConnected() ? "1," : "0,") +
+      String(pState->getInputVoltage()) + "," +
+      (pState->getExternalPower() ? "1," : "0,") +
       String(pState->OTAState) + "," +
       String(pState->OTAParam);
 
@@ -489,7 +491,7 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
   pService = pServer->createService(BLEUUID(SVC_UUID_NUVIOT));
 
-  pCharState = pService->createCharacteristic(CHAR_UUID_STATE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  pCharState = pService->createCharacteristic(CHAR_UUID_STATE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   pCharState->setCallbacks(_characteristicCallback);
   pCharState->addDescriptor(new BLE2902());
 
@@ -534,6 +536,8 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
 void BLE::update()
 {
+  this->refreshCharacteristics();
+
   if (m_isConnected)
   {
     if (m_nextNotify < millis())
@@ -541,6 +545,7 @@ void BLE::update()
       m_nextNotify = pSysConfig->SendUpdateRate + millis();
       pCharState->notify(true);
       pCharIOValue->notify(true);
+      pConsole->println("send");
     }
 
     /*if (millis() - m_lastClientActivity > 5000)

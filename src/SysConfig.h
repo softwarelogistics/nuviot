@@ -30,11 +30,14 @@ public:
     String WiFiPWD;
 
     String SrvrHostName;
+    int Port;
+    
     bool TLS;
     bool Anonymous;
     String SrvrUID;
     String SrvrType;
     String SrvrPWD;
+    
 
     String DeviceAccessKey;
 
@@ -59,6 +62,7 @@ public:
         doc["wifissid"] = WiFiSSID;
         doc["wifipwd"] = WiFiPWD;
         doc["srvrHostName"] = SrvrHostName;
+        doc["port"] = Port;
         doc["srvrType"] = SrvrType;
         doc["anonymous"] = Anonymous;
         doc["srvrUid"] = SrvrUID;
@@ -154,6 +158,7 @@ public:
         WiFiSSID = "";
         WiFiPWD = "";
         SrvrHostName = "?";
+        Port = 80;
         SrvrType = "?";
         Anonymous = false;
         SrvrUID = "";
@@ -191,6 +196,7 @@ public:
             WiFiSSID = doc["wifissid"].as<String>();
             WiFiPWD = doc["wifipwd"].as<String>();
             SrvrHostName = doc["srvrHostName"].as<String>();
+            Port = doc["port"].as<uint16_t>();
             SrvrType = doc["srvrType"].as<String>();
             Anonymous = doc["anonymous"].as<bool>();
             SrvrUID = doc["srvrUid"].as<String>();

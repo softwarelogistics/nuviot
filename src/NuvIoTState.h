@@ -21,6 +21,16 @@ enum Storage_DataTypes
     DoubleStorage,
 };
 
+typedef enum WiFiConnectionStates {
+    WiFi_Idle,
+    WiFi_NotCommissioned,
+    WiFi_NoSSID,
+    WiFi_NoConnectionAvailable,
+    WiFi_Connecting,
+    WiFi_Connected,
+    WiFi_Disconnected,
+} WiFiConnectionStates_t;
+
 class Param
 {
 private:
@@ -76,7 +86,7 @@ private:
     bool m_isPluggedIn = true;
 
     bool m_isCellConnected = false;
-    bool m_isWiFiConnected = false;
+    WiFiConnectionStates m_isWiFiConnectionState = WiFi_Idle;
 
     bool m_isCloudConnected = false;
 
@@ -88,6 +98,9 @@ private:
     FS *m_fs;
 
     char m_jsonBuffer[1024];
+
+    float m_inputVoltage = 0.0;
+    bool m_externalPower = true;
 
 #ifdef BT_SERIAL
 
@@ -139,8 +152,8 @@ public:
 
     
 
-    bool getIsWiFiConnected() { return m_isWiFiConnected; }
-    void setIsWiFiConnected(bool connected) { m_isWiFiConnected = connected; }
+    WiFiConnectionStates getWiFiState() { return m_isWiFiConnectionState; }
+    void setWiFiState(WiFiConnectionStates state) { m_isWiFiConnectionState = state; }
 
     bool getIsCellConnected() { return m_isCellConnected; }
     void setIsCellConnected(bool connected) { m_isCellConnected = connected; };
@@ -186,6 +199,12 @@ public:
     bool getBool(String key);
     int32_t getInt(String key);
     float getFlt(String key);
+
+    void setInputVoltage(float volts) {m_inputVoltage = volts;}
+    float getInputVoltage() {return m_inputVoltage;}
+
+    void setExternalPower(bool externalPower) {m_externalPower = externalPower;}
+    bool getExternalPower() {return m_externalPower;}
 
 private:
     void readFirmware();

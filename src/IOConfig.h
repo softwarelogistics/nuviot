@@ -13,6 +13,7 @@
 #define GPIO_CONFIG_DBS18 4
 #define GPIO_CONFIG_DHT11 5
 #define GPIO_CONFIG_DHT22 6
+#define GPIO_CONFIG_DHT22_HUMIDITY 7
 
 #include <Arduino.h>
 #include <ArduinoJson.h>

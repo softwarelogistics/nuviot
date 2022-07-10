@@ -51,6 +51,13 @@ public:
             Values[idx] = String(value);
     }
 
+    String getValue(byte idx){
+        if(idx < PORT_COUNT)
+            return Values[idx];
+
+        return "-1";
+    }
+
     void clearValue(byte idx){
         if(idx < PORT_COUNT)
             Values[idx] = "";

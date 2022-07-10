@@ -29,6 +29,8 @@ class WiFiConnectionHelper {
         void disconnect();
         void loop();
 
+        void post(String addr, uint16_t port, String path, String body);
+
         bool isConnected();
         String getIPAddress();
         String getMACAddress();
