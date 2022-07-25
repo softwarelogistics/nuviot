@@ -178,6 +178,7 @@ void BLE::refreshCharacteristics()
       pSysConfig->DeviceId + "," +
       String(_deviceModelId) + "," +
       pSysConfig->SrvrHostName + "," +
+      String(pSysConfig->Port) + "," +
       pSysConfig->DeviceAccessKey + "," +
       (pSysConfig->Commissioned ? "1," : "0,") +
       (pSysConfig->CellEnabled ? "1," : "0,") +
@@ -363,6 +364,8 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
 
       if (key == "host")
         pSysConfig->SrvrHostName = value;
+      else if (key == "port")
+        pSysConfig->Port = atoi(value.c_str());
       else if (key == "anonymous")
         pSysConfig->Anonymous = value != "0";
       else if (key == "uid")

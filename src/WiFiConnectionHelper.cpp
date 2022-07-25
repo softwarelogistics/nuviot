@@ -86,16 +86,18 @@ void WiFiConnectionHelper::loop()
     if (m_wifiState == NuvIoTWiFi_NotConnected)
     {
         m_state->setWiFiState(WiFi_Disconnected);
-        m_console->printError("wifi=notconnected; // Starting to connect.");
+        m_console->println("wifi=notconnected; // Starting to connect.");
         connect(false);
     }
 
     // If we are connected, then that means we have lost our connection.
     if (m_wifiState == NuvIoTWiFi_Connected)
     {
-        m_console->printError("wifi=lostconnection; // Starting to reconnecting.");
+        m_console->println("wifi=lostconnection; // Starting to reconnecting.");
         connect(true);
     }
+
+    connect(true);
 
     m_attempt++;
     m_display->clearBuffer();
@@ -175,7 +177,7 @@ uint8_t WiFiConnectionHelper::getRSSI()
 
 bool WiFiConnectionHelper::isConnected()
 {
-    return WiFi.status() == WL_CONNECTED;
+    return m_wifiState == NuvIoTWiFi_Connected;
 }
 
 String WiFiConnectionHelper::getIPAddress()
@@ -197,14 +199,16 @@ void WiFiConnectionHelper::disconnect()
 void WiFiConnectionHelper::post(String addr, uint16_t port, String path, String body){
     HTTPClient client;
 
-    client.begin(addr, port, path);
-    client.addHeader("Content-Type", "application/json");
-    int responseCode = client.POST(body);
-    m_console->println("HTTP Response: " + String(responseCode));
-    client.end();
-  
-    if(m_client->connect(addr.c_str(), port ) > 0) {
-        m_client->println("POST " + path + "HTTP/1.0"); 
+    if(client.begin(addr, port, path)) {
+        client.addHeader("Content-Type", "application/json");
+        
+        int responseCode = client.POST(body);
+        client.end();
+
+        m_console->println("HTTP Response: " + String(responseCode));
+        
+    } else {
+        m_console->println("Could not connect to " + addr + " on port " + String(port));
     }
 }
 
