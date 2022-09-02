@@ -125,9 +125,8 @@ OnOffDetector onOffDetector(&console, &configPins);
 
 PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
 
-void configureI2C()
-{
-  if (!twoWire.begin(configPins.Sda1, configPins.Scl1, 400000))
+void configureI2C(){
+  if (!twoWire.setPins(configPins.Sda1, configPins.Scl1))
   {
     while (true)
     {
@@ -136,13 +135,13 @@ void configureI2C()
     }
   }
   else
-  {
+  {  
+    twoWire.begin();  
     console.println("i2c=initialized; Pins SDA=" + String(configPins.Sda1) + ", SCL=" + String(configPins.Scl1) + ".");
   }
 }
 
-void configureFileSystem()
-{
+void configureFileSystem(){
   if (!SPIFFS.begin(true))
   {
     display.drawStr("Could not initialize SPIFFS.");
@@ -179,6 +178,14 @@ void welcome(String firmwareSKU, String version)
   console.println("WELCOME");
   console.println("SOFTWARE LOGISTICS FIRMWARE");
   console.println("SKU    : " + firmwareSKU);
+  console.println("VERSION: " + version);
+  switch(BOARD_CONFIG) {
+    case 1: console.println("BOARD 1: GPIO_BRD_V1, GPIO_BRD_V2, DEFAULT"); break;
+    case 2: console.println("BOARD 2: PROD_BRD_V1"); break;
+    case 3: console.println("BOARD 3: RELAY_BRD_V1"); break;
+    case 4: console.println("BOARD 4: REMOTE_TEMP_SENSOR"); break;
+    default: console.println("BOARD ?: UNKNOWN"); break;
+  }
   console.println("VERSION: " + version);
   delay(1000);
   console.println("Continue Startup");
@@ -268,12 +275,8 @@ GPSData *readGPS()
 }
 
 #ifdef BOARD_CONFIG
-void initPins()
-{
+void initPins(){
   configPins.init(BOARD_CONFIG);
-  
-  if(configPins.HasI2C)
-    twoWire.setPins(configPins.Sda1, configPins.Scl1);
 }
 #endif
 

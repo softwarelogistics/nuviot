@@ -29,14 +29,14 @@ static void i2cwrite(TwoWire *wire, uint8_t x)
     @brief  Writes 16-bits to the specified destination register
 */
 /**************************************************************************/
-static void writeRegister(TwoWire *wire, uint8_t i2cAddress, uint8_t reg, uint16_t value)
+static uint8_t writeRegister(TwoWire *wire, uint8_t i2cAddress, uint8_t reg, uint16_t value)
 {
   wire->setClock(400000);
   wire->beginTransmission(i2cAddress);
   i2cwrite(wire, (uint8_t)reg);
   i2cwrite(wire, (uint8_t)(value >> 8));
   i2cwrite(wire, (uint8_t)(value & 0xFF));
-  wire->endTransmission();
+  return wire->endTransmission();
 }
 
 /**************************************************************************/
@@ -72,7 +72,7 @@ ADS1115::ADS1115(uint8_t i2cAddress)
     @brief  Instantiates a new ADS1115 class w/appropriate properties
 */
 /**************************************************************************/
-ADS1115::ADS1115(TwoWire *twoWire, uint8_t i2cAddress, uint8_t bank)
+ADS1115::ADS1115(TwoWire *twoWire, uint8_t i2cAddress, uint8_t bank, Console *pConsole)
 {
   m_wire = twoWire;
   m_bank = bank;
@@ -80,6 +80,7 @@ ADS1115::ADS1115(TwoWire *twoWire, uint8_t i2cAddress, uint8_t bank)
   m_conversionDelay = ADS1115_CONVERSIONDELAY;
   m_bitShift = 0;
   m_gain = GAIN_TWOTHIRDS; /* +/- 6.144V range (limited to VDD +0.3V max!) */
+  m_pConsole = pConsole;
 }
 
 /**************************************************************************/
@@ -156,14 +157,23 @@ uint16_t ADS1115::readADC_SingleEnded(uint8_t channel)
   config |= ADS1115_REG_CONFIG_OS_SINGLE;
 
   // Write config register to the ADC
-  writeRegister(m_wire, m_i2cAddress, ADS1115_REG_POINTER_CONFIG, config);
+  
 
   // Wait for the conversion to complete
-  delay(m_conversionDelay);
+  
 
   // Read the conversion results
   // Shift 12-bit results right 4 bits for the ADS1115
-  return readRegister(m_wire, m_i2cAddress, ADS1115_REG_POINTER_CONVERT) >> m_bitShift;
+  uint16_t raw = 0;
+  uint8_t retryCount = 0;
+
+  while(retryCount++ < 5 && (raw > 0x8000 || raw < 100)) { 
+    uint8_t writeResult = writeRegister(m_wire, m_i2cAddress, ADS1115_REG_POINTER_CONFIG, config);
+    delay(m_conversionDelay);
+    raw = readRegister(m_wire, m_i2cAddress, ADS1115_REG_POINTER_CONVERT) >> m_bitShift;    
+  }
+
+  return raw;
 }
 
 /**************************************************************************/
@@ -357,6 +367,9 @@ float ADS1115::readADC_Voltage(uint8_t channel)
   if(raw < 0x8000 && raw > 100) {
     output = ( raw / 26789.0f) * 5.0f;    
   }  
+  else {
+    output = raw;
+  }
 
   return output;
 }

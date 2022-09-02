@@ -453,13 +453,10 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
         if(channel == "io6"){  pIOConfig->GPIO6Name = name; pIOConfig->GPIO6Config = config; pIOConfig->GPIO6Scaler = scaler; pIOConfig->GPIO6Calibration = calibration;  pIOConfig->GPIO6Zero = zero;}
         if(channel == "io7"){  pIOConfig->GPIO7Name = name; pIOConfig->GPIO7Config = config; pIOConfig->GPIO7Scaler = scaler; pIOConfig->GPIO7Calibration = calibration;  pIOConfig->GPIO7Zero = zero;}
         if(channel == "io8"){  pIOConfig->GPIO8Name = name; pIOConfig->GPIO8Config = config; pIOConfig->GPIO8Scaler = scaler; pIOConfig->GPIO8Calibration = calibration;  pIOConfig->GPIO8Zero = zero;}
-
-        pIOConfig->write();
-
+        
         pConsole->println("blewrite=setioconfig; // value=" + name + "," + String(config) + "," + String(scaler) + "," + String(calibration) + "," + String(zero));
+        pIOConfig->write();
       }
-
-    pIOConfig->write();
   }
 
   pState->loop();
