@@ -76,6 +76,7 @@ void WiFiConnectionHelper::loop()
             m_console->println("wifi_ipaddress=" + sIPAddress + ";");
             m_ledManager->setOnlineFlashRate(10);
             m_state->setWiFiState(WiFi_Connected);
+            m_state->setWiFiIPAddress(sIPAddress);
             m_wifiState = NuvIoTWiFi_Connected;
         }
 

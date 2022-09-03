@@ -54,8 +54,7 @@ public:
     uint32_t GPSUpdateRate;
     unsigned long GPRSModemBaudRate;
 
-    String toJSON()
-    {
+    String toJSON(){
         const size_t capacity = JSON_OBJECT_SIZE(40);
         DynamicJsonDocument doc(capacity);
         doc["baud"] = GPRSModemBaudRate;        
@@ -219,6 +218,10 @@ public:
             OrgId = doc["orgId"].as<String>();
             RepoId = doc["repoId"].as<String>();
             Id = doc["id"].as<String>();
+
+            if(OrgId == "null") OrgId = "";
+            if(RepoId == "null") RepoId = "";
+            if(Id == "null") Id = "";
 
             if (doc.containsKey("deviceAccessKey"))
             {

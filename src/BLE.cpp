@@ -158,24 +158,29 @@ void BLE::writeConsoleOutput(String msg)
 void BLE::refreshCharacteristics()
 {
   String state =
-      pState->getFirmwareSKU() + "," +                   // 9
+      pState->getFirmwareSKU() + "," +                   // 0
       pState->getFirmwareVersion() + "," +               // 1
       pState->getHardwareRevision() + "," +              // 2
       (pSysConfig->Commissioned ? "1," : "0,") +         // 3
       String(pState->getWiFiState()) + "," +             // 4
       String(pState->getWiFiRSSI()) + "," +              // 5
-      (pState->getIsCellConnected() ? "1," : "0,") +     // 6
-      String(pState->getCellRSSI()) + "," +              // 7
-      (pState->getIsCloudConnected() ? "1," : "0,") +    // 8
-      String(pState->getInputVoltage()) + "," +          // 9
-      (pState->getExternalPower() ? "1," : "0,") +       // 10
-      String(pState->OTAState) + "," +                   // 11
-      String(pState->OTAParam);                          // 12
+      pState->getWiFiIPAddress()+  "," +                 // 6
+      (pState->getIsCellConnected() ? "1," : "0,") +     // 7
+      String(pState->getCellRSSI()) + "," +              // 8
+      pState->getCellIPAddress()+  "," +                 // 9
+      (pState->getIsCloudConnected() ? "1," : "0,") +    // 10
+      String(pState->getInputVoltage()) + "," +          // 11
+      (pState->getExternalPower() ? "1," : "0,") +       // 12
+      String(pState->OTAState) + "," +                   // 13
+      String(pState->OTAParam);                          // 14
 
   pCharState->setValue((uint8_t *)state.c_str(), state.length());
 
   String config =
       pSysConfig->DeviceId + "," +
+      pSysConfig->OrgId + "," +
+      pSysConfig->RepoId + "," +
+      pSysConfig->Id + "," +
       String(_deviceModelId) + "," +
       pSysConfig->SrvrHostName + "," +
       String(pSysConfig->Port) + "," +

@@ -115,7 +115,8 @@ private:
     String m_firmwareSku;
     String m_firmwareVersion;
     String m_hardwareRevision;
-    String m_ipAddress;
+    String m_wiFi_ipAddress = "0.0.0.0";
+    String m_cell_ipAddress = "0.0.0.0";
 
     bool m_paused;
 
@@ -151,15 +152,17 @@ public:
     String getFirmwareSKU();
 
     
-
     WiFiConnectionStates getWiFiState() { return m_isWiFiConnectionState; }
     void setWiFiState(WiFiConnectionStates state) { m_isWiFiConnectionState = state; }
 
     bool getIsCellConnected() { return m_isCellConnected; }
     void setIsCellConnected(bool connected) { m_isCellConnected = connected; };
 
-    String getIPAddress() { return m_ipAddress; }
-    void setIPAddress(String value) { m_ipAddress = value; };
+    String getWiFiIPAddress() { return m_wiFi_ipAddress; }
+    void setWiFiIPAddress(String value) { m_wiFi_ipAddress = value; };
+
+    String getCellIPAddress() { return m_cell_ipAddress; }
+    void setCellIPAddress(String value) { m_cell_ipAddress = value; };
 
     uint8_t getCellRSSI() { return m_cellRSSI; }
     void setCellRSSI(uint8_t value) { m_cellRSSI = value; };
