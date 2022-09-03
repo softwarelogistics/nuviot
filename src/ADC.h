@@ -21,6 +21,7 @@ private:
     ADS1115 *_bank2;
     Console *m_console;
     Display *m_display;
+    ConfigPins *m_configPins;
     NuvIoTState *m_state;
     MessagePayload *m_payload;
     bool m_portEnabled[NUMBER_ADC_PORTS];
@@ -42,21 +43,13 @@ public:
         m_display = display;
         m_state = state;
         m_payload = payload;
-
-        m_pins[0] = configPins->ADCChannel1;
-        m_pins[1] = configPins->ADCChannel2;
-        m_pins[2] = configPins->ADCChannel3;
-        m_pins[3] = configPins->ADCChannel4;
-        m_pins[4] = configPins->ADCChannel5;
-        m_pins[5] = configPins->ADCChannel6;
-        m_pins[6] = configPins->ADCChannel7;
-        m_pins[7] = configPins->ADCChannel8;
+        m_configPins = configPins;
 
         /* addr2 = +5V, ADCMOD1 */
-        _bank1 = new ADS1115(wire, ADS1115_ADDRESS2, 1);
+        _bank1 = new ADS1115(wire, ADS1115_ADDRESS2, 1, console);
 
         /* addr1 = GND, ADCMOD2 */
-        _bank2 = new ADS1115(wire, ADS1115_ADDRESS1, 2);
+        _bank2 = new ADS1115(wire, ADS1115_ADDRESS1, 2, console);
 
         for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
         {
@@ -212,7 +205,7 @@ public:
 
         if (enabled)
         {
-            m_console->println("adc" + String(index) + "=enabled, adcbank=" + String(index > 3 ? 2 : 1) + ";");
+            m_console->println("adc" + String(index + 1) + "=enabled, name=" + String(name) + ", adcbank=" + String(index > 3 ? 2 : 1) + ", pin= " + String(m_pins[index]) + ";");
         }
 
         m_portEnabled[index] = enabled;
@@ -228,7 +221,7 @@ public:
 
         if (enabled)
         {
-            m_console->println("adc" + String(index) + "=enabledAsCT, adcbank=" + String(index > 3 ? 2 : 1) + ";");
+            m_console->println("adc" + String(index + 1) + "=enabledAsCT, name=" + String(name) + ", adcbank=" + String(index > 3 ? 2 : 1) + ", pin= " + String(m_pins[index]) + ";");
         }
 
         m_portEnabled[index] = enabled;
@@ -241,12 +234,9 @@ public:
         configure(ioConfig);
     }
 
-    void applyValues()
-    {
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
-        {
-            if (m_portEnabled[idx])
-            {
+    void applyValues(){
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx){
+            if (m_portEnabled[idx]){
                 m_rawValues[idx] = ((m_rawValues[idx] * m_calibration[idx]) - m_zero[idx]) * m_scalers[idx];
                 m_payload->ioValues->setValue(idx, m_rawValues[idx]);
             }
@@ -258,26 +248,21 @@ public:
         }
     }
 
-    void loop(double values[])
-    {
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
-        {
+    void loop(double values[]){
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx){
             m_rawValues[idx] = values[idx];
         }
 
         applyValues();
     }
 
-    void loop()
-    {
-        if (!_bank1->isOnline() && m_bank1Enabled)
-        {
+    void loop(){
+        if (!_bank1->isOnline() && m_bank1Enabled){
             m_payload->lastError = "ADC 1 Offline";
             m_console->printError("adc1=offline;");
             m_payload->status = "Error";
         }
-        else if (!_bank2->isOnline() && m_bank2Enabled)
-        {
+        else if (!_bank2->isOnline() && m_bank2Enabled){
             m_payload->lastError = "ADC 2 Offline";
             m_console->printError("adc2=offline;");
             m_payload->status = "Error";
@@ -296,6 +281,16 @@ public:
 
     void configure(IOConfig *ioConfig)
     {
+        m_pins[0] = m_configPins->ADCChannel1;
+        m_pins[1] = m_configPins->ADCChannel2;
+        m_pins[2] = m_configPins->ADCChannel3;
+        m_pins[3] = m_configPins->ADCChannel4;
+        m_pins[4] = m_configPins->ADCChannel5;
+        m_pins[5] = m_configPins->ADCChannel6;
+        m_pins[6] = m_configPins->ADCChannel7;
+        m_pins[7] = m_configPins->ADCChannel8;
+
+
         enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC);
         enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC);
         enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC);

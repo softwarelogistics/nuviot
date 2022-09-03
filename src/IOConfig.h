@@ -141,7 +141,8 @@ public:
 
     String toJSON()
     {
-        const size_t capacity = JSON_OBJECT_SIZE(4096);
+        // Note the size is the number of elements.
+        const size_t capacity = JSON_OBJECT_SIZE(50*8);
         DynamicJsonDocument doc(capacity);
         doc["adc1c"] = ADC1Config;
         doc["adc2c"] = ADC2Config;
@@ -181,7 +182,7 @@ public:
 
         doc["adc1z"] = ADC1Zero;
         doc["adc2z"] = ADC2Zero;
-        doc["adc3z"] = ADC3Zero;
+        doc["adc3z"] = ADC3Zero; 
         doc["adc4z"] = ADC4Zero;
         doc["adc5z"] = ADC5Zero;
         doc["adc6z"] = ADC6Zero;
@@ -233,14 +234,14 @@ public:
         doc["io7z"] = GPIO7Zero;
         doc["io8z"] = GPIO8Zero;
 
-        doc["rn1"] = Relay1Name;
-        doc["rn2"] = Relay2Name;
-        doc["rn3"] = Relay3Name;
-        doc["rn4"] = Relay4Name;
-        doc["rn5"] = Relay5Name;
-        doc["rn6"] = Relay6Name;
-        doc["rn7"] = Relay7Name;
-        doc["rn8"] = Relay8Name;        
+        doc[F("rn1")] = Relay1Name;
+        doc[F("rn2")] = Relay2Name;
+        doc[F("rn3")] = Relay3Name;
+        doc[F("rn4")] = Relay4Name;
+        doc[F("rn5")] = Relay5Name;
+        doc[F("rn6")] = Relay6Name;
+        doc[F("rn7")] = Relay7Name;
+        doc[F("rn8")] = Relay8Name;        
 
         String output;
         serializeJson(doc, output);
@@ -253,21 +254,18 @@ public:
         if (file)
         {
             m_pConsole->printVerbose("ioconfig=fileexits;");
-            m_pConsole->print("PATH1");
             String json = file.readString();
             file.close();
             if (json.length() == 0)
             {
-                m_pConsole->print("PATH2");
                 m_pConsole->printWarning("ioconfig=errorread; // file length = 0");
                 setDefaults();
                 write();
             }
             else
             {
-                if (!parseJSON(json.c_str()))
+                if (!parseJSON(json))
                 {
-                    m_pConsole->print("PATH3");
                     m_pConsole->printError("sysconfig=errorread; //could not parse json");
                     setDefaults();
                     write();
@@ -293,6 +291,7 @@ public:
         File file = SPIFFS.open(SETTINGS_FN, FILE_WRITE);
         if (!file)
         {
+            m_pConsole->println("ERROR.");
             m_pConsole->printError("ioconfig=failwrite; // could not open file or write");
         }
         else
@@ -308,17 +307,19 @@ public:
             }
             else
             {
-                m_pConsole->printVerbose("ioconfig=writefile; // wrote " + String(written) + " bytes to " + String(file.name()));
+                m_pConsole->println("ioconfig=writefile; // wrote " + String(written) + " bytes to " + String(file.name()));
             }
         }
     }
 
-    bool parseJSON(const char *str)
+    bool parseJSON(String str)
     {
-        const size_t capacity = JSON_OBJECT_SIZE(4096);
+        const size_t capacity = JSON_OBJECT_SIZE(55*8);
         DynamicJsonDocument doc(capacity);
 
-        DeserializationError result = deserializeJson(doc, str);
+        m_pConsole->println(str);
+
+        DeserializationError result = deserializeJson(doc, str.c_str());
         if (result.code() == DeserializationError::Code::Ok)
         {
             ADC1Config = doc["adc1c"].as<uint8_t>();
@@ -436,11 +437,12 @@ public:
             Relay5Name = doc["rn5"].as<String>();
             Relay6Name = doc["rn6"].as<String>();
             Relay7Name = doc["rn7"].as<String>();
-            Relay8Name = doc["rn8"].as<String>();
-
-            m_pConsole->print("ADC NAME: " + ADC1Name);
+            Relay8Name = doc["rn8"].as<String>();            
 
             return true;
+        }
+        else {
+            m_pConsole->printError("ioconfig=failparse; // error code: " + String(result.code()));
         }
 
         return false;
@@ -475,14 +477,14 @@ public:
         ADC7Calibration = 1.0;
         ADC8Calibration = 1.0;
 
-        ADC1Scaler = 1.0;
-        ADC2Scaler = 1.0;
-        ADC3Scaler = 1.0;
-        ADC4Scaler = 1.0;
-        ADC5Scaler = 1.0;
-        ADC6Scaler = 1.0;
-        ADC7Scaler = 1.0;
-        ADC8Scaler = 1.0;
+        ADC1Scaler = 2.0;
+        ADC2Scaler = 2.0;
+        ADC3Scaler = 2.0;
+        ADC4Scaler = 2.0;
+        ADC5Scaler = 2.0;
+        ADC6Scaler = 2.0;
+        ADC7Scaler = 2.0;
+        ADC8Scaler = 2.0;
 
         ADC1Zero = 0.0;
         ADC2Zero = 0.0;

@@ -200,9 +200,16 @@ void WiFiConnectionHelper::post(String addr, uint16_t port, String path, String 
     HTTPClient client;
 
     if(client.begin(addr, port, path)) {
+        if(client.connected()){
+            m_console->println("Already connected: " + addr + ":" + String(port) + path);            
+        }
+
         client.addHeader("Content-Type", "application/json");
         
+        m_console->println("Web Request: " + addr + ":" + String(port) + path);
+
         int responseCode = client.POST(body);
+        //if(responseCode == )
         client.end();
 
         m_console->println("HTTP Response: " + String(responseCode));

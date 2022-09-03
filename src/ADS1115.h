@@ -4,7 +4,7 @@
 #define ADS1115_H
 
 #include "Arduino.h"
-
+#include "Console.h"
 #include <Wire.h>
 
 /*=========================================================================
@@ -17,7 +17,7 @@
 /*=========================================================================
     CONVERSION DELAY (in mS)
     -----------------------------------------------------------------------*/
-    #define ADS1115_CONVERSIONDELAY         (10)
+    #define ADS1115_CONVERSIONDELAY         (20)
 /*=========================================================================*/
 
 /*=========================================================================
@@ -111,9 +111,11 @@ protected:
    TwoWire *m_wire;
    uint8_t m_bank;
 
+    Console *m_pConsole = NULL;
+
  public:
   ADS1115(uint8_t i2cAddress = ADS1115_ADDRESS1);
-  ADS1115(TwoWire *twoWire, uint8_t i2cAddress = ADS1115_ADDRESS1, uint8_t bank = 0);
+  ADS1115(TwoWire *twoWire, uint8_t i2cAddress = ADS1115_ADDRESS1, uint8_t bank = 0, Console *pConsole = NULL);
 
   void begin(void);
 
