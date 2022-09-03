@@ -38,6 +38,9 @@ public:
     String SrvrType;
     String SrvrPWD;
     
+    String OrgId;
+    String Id;
+    String RepoId;
 
     String DeviceAccessKey;
 
@@ -55,7 +58,7 @@ public:
     {
         const size_t capacity = JSON_OBJECT_SIZE(40);
         DynamicJsonDocument doc(capacity);
-        doc["baud"] = GPRSModemBaudRate;
+        doc["baud"] = GPRSModemBaudRate;        
         doc["tls"] = TLS;
         doc["commissioned"] = Commissioned;
         doc["deviceId"] = DeviceId;
@@ -74,6 +77,9 @@ public:
         doc["gpsEnabled"] = GPSEnabled;
         doc["wifiEnabled"] = WiFiEnabled;
         doc["cellEnabled"] = CellEnabled;
+        doc["orgId"] = OrgId;
+        doc["id"] = Id;
+        doc["repoId"] = RepoId;
 
         String output;
         serializeJson(doc, output);
@@ -146,8 +152,7 @@ public:
         }
     }
 
-    void setDefaults()
-    {
+    void setDefaults(){
         GPRSModemBaudRate = 115200;
         WiFiEnabled = false;
         CellEnabled = false;
@@ -169,6 +174,10 @@ public:
         SendUpdateRate = 120;
         GPSUpdateRate = 5;
         GPSEnabled = true;
+
+        OrgId = "";
+        Id = "";
+        RepoId = "";
     }
 
     bool parseJSON(String json)
@@ -206,6 +215,11 @@ public:
             SendUpdateRate = doc["sendUpdateRate"].as<uint32_t>();
             GPSUpdateRate = doc["gpsUpdateRate"].as<uint32_t>();
             GPRSModemBaudRate = doc["baud"].as<unsigned long>();
+
+            OrgId = doc["orgId"].as<String>();
+            RepoId = doc["repoId"].as<String>();
+            Id = doc["id"].as<String>();
+
             if (doc.containsKey("deviceAccessKey"))
             {
                 String tmpKey = doc["deviceAccessKey"].as<String>();
