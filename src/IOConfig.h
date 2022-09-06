@@ -142,7 +142,7 @@ public:
     String toJSON()
     {
         // Note the size is the number of elements.
-        const size_t capacity = JSON_OBJECT_SIZE(50*8);
+        const size_t capacity = JSON_OBJECT_SIZE(64);
         DynamicJsonDocument doc(capacity);
         doc["adc1c"] = ADC1Config;
         doc["adc2c"] = ADC2Config;
@@ -288,6 +288,7 @@ public:
 
     void write()
     {
+        m_pConsole->println("ioconfig=beginwrite;");
         File file = SPIFFS.open(SETTINGS_FN, FILE_WRITE);
         if (!file)
         {
@@ -297,6 +298,7 @@ public:
         else
         {
             String json = toJSON();
+            m_pConsole->println(json);
             size_t written = file.print(json);
             file.flush();
             file.close();

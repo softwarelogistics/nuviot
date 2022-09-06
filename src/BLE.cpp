@@ -401,12 +401,12 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
         pSysConfig->SendUpdateRate = atoi(value.c_str());
       else if (key == "commissioned")
         pSysConfig->Commissioned = value != "0";
-      else if (key == "org")
+      else if (key == "orgid")
         pSysConfig->Id = value;
       else if (key == "id")
         pSysConfig->Id = value;
       else if (key == "repoid")
-        pSysConfig->RepoId = value != "0";
+        pSysConfig->RepoId = value;
       else if(key == "reboot" && value == "1")
         pHal->restart();
       else
