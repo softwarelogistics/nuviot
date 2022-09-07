@@ -549,6 +549,7 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
 void BLE::update()
 {
+  pConsole->printWarning(F("ble"));
   this->refreshCharacteristics();
 
   if (m_isConnected)

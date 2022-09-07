@@ -142,9 +142,7 @@ public:
             size_t written = file.print(json);
             file.flush();
             file.close();
-
-            m_pConsole->println(json);
-
+            
             if (written != json.length())
             {
                 m_pConsole->printError("sysconfig=failwrite; // mismatch write, written: " + String(written) + " size: " + String(json.length()));
@@ -200,8 +198,6 @@ public:
 
         if (err == ArduinoJson::DeserializationError::Ok)
         {
-            m_pConsole->println(str);
-
             Commissioned = doc["commissioned"].as<bool>();
             CellEnabled = doc["cellEnabled"].as<bool>();
             WiFiEnabled = doc["wifiEnabled"].as<bool>();
@@ -243,9 +239,6 @@ public:
         else
         {
             m_pConsole->printError("Error reading JSON");
-            // TODO: Add back in error handling.
-            //Serial.println("ERROR SYSCONFIG JSON");
-            //Serial.println(str);
             return false;
         }
     }
