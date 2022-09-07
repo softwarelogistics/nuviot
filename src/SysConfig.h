@@ -55,7 +55,10 @@ public:
     unsigned long GPRSModemBaudRate;
 
     String toJSON(){
-        const size_t capacity = JSON_OBJECT_SIZE(40);
+        uint32_t freeHeep = ESP.getFreeHeap();
+        m_pConsole->println("Free Memory: " + String(freeHeep));
+
+        const size_t capacity = JSON_OBJECT_SIZE(64);
         DynamicJsonDocument doc(capacity);
         doc["baud"] = GPRSModemBaudRate;        
         doc["tls"] = TLS;
@@ -140,13 +143,15 @@ public:
             file.flush();
             file.close();
 
+            m_pConsole->println(json);
+
             if (written != json.length())
             {
                 m_pConsole->printError("sysconfig=failwrite; // mismatch write, written: " + String(written) + " size: " + String(json.length()));
             }
             else
             {
-                m_pConsole->printVerbose("sysconfig=writefile; // wrote " + String(written) + " bytes to " + String(file.name()));
+                m_pConsole->println("sysconfig=writefile; // wrote " + String(written) + " bytes to " + String(file.name()));
             }
         }
     }
@@ -186,7 +191,7 @@ public:
 
     bool parseJSON(const char *str)
     {
-        const size_t capacity = JSON_OBJECT_SIZE(40);
+        const size_t capacity = JSON_OBJECT_SIZE(64);
         DynamicJsonDocument doc(capacity);
 
         doc.clear();
@@ -195,6 +200,8 @@ public:
 
         if (err == ArduinoJson::DeserializationError::Ok)
         {
+            m_pConsole->println(str);
+
             Commissioned = doc["commissioned"].as<bool>();
             CellEnabled = doc["cellEnabled"].as<bool>();
             WiFiEnabled = doc["wifiEnabled"].as<bool>();
@@ -235,6 +242,7 @@ public:
         }
         else
         {
+            m_pConsole->printError("Error reading JSON");
             // TODO: Add back in error handling.
             //Serial.println("ERROR SYSCONFIG JSON");
             //Serial.println(str);
