@@ -402,7 +402,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
       else if (key == "commissioned")
         pSysConfig->Commissioned = value != "0";
       else if (key == "orgid")
-        pSysConfig->Id = value;
+        pSysConfig->OrgId = value;
       else if (key == "id")
         pSysConfig->Id = value;
       else if (key == "repoid")

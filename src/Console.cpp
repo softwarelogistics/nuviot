@@ -125,7 +125,11 @@ void Console::print(String msg)
 
     if (m_bleCallback != NULL && m_btEnabled)
     {
-        m_bleCallback(msg);
+        if(msg.length() > 500) {
+            m_bleCallback(msg.substring(0, 500));
+        }
+        else 
+            m_bleCallback(msg);
     }
 }
 

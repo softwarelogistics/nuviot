@@ -272,14 +272,12 @@ public:
                 }
                 else
                 {
-                    m_pConsole->print("PATH4");
                     m_pConsole->printVerbose("sysconfig=fileread;");
                 }
             }
         }
         else
         {
-            m_pConsole->print("PATH5");
             m_pConsole->printWarning("ioconfig=filedoesnotexists;");
             setDefaults();
             write();
