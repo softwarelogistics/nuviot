@@ -142,7 +142,7 @@ public:
     String toJSON()
     {
         // Note the size is the number of elements.
-        const size_t capacity = JSON_OBJECT_SIZE(64);
+        const size_t capacity = JSON_OBJECT_SIZE(1024);
         DynamicJsonDocument doc(capacity);
         doc["adc1c"] = ADC1Config;
         doc["adc2c"] = ADC2Config;
@@ -296,7 +296,7 @@ public:
         else
         {
             String json = toJSON();
-            m_pConsole->println(json);
+
             size_t written = file.print(json);
             file.flush();
             file.close();
@@ -307,17 +307,15 @@ public:
             }
             else
             {
-                m_pConsole->println("ioconfig=writefile; // wrote " + String(written) + " bytes to " + String(file.name()));
+                m_pConsole->println("ioconfig=writefile; // wrote " + String(written) + " bytes to " + SETTINGS_FN);
             }
         }
     }
 
     bool parseJSON(String str)
     {
-        const size_t capacity = JSON_OBJECT_SIZE(55*8);
+        const size_t capacity = JSON_OBJECT_SIZE(1024);
         DynamicJsonDocument doc(capacity);
-
-        m_pConsole->println(str);
 
         DeserializationError result = deserializeJson(doc, str.c_str());
         if (result.code() == DeserializationError::Code::Ok)

@@ -142,14 +142,14 @@ public:
             size_t written = file.print(json);
             file.flush();
             file.close();
-            
+
             if (written != json.length())
             {
                 m_pConsole->printError("sysconfig=failwrite; // mismatch write, written: " + String(written) + " size: " + String(json.length()));
             }
             else
             {
-                m_pConsole->println("sysconfig=writefile; // wrote " + String(written) + " bytes to " + String(file.name()));
+                m_pConsole->println("sysconfig=writefile; // wrote " + String(written) + " bytes to " + SYSCONFIG_FN);
             }
         }
     }

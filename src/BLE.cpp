@@ -142,7 +142,9 @@ void BLE::writeConsoleOutput(String msg)
         if (deltaT < 80)
           delay(80 - deltaT);
 
-        pCharConsole->setValue((uint8_t *)outBuffer.c_str(), outBuffer.length());
+        uint16_t len = outBuffer.length() > 600 ? 600 : outBuffer.length();
+
+        pCharConsole->setValue((uint8_t *)outBuffer.c_str(), len);
         pCharConsole->notify();
         m_lastConsoleNotify = millis();
         outBuffer = "";
@@ -408,7 +410,14 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
       else if (key == "repoid")
         pSysConfig->RepoId = value;
       else if(key == "reboot" && value == "1")
-        pHal->restart();
+        pHal->restart();      
+      else if(key == "factoryreset" && value == "1") {
+        pSysConfig->setDefaults();
+        pSysConfig->write();
+        pIOConfig->setDefaults();
+        pIOConfig->write();
+        pHal->restart();      
+      }
       else
         pConsole->printError("UKNOWN KEY TYPE: " + key);
     }
@@ -549,7 +558,6 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
 void BLE::update()
 {
-  pConsole->printWarning(F("ble"));
   this->refreshCharacteristics();
 
   if (m_isConnected)

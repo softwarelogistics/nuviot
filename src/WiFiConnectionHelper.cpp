@@ -137,6 +137,16 @@ void WiFiConnectionHelper::connect(bool isReconnect)
         return;
     }
 
+    if(!m_sysConfig->WiFiEnabled) {
+        m_console->println("wifi=notenabled;");    
+        return;
+    }
+
+    if(m_sysConfig->WiFiSSID.length() == 0) {
+        m_console->println("wifi=nossid; // WIFi enabled, attempt to connect but no SSID configured.");    
+        return;
+    }
+
     m_lastReconnect = millis();
 
     m_isReconnect = isReconnect;
