@@ -202,21 +202,21 @@ void TemperatureProbes::debugPrint()
 uint8_t TemperatureProbes::resolvePinIndex(uint8_t idx)
 {
     if (idx == 0)
-        return m_configPins->Gpio0;
-    if (idx == 1)
         return m_configPins->Gpio1;
-    if (idx == 2)
+    if (idx == 1)
         return m_configPins->Gpio2;
-    if (idx == 3)
+    if (idx == 2)
         return m_configPins->Gpio3;
-    if (idx == 4)
+    if (idx == 3)
         return m_configPins->Gpio4;
-    if (idx == 5)
+    if (idx == 4)
         return m_configPins->Gpio5;
-    if (idx == 6)
+    if (idx == 5)
         return m_configPins->Gpio6;
-    if (idx == 7)
+    if (idx == 6)
         return m_configPins->Gpio7;
+    if (idx == 7)
+        return m_configPins->Gpio8;
 
     return -1;
 }

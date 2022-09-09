@@ -12,6 +12,16 @@ void Hal::restart()
     ESP.restart();
 }
 
+void Hal::loop() {
+    if(m_restartMS > 0 && millis() > m_restartMS){
+        ESP.restart();
+    }
+}
+
+void Hal::queueRestart(long delayMS) {
+    m_restartMS = millis() + delayMS;    
+}
+
 void Hal::enableHWWatchdog(long delaySeconds)
 {
     esp_task_wdt_init(delaySeconds, true); //enable panic so ESP32 restarts

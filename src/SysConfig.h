@@ -160,13 +160,13 @@ public:
         CellEnabled = false;
         Commissioned = false;
         VerboseLogging = false;
-        DeviceId = "?";
+        DeviceId = "";
         TLS = false;
         WiFiSSID = "";
         WiFiPWD = "";
-        SrvrHostName = "?";
+        SrvrHostName = "";
         Port = 80;
-        SrvrType = "?";
+        SrvrType = "";
         Anonymous = false;
         SrvrUID = "";
         SrvrPWD = "";

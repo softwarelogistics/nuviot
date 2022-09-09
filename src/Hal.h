@@ -27,14 +27,19 @@ uint8_t temprature_sens_read();
 uint8_t temprature_sens_read();
 
 class Hal {
+    private:
+        long m_restartMS = -1;
+
     public:
         void restart();
         void restart(long pause);
+        void queueRestart(long pause);
         reset_reason_t resetReason();
         String resetReasonMessage();
         void enableHWWatchdog(long delaySeconds);
         void disableHWWatchdog();
         void feedHWWatchdog();
+        void loop();
 };
 
 #endif

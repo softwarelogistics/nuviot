@@ -13,6 +13,8 @@
         "algorithm": "cpp",
         "iomanip": "cpp",
         "xlocmon": "cpp",
-        "xlocnum": "cpp"
+        "xlocnum": "cpp",
+        "limits": "cpp",
+        "utility": "cpp"
     }
 }

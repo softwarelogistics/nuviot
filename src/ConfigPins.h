@@ -87,6 +87,7 @@
 #define PROD_BRD_V1_ONLINE_LED 5
 #define PROD_BRD_V1_ERR_LED 5
 
+
 class ConfigPins
 {
 public:
@@ -103,40 +104,37 @@ public:
     int8_t ConsoleRx = CONSOLE_RX;
     int8_t ConsoleTx = CONSOLE_TX;    
 
-    int8_t UartNumber = -1;
+    int8_t Scl1 = GP0O1_BRD_V2_SCL1;
+    int8_t Sda1 = GP0O1_BRD_V2_SDA1;
 
-    uint8_t Scl1 = GP0O1_BRD_V2_SCL1;
-    uint8_t Sda1 = GP0O1_BRD_V2_SDA1;
+    int8_t CTChannel1 = -1;
+    int8_t CTChannel2 = -1;
+    int8_t CTChannel3 = -1;
 
-    uint8_t CTChannel1 = GP0O1_BRD_V2_ADC4;
-    uint8_t CTChannel2 = GP0O1_BRD_V2_ADC5;
-    uint8_t CTChannel3 = GP0O1_BRD_V2_ADC6;
+    int8_t ADCChannel1 = -1;
+    int8_t ADCChannel2 = -1;
+    int8_t ADCChannel3 = -1;
+    int8_t ADCChannel4 = -1;
+    int8_t ADCChannel5 = -1;
+    int8_t ADCChannel6 = -1;
+    int8_t ADCChannel7 = -1;
+    int8_t ADCChannel8 = -1;
 
-    uint8_t ADCChannel1 = GP0O1_BRD_V2_ADC1;
-    uint8_t ADCChannel2 = GP0O1_BRD_V2_ADC2;
-    uint8_t ADCChannel3 = GP0O1_BRD_V2_ADC3;
-    uint8_t ADCChannel4 = GP0O1_BRD_V2_ADC4;
-    uint8_t ADCChannel5 = GP0O1_BRD_V2_ADC5;
-    uint8_t ADCChannel6 = GP0O1_BRD_V2_ADC6;
-    uint8_t ADCChannel7 = GP0O1_BRD_V2_ADC7;
-    uint8_t ADCChannel8 = GP0O1_BRD_V2_ADC8;
-
-    uint8_t Gpio0 = GP0O1_BRD_V2_IO1;
-    uint8_t Gpio1 = GP0O1_BRD_V2_IO2;
-    uint8_t Gpio2 = GP0O1_BRD_V2_IO2;
-    uint8_t Gpio3 = GP0O1_BRD_V2_IO2;
-    uint8_t Gpio4 = GP0O1_BRD_V2_IO2;
-    uint8_t Gpio5 = GP0O1_BRD_V2_IO2;
-    uint8_t Gpio6 = GP0O1_BRD_V2_IO2;
-    uint8_t Gpio7 = GP0O1_BRD_V2_IO2;
-
-    uint8_t SerialPort = 0;
+    int8_t Gpio1 = -1;
+    int8_t Gpio2 = -1;
+    int8_t Gpio3 = -1;
+    int8_t Gpio4 = -1;
+    int8_t Gpio5 = -1;
+    int8_t Gpio6 = -1;
+    int8_t Gpio7 = -1;
+    int8_t Gpio8 = -1;
 
     int8_t ErrorLED = -1;
     int8_t OnlineLED = -1;
     int8_t Buzzer = -1;
+    bool InvertLED = false;
 
-    uint8_t ModemResetPin = -1;
+    int8_t ModemResetPin = -1;
     bool    InvertModemPower = false;
 
     bool HasDisplay;
@@ -157,7 +155,6 @@ public:
             K3Ctl = GP0O1_BRD_V2_K2_CTL;
             K4Ctl = GP0O1_BRD_V2_K1_CTL;
             K5Ctl = -1;
-            UartNumber = GP0O1_BRD_UART_NUMBER;
 
             SimRx = GP0O1_BRD_V2_GPRS_RX;
             SimTx = GP0O1_BRD_V2_GPRS_TX;
@@ -174,25 +171,23 @@ public:
             ADCChannel7 = GP0O1_BRD_V2_ADC7;
             ADCChannel8 = GP0O1_BRD_V2_ADC8;
 
-            Gpio0 = GP0O1_BRD_V1_IO1;
-            Gpio1 = GP0O1_BRD_V1_IO2;
-            Gpio2 = GP0O1_BRD_V1_IO3;
-            Gpio3 = GP0O1_BRD_V1_IO4;
-            Gpio4 = GP0O1_BRD_V1_IO5;
-            Gpio5 = GP0O1_BRD_V1_IO6;
-            Gpio6 = GP0O1_BRD_V1_IO7;
-            Gpio7 = GP0O1_BRD_V1_IO8;
+            Gpio1 = GP0O1_BRD_V1_IO1;
+            Gpio2 = GP0O1_BRD_V1_IO2;
+            Gpio3 = GP0O1_BRD_V1_IO3;
+            Gpio4 = GP0O1_BRD_V1_IO4;
+            Gpio5 = GP0O1_BRD_V1_IO5;
+            Gpio6 = GP0O1_BRD_V1_IO6;
+            Gpio7 = GP0O1_BRD_V1_IO7;
+            Gpio8 = GP0O1_BRD_V1_IO8;
+
             HasDisplay = true;
             HasRelays = true;
-
-            SerialPort = 1;
         }
         else if(boardType == 1) {
             K1Ctl = GP0O1_BRD_V2_K4_CTL;
             K2Ctl = GP0O1_BRD_V2_K3_CTL;
             K3Ctl = GP0O1_BRD_V2_K2_CTL;
             K4Ctl = GP0O1_BRD_V2_K1_CTL;
-            UartNumber = GP0O1_BRD_UART_NUMBER;
 
             SimRx = GP0O1_BRD_V2_GPRS_RX;
             SimTx = GP0O1_BRD_V2_GPRS_TX;
@@ -212,25 +207,22 @@ public:
             ModemResetPin = PROD_BRD_MODEM_RESET_V2;
             InvertModemPower = true;
 
-            Gpio0 = GP0O1_BRD_V2_IO1;
-            Gpio1 = GP0O1_BRD_V2_IO2;
-            Gpio2 = GP0O1_BRD_V2_IO3;
-            Gpio3 = GP0O1_BRD_V2_IO4;
-            Gpio4 = GP0O1_BRD_V2_IO5;
-            Gpio5 = GP0O1_BRD_V2_IO6;
-            Gpio6 = GP0O1_BRD_V2_IO7;
-            Gpio7 = GP0O1_BRD_V2_IO8;
+            Gpio1 = GP0O1_BRD_V2_IO1;
+            Gpio2 = GP0O1_BRD_V2_IO2;
+            Gpio3 = GP0O1_BRD_V2_IO3;
+            Gpio4 = GP0O1_BRD_V2_IO4;
+            Gpio5 = GP0O1_BRD_V2_IO5;
+            Gpio6 = GP0O1_BRD_V2_IO6;
+            Gpio7 = GP0O1_BRD_V2_IO7;
+            Gpio8 = GP0O1_BRD_V2_IO8;
 
             HasDisplay = true;
             HasRelays = true;
-
-            SerialPort = 1;
         }
         else if(boardType == 2) {
             Scl1 = PROD_BRD_V1_SCL1;
             Sda1 = PROD_BRD_V1_SDA1;
 
-            UartNumber = PROD_BRD_UART_NUMBER;
             SimRx = PROD_BRD_V1_RX;
             SimTx = PROD_BRD_V1_TX;
 
@@ -243,14 +235,14 @@ public:
             ADCChannel7 = PROD_BRD_V1_ADC7;
             ADCChannel8 = PROD_BRD_V1_ADC8;
 
-            Gpio0 = PROD_BRD_V1_IO1;
-            Gpio1 = PROD_BRD_V1_IO2;
-            Gpio2 = PROD_BRD_V1_IO3;
-            Gpio3 = PROD_BRD_V1_IO4;
-            Gpio4 = PROD_BRD_V1_IO5;
-            Gpio5 = PROD_BRD_V1_IO6;
-            Gpio6 = PROD_BRD_V1_IO7;
-            Gpio7 = PROD_BRD_V1_IO8;
+            Gpio1 = PROD_BRD_V1_IO1;
+            Gpio2 = PROD_BRD_V1_IO2;
+            Gpio3 = PROD_BRD_V1_IO3;
+            Gpio4 = PROD_BRD_V1_IO4;
+            Gpio5 = PROD_BRD_V1_IO5;
+            Gpio6 = PROD_BRD_V1_IO6;
+            Gpio7 = PROD_BRD_V1_IO7;
+            Gpio8 = PROD_BRD_V1_IO8;
 
             ModemResetPin = PROD_BRD_MODEM_RESET_V2;
 
@@ -261,8 +253,6 @@ public:
             ErrorLED = 19;
             OnlineLED = 23;
             Buzzer = 15;
-
-            SerialPort = 1;
         }
         else if(boardType == 3) {
             NumberRelays = 5;
@@ -273,10 +263,12 @@ public:
             K4Ctl = 27;
             K5Ctl = 15;
 
+            ConsoleRx = CONSOLE_RX;
+            ConsoleTx = CONSOLE_TX;    
+
             Scl1 = PROD_BRD_V1_SCL1;
             Sda1 = PROD_BRD_V1_SDA1;
 
-            UartNumber = PROD_BRD_UART_NUMBER;
             SimRx = PROD_BRD_V1_RX;
             SimTx = PROD_BRD_V1_TX;
 
@@ -291,15 +283,14 @@ public:
 
             ModemResetPin = PROD_BRD_MODEM_RESET_V2;
             
-
-            Gpio0 = PROD_BRD_V1_IO1;
-            Gpio1 = PROD_BRD_V1_IO2;
-            Gpio2 = PROD_BRD_V1_IO3;
-            Gpio3 = PROD_BRD_V1_IO4;
-            Gpio4 = PROD_BRD_V1_IO5;
-            Gpio5 = PROD_BRD_V1_IO6;
-            Gpio6 = PROD_BRD_V1_IO7;
-            Gpio7 = PROD_BRD_V1_IO8;
+            Gpio1 = PROD_BRD_V1_IO1;
+            Gpio2 = PROD_BRD_V1_IO2;
+            Gpio3 = PROD_BRD_V1_IO3;
+            Gpio4 = PROD_BRD_V1_IO4;
+            Gpio5 = PROD_BRD_V1_IO5;
+            Gpio6 = PROD_BRD_V1_IO6;
+            Gpio7 = PROD_BRD_V1_IO7;
+            Gpio8 = PROD_BRD_V1_IO8;
 
             HasDisplay = false;
             HasRelays = true;
@@ -308,28 +299,28 @@ public:
             ErrorLED = 19;
             OnlineLED = 23;
             Buzzer = 15;
-
-
-            SerialPort = 1;
-        } else if(boardType == 3) {
+        } else if(boardType == 4) {
             NumberRelays = 0;
 
-            UartNumber = PROD_BRD_UART_NUMBER;
-            SimRx = PROD_BRD_V1_RX;
-            SimTx = PROD_BRD_V1_TX;
+            ConsoleRx = CONSOLE_RX;
+            ConsoleTx = CONSOLE_TX;    
 
-            ModemResetPin = PROD_BRD_MODEM_RESET_V2;
+            SimRx = 18;
+            SimTx = 17;
+
+            Gpio1 = 25;
+            Gpio2 = 26;
+
+            ModemResetPin = 02;
             
             HasDisplay = false;
             HasRelays = false;
             HasLeds = true;
             HasI2C = false;
 
-            ErrorLED = 32;
-            OnlineLED = 33;
-            Buzzer = -1;
-
-            SerialPort = 1;
+            InvertLED = false;
+            ErrorLED = 33;
+            OnlineLED = 32;
         }
     }
 };

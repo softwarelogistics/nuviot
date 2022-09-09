@@ -9,9 +9,12 @@
 
 extern portMUX_TYPE timerMux;
 
-extern volatile uint8_t beeperPin;
-extern volatile uint8_t errPin;
-extern volatile uint8_t onlinePin;
+extern volatile int8_t LED_ON_STATE;
+extern volatile int8_t LED_OFF_STATE;
+
+extern volatile int8_t beeperPin;
+extern volatile int8_t errPin;
+extern volatile int8_t onlinePin;
 
 extern volatile int8_t beepRate;
 extern volatile int8_t errFlashRate;
@@ -59,6 +62,15 @@ public:
         onlinePin = m_configPins->OnlineLED;
         beeperPin = m_configPins->Buzzer;
 
+        if(m_configPins->InvertLED) {
+            LED_ON_STATE = LOW;
+            LED_OFF_STATE = HIGH;
+        }
+        else {
+            LED_ON_STATE = HIGH;
+            LED_OFF_STATE = LOW;
+        }
+
         m_timer = timerBegin(0, 5, true);
 
         timerAttachInterrupt(m_timer, &onTimer, true);
@@ -69,20 +81,20 @@ public:
             pinMode(m_configPins->ErrorLED, OUTPUT);
         if (onlinePin != -1)
             pinMode(m_configPins->OnlineLED, OUTPUT);
-        if (m_configPins->Buzzer != -1)
+        if (beeperPin != -1)
             pinMode(m_configPins->Buzzer, OUTPUT);
 
-        errPinState = HIGH;
-        onlinePinState = HIGH;
+        errPinState = LED_OFF_STATE;
+        onlinePinState = LED_OFF_STATE;
 
         if (errPin != -1)
-            digitalWrite(m_configPins->ErrorLED, errPinState);
+            digitalWrite(errPin, errPinState);
 
         if (onlinePin != -1)
-            digitalWrite(m_configPins->OnlineLED, onlinePinState);
+            digitalWrite(onlinePin, onlinePinState);
 
-        if (beeperPin != -1)
-            digitalWrite(m_configPins->Buzzer, beeperPinState);
+        if (beeperPin != -1) 
+            digitalWrite(beeperPin, beeperPinState);            
 
         errFlashRate = 0;
         beepRate = 0;

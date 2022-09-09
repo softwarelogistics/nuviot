@@ -119,14 +119,14 @@ void PulseCounter::loop() {
 }
 
 void PulseCounter::configure(IOConfig *config) {
-    if(config->GPIO1Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO1Name, m_configPins->Gpio0 );
-    if(config->GPIO2Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO2Name, m_configPins->Gpio1 );
-    if(config->GPIO3Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO3Name, m_configPins->Gpio2 );
-    if(config->GPIO4Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO4Name, m_configPins->Gpio3 );
-    if(config->GPIO5Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO5Name, m_configPins->Gpio4 );
-    if(config->GPIO6Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO6Name, m_configPins->Gpio5 );
-    if(config->GPIO7Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO7Name, m_configPins->Gpio6 );
-    if(config->GPIO8Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO8Name, m_configPins->Gpio7 );
+    if(config->GPIO1Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO1Name, m_configPins->Gpio1 );
+    if(config->GPIO2Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO2Name, m_configPins->Gpio2 );
+    if(config->GPIO3Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO3Name, m_configPins->Gpio3 );
+    if(config->GPIO4Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO4Name, m_configPins->Gpio4 );
+    if(config->GPIO5Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO5Name, m_configPins->Gpio5 );
+    if(config->GPIO6Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO6Name, m_configPins->Gpio6 );
+    if(config->GPIO7Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO7Name, m_configPins->Gpio7 );
+    if(config->GPIO8Config == GPIO_CONFIG_PULSE_COUNTER) registerPin(config->GPIO8Name, m_configPins->Gpio8 );
 }
 
 int PulseCounter::countsPerSecond(uint8_t channel){

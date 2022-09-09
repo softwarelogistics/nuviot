@@ -184,8 +184,9 @@ void BLE::refreshCharacteristics()
       pSysConfig->RepoId + "," +
       pSysConfig->Id + "," +
       String(_deviceModelId) + "," +
-      pSysConfig->SrvrHostName + "," +
+      pSysConfig->SrvrHostName + "," +      
       String(pSysConfig->Port) + "," +
+      pSysConfig->SrvrType + "," +
       pSysConfig->DeviceAccessKey + "," +
       (pSysConfig->Commissioned ? "1," : "0,") +
       (pSysConfig->CellEnabled ? "1," : "0,") +
@@ -299,57 +300,6 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
 
     refreshCharacteristics();
   }
-
-  /*
-  if (0 == strcmp(uuid, CHAR_UUID_IOCONFIG))
-  {
-    int equalDelimiter = input.indexOf("=");
-    int valueEnd = input.indexOf(";", equalDelimiter);
-    String key = input.substring(0, equalDelimiter);
-    String value = input.substring(equalDelimiter + 1, valueEnd);
-
-
-
-    char tmp[120];
-
-    if(key == "AT+IOCFG"){
-
-    }
-    else if(key == "AT+ADCCFG"){
-
-    }
-    else if (key == "readadc")
-    {
-      pIOConfig->getADC(tmp, 1);
-      pConsole->println("BACK");
-      delay(15);
-      pConsole->println(String(tmp));
-      delay(15);
-      pCharIOConfig->setValue((uint8_t *)tmp, strlen(tmp));
-    }
-    else if (key == "readgpio")
-    {
-      pIOConfig->getADC(tmp, 1);
-      pCharIOConfig->setValue((uint8_t *)tmp, strlen(tmp));
-    }
-    else if (key == "writeadc")
-    {
-      strcpy(tmp, value.c_str());
-      pIOConfig->setADC(tmp);
-      pIOConfig->write();
-    }
-    else if (key == "writegpio")
-    {
-      strcpy(tmp, value.c_str());
-      pIOConfig->setGPIO(tmp);
-      pIOConfig->write();
-    }
-    else{
-      pConsole->println("ble=read; // char=ioconfig; " + key + "=" + value + ";");
-      pCharIOConfig->setValue("UKNOWN");
-    }
-  }*/
-
   else if (0 == strcmp(uuid, CHAR_UUID_SYS_CONFIG)) {
     pConsole->println("ble=read; // char=sysconfig; value=" + input);
     boolean done = false;
@@ -373,6 +323,8 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
         pSysConfig->SrvrHostName = value;
       else if (key == "port")
         pSysConfig->Port = atoi(value.c_str());
+      else if (key == "srvrtype")
+        pSysConfig->SrvrType = value;
       else if (key == "anonymous")
         pSysConfig->Anonymous = value != "0";
       else if (key == "uid")
@@ -416,7 +368,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
         pSysConfig->write();
         pIOConfig->setDefaults();
         pIOConfig->write();
-        pHal->restart();      
+        pHal->queueRestart(1000);
       }
       else
         pConsole->printError("UKNOWN KEY TYPE: " + key);
