@@ -186,7 +186,6 @@ void welcome(String firmwareSKU, String version)
     case 4: console.println("BOARD 4: REMOTE_TEMP_SENSOR"); break;
     default: console.println("BOARD ?: UNKNOWN"); break;
   }
-  console.println("VERSION: " + version);
   delay(1000);
   console.println("Continue Startup");
 }
@@ -443,4 +442,45 @@ void mqttPublish(String topic, String value)
 void mqttPublish(String topic)
 {
   mqttPublish(topic, "");
+}
+
+
+void writeConfigPins() {
+  console.println("Has Display :" + configPins.HasDisplay ? "Yes" : "No");  
+  console.println("Has Leds    :" + configPins.HasLeds ? "Yes" : "No");  
+  console.println("LED-ONLINE  :" + String(configPins.OnlineLED));
+  console.println("LED-ERROR   :" + String(configPins.ErrorLED));
+  console.println("INVERT LEDS :" + configPins.InvertLED ? "Yes" : "No");  
+  console.println("BUZZER      :" + String(configPins.Buzzer));
+  console.println("Has Relays  :" + configPins.HasI2C ? "Yes" : "No");  
+  console.println("I2C-SDA     :" + String(configPins.Sda1));
+  console.println("I2C-SCL     :" + String(configPins.Scl1));
+  console.println("CONSOLE-RX  :" + String(configPins.ConsoleRx));
+  console.println("CONSOLE-TX  :" + String(configPins.ConsoleTx));
+  console.println("MODEM-RESET :" + String(configPins.ModemResetPin));
+  console.println("SIM-RX      :" + String(configPins.SimRx));
+  console.println("SIM-TX      :" + String(configPins.SimTx));
+  console.println("ADC1        :" + String(configPins.ADCChannel1));
+  console.println("ADC2        :" + String(configPins.ADCChannel2));
+  console.println("ADC3        :" + String(configPins.ADCChannel3));
+  console.println("ADC4        :" + String(configPins.ADCChannel4));
+  console.println("ADC5        :" + String(configPins.ADCChannel5));
+  console.println("ADC6        :" + String(configPins.ADCChannel6));
+  console.println("ADC7        :" + String(configPins.ADCChannel7));
+  console.println("ADC8        :" + String(configPins.ADCChannel8));
+  console.println("IO1         :" + String(configPins.Gpio1));
+  console.println("IO2         :" + String(configPins.Gpio2));
+  console.println("IO3         :" + String(configPins.Gpio3));
+  console.println("IO4         :" + String(configPins.Gpio4));
+  console.println("IO5         :" + String(configPins.Gpio5));
+  console.println("IO6         :" + String(configPins.Gpio6));
+  console.println("IO7         :" + String(configPins.Gpio7));
+  console.println("IO8         :" + String(configPins.Gpio8));  
+  console.println("Buzzer      :" + String(configPins.Buzzer));  
+  console.println("Has Relays  :" + configPins.HasRelays ? "Yes" : "No");  
+  console.println("K1CTL       :" + String(configPins.K1Ctl));  
+  console.println("K2CTL       :" + String(configPins.K2Ctl));  
+  console.println("K3CTL       :" + String(configPins.K3Ctl));  
+  console.println("K4CTL       :" + String(configPins.K4Ctl));  
+  console.println("K5CTL       :" + String(configPins.K5Ctl));  
 }
