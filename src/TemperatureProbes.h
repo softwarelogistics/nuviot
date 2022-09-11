@@ -2,7 +2,7 @@
 #define TemperatureProbes_h
 
 #include <OneWire.h>
-#include <DHT.h>
+#include "NuvIoT_DHT.h"
 #include <DallasTemperature.h>
 #include "MessagePayload.h"
 #include "NuvIoTState.h"
@@ -54,7 +54,7 @@ class TemperatureProbes: public AbstractSensor{
 
         OneWire *m_oneWires[PROBECOUNT];
         DallasTemperature *m_probes[PROBECOUNT];
-        DHT *m_dhts[PROBECOUNT];
+        NuvIoT_DHT *m_dhts[PROBECOUNT];
         String m_names[PROBECOUNT]; 
         uint8_t m_pins[PROBECOUNT];
         MessagePayload* m_payload = NULL;

@@ -501,7 +501,10 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
   pServer->getConnectedCount();
 
-  pConsole->println("ble=allocated; // Bytes allocated for BLE: " + String(freeHeep - ESP.getFreeHeap()) + ";");
+  double bleBytes = (freeHeep - ESP.getFreeHeap()) / 1024.0;
+  double freeBytes = ESP.getFreeHeap() / 1024.0;
+
+  pConsole->println("ble=allocated; // allocated for BLE: " + String(bleBytes) + "KB; free: " + String(freeBytes) + "KB");
 
   refreshCharacteristics();
 

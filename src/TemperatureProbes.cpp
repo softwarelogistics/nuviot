@@ -2,22 +2,19 @@
 
 #define SL_BOARD_TYPE
 
-TemperatureProbes::TemperatureProbes(Console *console, ConfigPins *configPins, MessagePayload *payload)
-{
+TemperatureProbes::TemperatureProbes(Console *console, ConfigPins *configPins, MessagePayload *payload){
     m_payload = payload;
     m_console = console;
     m_configPins = configPins;
 }
 
-TemperatureProbes::TemperatureProbes(Console *console, ConfigPins *configPins)
-{
+TemperatureProbes::TemperatureProbes(Console *console, ConfigPins *configPins){
     m_payload = NULL;
     m_console = console;
     m_configPins = configPins;
 }
 
-void TemperatureProbes::setup(IOConfig *ioConfig)
-{
+void TemperatureProbes::setup(IOConfig *ioConfig){
     for (int idx = 0; idx < PROBECOUNT; ++idx)
     {
         m_sensorConfigurations[idx] = None;
@@ -58,9 +55,10 @@ void TemperatureProbes::readTemperatures()
             bool success = false;
             int retryCount = 0;
          
-            while (!success && retryCount++ < 2)
+            while (!success && retryCount++ < 5)
             {
                 m_probes[idx]->requestTemperatures();
+                delay(100);
                 temperature = m_probes[idx]->getTempFByIndex(0);
                 if (temperature < -100 || temperature > 175)
                 {
@@ -74,9 +72,12 @@ void TemperatureProbes::readTemperatures()
                 }
             }
 
-            if (!success)
-            {
-                temperature = -999;
+            if (success){   
+                clearLastError();
+            }
+            else {
+                temperature = NAN;
+                setIsErrorState(true);
             }
         }
 
@@ -86,18 +87,29 @@ void TemperatureProbes::readTemperatures()
             bool success = false;
             int retryCount = 0;
             while(!success && retryCount++ < 2){
-                humidity = m_dhts[idx]->readHumidity();
-                temperature = 32.0f + round(m_dhts[idx]->readTemperature() * 18.0f) / 10.0f;
-                if(isnan(humidity) || isnan(temperature)){
-                    delay(500);
-                    m_console->printError("ERR DHT- " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
+                if(m_dhts[idx]->read(true)) {
+                    humidity = m_dhts[idx]->readHumidity();
+                    temperature = 32.0f + round(m_dhts[idx]->readTemperature() * 18.0f) / 10.0f;
+                    if(isnan(humidity) || isnan(temperature)){                     
+                        m_console->printError("ERR DHT- " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
+                    }
+                    else {
+                        success = true;
+                        m_payload->ioValues->setValue(idx + 8, temperature);                    
+                    }
                 }
-                else {
-                    success = true;
-                    m_payload->ioValues->setValue(idx + 8, temperature);                    
-                }
+                else 
+                   delay(2000);
             }
 
+            if (success){
+                clearLastError();
+            }
+            else {
+                temperature = NAN;
+                humidity = NAN;
+                setIsErrorState(true);
+            }
 
             break;
         }
@@ -282,7 +294,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
 
         if (m_dhts[idx] == NULL)
         {
-            m_dhts[idx] = new DHT(pin, DHT21);
+            m_dhts[idx] = new NuvIoT_DHT(pin, DHT11, 6, m_console);
         }
         break;
     case Dht22:
@@ -301,7 +313,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
 
         if (m_dhts[idx] == NULL)
         {            
-            m_dhts[idx] = new DHT(pin, DHT22);
+            m_dhts[idx] = new NuvIoT_DHT(pin, DHT22, 6, m_console);
         }
         break;
     case DS18B20:
