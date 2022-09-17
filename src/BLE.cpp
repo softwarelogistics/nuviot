@@ -6,7 +6,6 @@
 //
 
 #define SVC_UUID_NUVIOT "d804b639-6ce7-4e80-9f8a-ce0f699085eb"
-
 #define CHAR_UUID_STATE "d804b639-6ce7-5e81-9f8a-ce0f699085eb"
 /*
  * State characteristic will encompass

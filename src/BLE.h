@@ -16,6 +16,7 @@
 #include <Hal.h>
 #include <NuvIoTState.h>
 #include <MessagePayload.h>
+#include <OtaServices.h>
 
 #define SOFTWARE_VERSION_MAJOR 0
 #define SOFTWARE_VERSION_MINOR 1
@@ -49,7 +50,7 @@ class otaCallback : public BLECharacteristicCallbacks
 {
 private:
   BLE *pBle;
-  Console *pConsole;  
+  Console *pConsole;    
 
 public:
   otaCallback(BLE *ble, Console *console)
@@ -66,13 +67,14 @@ public:
 class BLE
 {
 public:
-  BLE(Console *console, Hal *hal, NuvIoTState *state, IOConfig *ioConfig, SysConfig *sysConfig, RelayManager *relayManager, MessagePayload *payload)
+  BLE(Console *console, Hal *hal, NuvIoTState *state, IOConfig *ioConfig, SysConfig *sysConfig, RelayManager *relayManager, OtaServices *ota, MessagePayload *payload)
   {
     pConsole = console;
     pHal = hal;
     pSysConfig = sysConfig;
     pIOConfig = ioConfig;
     pState = state;
+    pOta = ota;
     pRelayManager = relayManager;
     pPayload = payload;
     _characteristicCallback = new otaCallback(this, console);
@@ -118,6 +120,7 @@ private:
   otaCallback *_characteristicCallback;
   String outBuffer;
   MessagePayload *pPayload;
+  OtaServices *pOta;
 
   Console *pConsole;
   SysConfig *pSysConfig;
