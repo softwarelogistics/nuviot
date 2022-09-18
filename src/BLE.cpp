@@ -360,6 +360,8 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
         pSysConfig->Id = value;
       else if (key == "repoid")
         pSysConfig->RepoId = value;
+      else if (key == "dfu") 
+        pOta->downloadOverWiFi("http://firmware.nuviot.com:14236/api/firmware/download/" + value);
       else if(key == "reboot" && value == "1")
         pHal->restart();      
       else if(key == "factoryreset" && value == "1") {
