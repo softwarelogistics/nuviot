@@ -35,7 +35,7 @@ private:
 
     bool m_bank1Enabled = false;
     bool m_bank2Enabled = false;
-
+    
 public:
     ADC(TwoWire *wire, NuvIoTState *state, ConfigPins *configPins, Console *console, Display *display, MessagePayload *payload)
     {

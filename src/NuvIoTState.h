@@ -206,6 +206,8 @@ public:
     void setInputVoltage(float volts) {m_inputVoltage = volts;}
     float getInputVoltage() {return m_inputVoltage;}
 
+    
+
     void setExternalPower(bool externalPower) {m_externalPower = externalPower;}
     bool getExternalPower() {return m_externalPower;}
 

@@ -74,6 +74,7 @@ void WiFiConnectionHelper::loop()
                 sIPAddress += i ? "." + String(ip[i]) : String(ip[i]);
 
             m_console->println("wifi_ipaddress=" + sIPAddress + ";");
+            m_ledManager->setErrFlashRate(0);
             m_ledManager->setOnlineFlashRate(10);
             m_state->setWiFiState(WiFi_Connected);
             m_state->setWiFiIPAddress(sIPAddress);
