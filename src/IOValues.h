@@ -58,6 +58,14 @@ public:
         return "-1";
     }
 
+    double getDoubleValue(byte idx) {
+        if(idx < PORT_COUNT){
+            return atof(Values[idx].c_str());
+        }
+
+        return -1;
+    }
+
     void clearValue(byte idx){
         if(idx < PORT_COUNT)
             Values[idx] = "";

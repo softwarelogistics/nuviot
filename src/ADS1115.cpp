@@ -170,7 +170,7 @@ uint16_t ADS1115::readADC_SingleEnded(uint8_t channel)
   while(retryCount++ < 5 && (raw > 0x8000 || raw < 100)) { 
     uint8_t writeResult = writeRegister(m_wire, m_i2cAddress, ADS1115_REG_POINTER_CONFIG, config);
     delay(m_conversionDelay);
-    raw = readRegister(m_wire, m_i2cAddress, ADS1115_REG_POINTER_CONVERT) >> m_bitShift;    
+    raw = readRegister(m_wire, m_i2cAddress, ADS1115_REG_POINTER_CONVERT) >> m_bitShift;        
   }
 
   return raw;
@@ -362,6 +362,7 @@ int16_t ADS1115::getLastConversionResults()
 float ADS1115::readADC_Voltage(uint8_t channel)
 {
   uint16_t raw = readADC_SingleEnded(channel);
+  
   float output = 0.0;
   
   if(raw < 0x8000 && raw > 100) {

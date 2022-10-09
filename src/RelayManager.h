@@ -47,17 +47,7 @@ class RelayManager : public AbstractSensor {
         void setRelay(int relayIndex, bool on){
             m_state[relayIndex] = on;            
 
-            if(relayIndex == 0 && m_configPins->K1Ctl != -1) 
-            {
-                digitalWrite(m_configPins->K1Ctl, on);
-                if(on){
-                    m_console->println("RELAY 1 ON");
-                }
-                else  {
-                    m_console->println("RELAY 2 ON");
-                }
-
-            }
+            if(relayIndex == 0 && m_configPins->K1Ctl != -1) digitalWrite(m_configPins->K1Ctl, on);
             if(relayIndex == 1 && m_configPins->K2Ctl != -1) digitalWrite(m_configPins->K2Ctl, on);
             if(relayIndex == 2 && m_configPins->K3Ctl != -1) digitalWrite(m_configPins->K3Ctl, on);
             if(relayIndex == 3 && m_configPins->K4Ctl != -1) digitalWrite(m_configPins->K4Ctl, on);
@@ -65,14 +55,15 @@ class RelayManager : public AbstractSensor {
         };
 
         void loop() {            
+            
         }
 
         void debugPrint() {
-            if(m_configPins->K1Ctl != -1) m_console->printVerbose("relay1=" + String(m_state[0] ? "on" : "off"));
-            if(m_configPins->K2Ctl != -2) m_console->printVerbose("relay2=" + String(m_state[1] ? "on" : "off"));
-            if(m_configPins->K3Ctl != -3) m_console->printVerbose("relay3=" + String(m_state[2] ? "on" : "off"));
-            if(m_configPins->K4Ctl != -4) m_console->printVerbose("relay4=" + String(m_state[3] ? "on" : "off"));
-            if(m_configPins->K5Ctl != -5) m_console->printVerbose("relay5=" + String(m_state[4] ? "on" : "off"));
+            if(m_configPins->K1Ctl != -1) m_console->printVerbose("relay1=" + String(m_state[0] ? "on" : "off") + "; Pin: " + String(m_configPins->K1Ctl));
+            if(m_configPins->K2Ctl != -2) m_console->printVerbose("relay2=" + String(m_state[1] ? "on" : "off") + "; Pin: " + String(m_configPins->K2Ctl));
+            if(m_configPins->K3Ctl != -3) m_console->printVerbose("relay3=" + String(m_state[2] ? "on" : "off") + "; Pin: " + String(m_configPins->K3Ctl));
+            if(m_configPins->K4Ctl != -4) m_console->printVerbose("relay4=" + String(m_state[3] ? "on" : "off") + "; Pin: " + String(m_configPins->K4Ctl));
+            if(m_configPins->K5Ctl != -5) m_console->printVerbose("relay5=" + String(m_state[4] ? "on" : "off") + "; Pin: " + String(m_configPins->K5Ctl));
         }
 };
 

@@ -25,10 +25,13 @@ NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, Console *console, W
     mqttInstance = this;
 }
 
-void NuvIoTMQTT::connect()
-{
-    m_mqtt->disconnect();
+void NuvIoTMQTT::connect(){
+    if(m_sysConfig->SrvrHostName == "") {
+        m_console->printWarning("wifimqtt=notconfigured; // No mqtt host configured, will not attempt to connect.");
+        return;
+    }
 
+    m_mqtt->disconnect();
     m_wifi->loop();
 
     m_display->clearBuffer();
@@ -285,7 +288,7 @@ void NuvIoTMQTT::loop()
     if (!m_wifi->isConnected())
     {
         m_state->setIsCloudConnected(false);
-        m_console->printError("wifimqtt=notconnected;");
+        m_console->printError("wifimqtt=notconnected; // wifi not connected will not attempt to connect to mqtt;");
 
         m_display->clearBuffer();
         m_display->drawString(0, 0, "Client Not Connected");

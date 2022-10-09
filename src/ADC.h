@@ -10,6 +10,7 @@
 #include "Display.h"
 #include "IOConfig.h"
 #include "ConfigPins.h"
+#include "MedianFilter.h"
 
 #define NUMBER_ADC_PORTS 8
 
@@ -32,9 +33,14 @@ private:
     float m_rawValues[NUMBER_ADC_PORTS];
     uint8_t m_pins[NUMBER_ADC_PORTS];
     String m_names[NUMBER_ADC_PORTS];
+    MedianFilter *m_filters[NUMBER_ADC_PORTS];
 
     bool m_bank1Enabled = false;
     bool m_bank2Enabled = false;
+
+    bool m_useFilter = false;
+    uint8_t m_filterSize = 10;
+    uint8_t m_throwAway = 2;
     
 public:
     ADC(TwoWire *wire, NuvIoTState *state, ConfigPins *configPins, Console *console, Display *display, MessagePayload *payload)
@@ -268,11 +274,15 @@ public:
             m_payload->status = "Error";
         }
 
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
-        {
-            if (m_portEnabled[idx])
-            {
-                m_rawValues[idx] = getVoltage(m_pins[idx]);
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx){
+            if (m_portEnabled[idx]){
+                float voltage = getVoltage(m_pins[idx]);
+
+                if(m_useFilter) {
+                    voltage = m_filters[idx]->apply(voltage);
+                }
+
+                m_rawValues[idx] = voltage;
             }
         }
 
@@ -289,7 +299,6 @@ public:
         m_pins[5] = m_configPins->ADCChannel6;
         m_pins[6] = m_configPins->ADCChannel7;
         m_pins[7] = m_configPins->ADCChannel8;
-
 
         enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC);
         enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC);
@@ -326,14 +335,24 @@ public:
         setCalibration(5, ioConfig->ADC6Calibration);
         setCalibration(6, ioConfig->ADC7Calibration);
         setCalibration(7, ioConfig->ADC8Calibration);
+
+        if(m_useFilter) {
+            for(int idx = 0; idx < 8; ++idx) {
+                if(m_portEnabled[idx])
+                    m_filters[idx] = new MedianFilter(m_filterSize, m_throwAway);
+            }
+        }
     }
 
-    void debugPrint()
-    {
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
-        {
-            if (m_portEnabled[idx] && !m_isCt[idx])
-            {
+    void setUseFiltering(uint8_t size, uint8_t throwAway) {
+        m_filterSize = size;
+        m_throwAway = throwAway;
+        m_useFilter = true;
+    }
+
+    void debugPrint(){
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx){
+            if (m_portEnabled[idx] && !m_isCt[idx]){
                 m_console->printVerbose(m_names[idx] + "=" + String(m_rawValues[idx]) + ";");
             }
         }
@@ -351,10 +370,8 @@ public:
      * \param enabled True to enable, false to disable.
      * 
      */
-    bool setBankEnabled(int bank, bool enabled)
-    {
-        switch (bank)
-        {
+    bool setBankEnabled(int bank, bool enabled){
+        switch (bank){
         case 1:
             m_bank1Enabled = enabled;
             break;
@@ -375,13 +392,11 @@ public:
      * 
      * \return True if the ADC respondes, false if not.
      **/
-    bool isBankOneOnline()
-    {
+    bool isBankOneOnline(){
         return _bank1->isOnline();
     }
 
-    bool isBank1Enabled()
-    {
+    bool isBank1Enabled(){
         return m_bank1Enabled;
     }
 
@@ -394,13 +409,11 @@ public:
      * 
      * \return True if the ADC respondes, false if not.
      **/
-    bool isBankTwoOnline()
-    {
+    bool isBankTwoOnline(){
         return _bank2->isOnline();
     }
 
-    bool isBank2Enabled()
-    {
+    bool isBank2Enabled(){
         return m_bank2Enabled;
     }
 };

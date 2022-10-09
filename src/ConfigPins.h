@@ -67,7 +67,7 @@
 
 #define PROD_BRD_V1_IO1 16
 #define PROD_BRD_V1_IO2 04
-#define PROD_BRD_V1_IO3 02
+#define PROD_BRD_V1_IO3 05
 #define PROD_BRD_V1_IO4 36
 #define PROD_BRD_V1_IO5 39
 #define PROD_BRD_V1_IO6 34
@@ -77,10 +77,10 @@
 #define PROD_BRD_V1_ADC1 5 // GOOD
 #define PROD_BRD_V1_ADC2 4 // GOOD
 #define PROD_BRD_V1_ADC3 6 // GOOD
-#define PROD_BRD_V1_ADC4 7 // GOOD 
-#define PROD_BRD_V1_ADC5 1 // GOOD
-#define PROD_BRD_V1_ADC6 0
-#define PROD_BRD_V1_ADC7 2
+#define PROD_BRD_V1_ADC4 2 // GOOD 
+#define PROD_BRD_V1_ADC5 0 // GOOD
+#define PROD_BRD_V1_ADC6 1
+#define PROD_BRD_V1_ADC7 7
 #define PROD_BRD_V1_ADC8 3 // GOOD
 
 #define PROD_BRD_V1_RUNNING_LED 5
@@ -254,7 +254,7 @@ public:
             OnlineLED = 23;
             Buzzer = 15;
         }
-        else if(boardType == 3) {
+        else if(boardType == 3) { /* large relay board */
             NumberRelays = 5;
 
             K1Ctl = 25;

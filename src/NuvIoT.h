@@ -121,9 +121,11 @@ ADC adc(&twoWire, &state, &configPins, &console, &display, payload);
 TemperatureProbes probes(&console, &configPins, payload);
 
 RelayManager relayManager(&console, &configPins);
-OnOffDetector onOffDetector(&console, &configPins);
+OnOffDetector onOffDetector(&console, &configPins, payload);
 
 PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
+
+BLE BT(&console, &hal, &state, &ioConfig, &sysConfig, &relayManager, &ota, payload);
 
 void configureI2C(){
   if (!twoWire.setPins(configPins.Sda1, configPins.Scl1))

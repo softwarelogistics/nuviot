@@ -184,6 +184,8 @@ void BLE::refreshCharacteristics()
       pSysConfig->Id + "," +
       String(_deviceModelId) + "," +
       pSysConfig->SrvrHostName + "," +      
+      pSysConfig->SrvrUID + "," +      
+      pSysConfig->SrvrPWD + "," +      
       String(pSysConfig->Port) + "," +
       pSysConfig->SrvrType + "," +
       pSysConfig->DeviceAccessKey + "," +
