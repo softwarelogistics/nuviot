@@ -97,6 +97,9 @@ public:
     int8_t K3Ctl = -1;
     int8_t K4Ctl = -1;
     int8_t K5Ctl = -1;
+    int8_t K6Ctl = -1;
+    int8_t K7Ctl = -1;
+    int8_t K8Ctl = -1;
 
     int8_t SimRx = -1;
     int8_t SimTx = -1;    
@@ -129,13 +132,21 @@ public:
     int8_t Gpio7 = -1;
     int8_t Gpio8 = -1;
 
+    bool InvertGpio1 = false;
+    bool InvertGpio2 = false;
+    bool InvertGpio3 = false;
+    bool InvertGpio4 = false;
+    bool InvertGpio5 = false;
+    bool InvertGpio6 = false;
+    bool InvertGpio7 = false;
+
     int8_t ErrorLED = -1;
     int8_t OnlineLED = -1;
     int8_t Buzzer = -1;
     bool InvertLED = false;
 
     int8_t ModemResetPin = -1;
-    bool    InvertModemPower = false;
+    bool  InvertModemPower = false;
 
     bool HasDisplay;
     bool HasRelays;
@@ -321,6 +332,31 @@ public:
             InvertLED = false;
             ErrorLED = 33;
             OnlineLED = 32;
+        } else if(boardType == 5) {
+            ConsoleRx = CONSOLE_RX;
+            ConsoleTx = CONSOLE_TX;    
+
+            HasI2C = false;
+            HasDisplay = false;
+            HasRelays = true;
+            HasLeds = false;
+            NumberRelays = 8;
+
+            K1Ctl = 32;
+            K2Ctl = 33;
+            K3Ctl = 25;
+            K4Ctl = 26;
+            K5Ctl = 27;
+            K6Ctl = 14;
+            K7Ctl = 12;
+            K8Ctl = 13;
+
+            Gpio1 = 4;
+            Gpio2 = 17;
+            Gpio3 = 18;
+
+            OnlineLED = 23;
+            ErrorLED = -1;
         }
     }
 };

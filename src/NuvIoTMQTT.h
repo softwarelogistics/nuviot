@@ -12,6 +12,8 @@
 #include "Display.h"
 #include "Console.h"
 #include "SysConfig.h"
+#include "IOValues.h"
+#include "RelayManager.h"
 
 #define MAX_SUBSCRIPTION_COUNT 10
 
@@ -52,5 +54,7 @@ class NuvIoTMQTT {
         void publish(String topic, String payload);        
         void setMessageReceivedCallback(void (*callback)(String topic, unsigned char *buffer, size_t len));
         void handleMqttCallback(char *topic, byte *payload, unsigned int length);    
+        void sendIOValues(IOValues *values);
+        void sendRelayStatus(RelayManager *mgr);
 };
 #endif

@@ -72,7 +72,7 @@ void NuvIoTMQTT::connect(){
     {
         m_mqtt->loop();
 
-        publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", "{'firmwareversion':'" + m_state->getFirmwareVersion() + "','firmwareSku':'" + m_state->getFirmwareSKU() + "'}");
+        publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", "{'firmwareversion':'" + m_state->getFirmwareVersion() + "','firmwareSku':'" + m_state->getFirmwareSKU() + "','ipAddress':'" + m_wifi->getIPAddress() + "'}");
 
         m_console->println("wifimqtt=mqttconnected; // host=" + m_sysConfig->SrvrHostName + ".");
         for (int idx = 0; idx < m_subscriptionCount; ++idx)
@@ -319,5 +319,17 @@ void NuvIoTMQTT::loop()
 
 void NuvIoTMQTT::publish(String topic, String payload)
 {
-    m_mqtt->publish_P(topic.c_str(), (uint8_t *)payload.c_str(), payload.length(), false);
+    if(isConnected())
+        m_mqtt->publish_P(topic.c_str(), (uint8_t *)payload.c_str(), payload.length(), false);
+}
+
+void NuvIoTMQTT::sendIOValues(IOValues *values) {
+    String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/iovalues";
+    publish(topic, values->toString());
+}
+
+void NuvIoTMQTT::sendRelayStatus(RelayManager *mgr){
+    String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/relays";
+    m_console->println(mgr->toString());
+    publish(topic, mgr->toString());
 }

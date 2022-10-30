@@ -51,16 +51,6 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String hardwa
         m_console->printVerbose("nvskvp=initialized;");
     }
 
-    if (!EEPROM.begin(2048))
-    {
-        m_display->drawStr("Could not initialize", "EEPROM");
-        m_console->repeatFatalError("Could not init EEPROM storage;");
-    }
-    else
-    {
-        m_console->printVerbose("eeprom=initialized;");
-    }
-
     int countDown = 5000;
     m_console->println("pauseforbt=start;  // pause on startup.");
     while(countDown-- > 0) {

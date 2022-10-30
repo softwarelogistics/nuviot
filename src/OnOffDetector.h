@@ -10,65 +10,88 @@
 
 #define MAX_ON_OFF_CHANNELS 8
 
-class OnOffDetector : public AbstractSensor {    
-    private: 
-        Console *m_console;
-        uint8_t m_registeredChannels = 0;
-        
-        String m_channelNames[MAX_ON_OFF_CHANNELS];
-        uint8_t m_channelIndex[MAX_ON_OFF_CHANNELS];
-        uint8_t m_channels[MAX_ON_OFF_CHANNELS];
+class OnOffDetector : public AbstractSensor
+{
+private:
+    Console *m_console;
+    uint8_t m_registeredChannels = 0;
 
-        bool m_pinStates[MAX_ON_OFF_CHANNELS];
-        ConfigPins *m_configPins;
-        MessagePayload *m_payload;
+    bool m_invert[MAX_ON_OFF_CHANNELS];
+    String m_channelNames[MAX_ON_OFF_CHANNELS];
+    uint8_t m_channelIndex[MAX_ON_OFF_CHANNELS];
+    uint8_t m_channels[MAX_ON_OFF_CHANNELS];
 
-        void registerOnOffDetector(String name, uint8_t pin, uint8_t idx) {
-            m_channelNames[m_registeredChannels] = name;
-            m_channels[m_registeredChannels] = pin;
-            m_channelIndex[m_registeredChannels] = idx;
+    bool m_pinStates[MAX_ON_OFF_CHANNELS];
+    ConfigPins *m_configPins;
+    MessagePayload *m_payload;
 
-            pinMode(pin, INPUT);            
+    void registerOnOffDetector(String name, uint8_t pin, bool invert, uint8_t idx)
+    {
+        m_channelNames[m_registeredChannels] = name;
+        m_channels[m_registeredChannels] = pin;
+        m_channelIndex[m_registeredChannels] = idx;
+        m_invert[m_registeredChannels] = invert;
 
-            m_console->println("onoffdetector=configure; // " + name + " port: " + String(idx) + " pin: " + String(pin));
+        pinMode(pin, INPUT);
 
-            m_registeredChannels++;
+        m_console->println("onoffdetector=configure; // " + name + " port: " + String(idx) + " pin: " + String(pin));
+
+        m_registeredChannels++;
+    }
+
+    void configure(IOConfig *config)
+    {
+        if (config->GPIO1Config == GPIO_CONFIG_INPUT)
+            registerOnOffDetector(config->GPIO1Name, m_configPins->Gpio1, m_configPins->InvertGpio1, 1);
+        if (config->GPIO2Config == GPIO_CONFIG_INPUT)
+            registerOnOffDetector(config->GPIO2Name, m_configPins->Gpio2, m_configPins->InvertGpio1, 2);
+        if (config->GPIO3Config == GPIO_CONFIG_INPUT)
+            registerOnOffDetector(config->GPIO3Name, m_configPins->Gpio3, m_configPins->InvertGpio1, 3);
+        if (config->GPIO4Config == GPIO_CONFIG_INPUT)
+            registerOnOffDetector(config->GPIO4Name, m_configPins->Gpio4, m_configPins->InvertGpio1, 4);
+        if (config->GPIO5Config == GPIO_CONFIG_INPUT)
+            registerOnOffDetector(config->GPIO5Name, m_configPins->Gpio5, m_configPins->InvertGpio1, 5);
+        if (config->GPIO6Config == GPIO_CONFIG_INPUT)
+            registerOnOffDetector(config->GPIO6Name, m_configPins->Gpio6, m_configPins->InvertGpio1, 6);
+        if (config->GPIO7Config == GPIO_CONFIG_INPUT)
+            registerOnOffDetector(config->GPIO7Name, m_configPins->Gpio7, m_configPins->InvertGpio1, 7);
+        if (config->GPIO8Config == GPIO_CONFIG_INPUT)
+            registerOnOffDetector(config->GPIO8Name, m_configPins->Gpio8, m_configPins->InvertGpio1, 8);
+    }
+
+public:
+    OnOffDetector(Console *console, ConfigPins *configPins, MessagePayload *payload)
+    {
+        m_console = console;
+        m_configPins = configPins;
+        m_payload = payload;
+    }
+
+    void setup(IOConfig *config)
+    {
+        configure(config);
+    }
+
+    void loop()
+    {
+        for (int idx = 0; idx < m_registeredChannels; ++idx)
+        {
+            bool state = digitalRead(m_channels[idx]);
+            if(m_invert[idx])
+                state = !state;
+                
+            m_pinStates[idx] = state;
+            m_payload->ioValues->setValue(8 + (m_channelIndex[idx] - 1), m_pinStates[idx]);
         }
+    }
 
-        void configure(IOConfig *config){
-            if(config->GPIO1Config == GPIO_CONFIG_INPUT) registerOnOffDetector(config->GPIO1Name, m_configPins->Gpio1, 1);
-            if(config->GPIO2Config == GPIO_CONFIG_INPUT) registerOnOffDetector(config->GPIO2Name, m_configPins->Gpio2, 2);
-            if(config->GPIO3Config == GPIO_CONFIG_INPUT) registerOnOffDetector(config->GPIO3Name, m_configPins->Gpio3, 3);
-            if(config->GPIO4Config == GPIO_CONFIG_INPUT) registerOnOffDetector(config->GPIO4Name, m_configPins->Gpio4, 4);
-            if(config->GPIO5Config == GPIO_CONFIG_INPUT) registerOnOffDetector(config->GPIO5Name, m_configPins->Gpio5, 5);
-            if(config->GPIO6Config == GPIO_CONFIG_INPUT) registerOnOffDetector(config->GPIO6Name, m_configPins->Gpio6, 6);
-            if(config->GPIO7Config == GPIO_CONFIG_INPUT) registerOnOffDetector(config->GPIO7Name, m_configPins->Gpio7, 7);
-            if(config->GPIO8Config == GPIO_CONFIG_INPUT) registerOnOffDetector(config->GPIO8Name, m_configPins->Gpio8, 8);
+    void debugPrint()
+    {
+        for (int idx = 0; idx < m_registeredChannels; ++idx)
+        {
+            m_console->printVerbose(m_channelNames[idx] + "=" + (m_pinStates[idx] ? "on" : "off"));
         }
-
-    public:
-        OnOffDetector(Console *console, ConfigPins *configPins, MessagePayload *payload) {
-            m_console = console;
-            m_configPins = configPins;
-            m_payload = payload;
-        }
-
-        void setup(IOConfig *config) { 
-            configure(config);
-        }
-
-        void loop() {
-            for(int idx = 0; idx < m_registeredChannels; ++idx) {
-                m_pinStates[idx] = digitalRead(m_channels[idx]);
-                m_payload->ioValues->setValue(8 + (m_channelIndex[idx] - 1), m_pinStates[idx]);
-            }
-        }
-
-        void debugPrint(){
-            for(int idx = 0; idx < m_registeredChannels; ++idx) {
-                m_console->printVerbose(m_channelNames[idx] + "=" + (m_pinStates[idx] ? "on" : "off"));
-            }
-        }
+    }
 };
 
 #endif

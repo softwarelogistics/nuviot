@@ -2,7 +2,6 @@
 #define NuvIoTState_h
 
 #include <Arduino.h>
-#include <EEPROM.h>
 #include "BluetoothServer.h"
 #include "Display.h"
 #include "LedManager.h"

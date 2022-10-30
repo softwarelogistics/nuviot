@@ -139,6 +139,15 @@ public:
     String Relay7Name;
     String Relay8Name;
 
+    bool Relay1Enabled;
+    bool Relay2Enabled;
+    bool Relay3Enabled;
+    bool Relay4Enabled;
+    bool Relay5Enabled;
+    bool Relay6Enabled;
+    bool Relay7Enabled;
+    bool Relay8Enabled;
+
     String toJSON()
     {
         // Note the size is the number of elements.
@@ -243,6 +252,15 @@ public:
         doc[F("rn7")] = Relay7Name;
         doc[F("rn8")] = Relay8Name;        
 
+        doc[F("re1")] = Relay1Enabled;
+        doc[F("re2")] = Relay2Enabled;
+        doc[F("re3")] = Relay3Enabled;
+        doc[F("re4")] = Relay4Enabled;
+        doc[F("re5")] = Relay5Enabled;
+        doc[F("re6")] = Relay6Enabled;
+        doc[F("re7")] = Relay7Enabled;
+        doc[F("re8")] = Relay8Enabled;
+        
         String output;
         serializeJson(doc, output);
         return output;
@@ -436,6 +454,15 @@ public:
             Relay6Name = doc["rn6"].as<String>();
             Relay7Name = doc["rn7"].as<String>();
             Relay8Name = doc["rn8"].as<String>();            
+
+            Relay1Enabled = doc["re1"].as<boolean>();
+            Relay2Enabled = doc["re2"].as<boolean>();
+            Relay3Enabled = doc["re3"].as<boolean>();
+            Relay4Enabled = doc["re4"].as<boolean>();
+            Relay5Enabled = doc["re5"].as<boolean>();
+            Relay6Enabled = doc["re6"].as<boolean>();
+            Relay7Enabled = doc["re7"].as<boolean>();
+            Relay8Enabled = doc["re8"].as<boolean>();
 
             return true;
         }

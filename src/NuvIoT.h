@@ -77,12 +77,23 @@ TwoWire twoWire(1);
 #define BOARD_CONFIG 1
 #endif
 
+#ifdef ESP32_Relay_X8
+#undef DEFAULT_BRD
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+TwoWire twoWire(1);
+#define BOARD_CONFIG 5
+#endif
+
+
 #ifdef DEFAULT_BRD
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
 #define BOARD_CONFIG 1
 #endif
+
+
 
 Console console(&consoleSerial);
 
