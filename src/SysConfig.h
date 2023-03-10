@@ -242,6 +242,19 @@ public:
             return false;
         }
     }
+
+    void print() {
+        m_pConsole->println("DEID: " + DeviceId);
+        m_pConsole->println("COMM: " + String(Commissioned));
+        m_pConsole->println("CELL: " + String(CellEnabled));
+        m_pConsole->println("WIFI: " + String(WiFiEnabled));
+        m_pConsole->println("SRTY: " + String(SrvrType));
+        m_pConsole->println("HOST: " + SrvrHostName);
+        m_pConsole->println("ORG : " + OrgId);
+        m_pConsole->println("REP : " + RepoId);
+        m_pConsole->println("ID  : " + Id);
+    }
+
 };
 
 #endif

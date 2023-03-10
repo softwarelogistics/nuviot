@@ -1198,11 +1198,16 @@ bool SIMModem::disconnectIP()
 bool SIMModem::getCGREG()
 {
     String creg = sendCommand("AT+CGREG?");
+    bool success = creg.length() >= 10;
+    if(success) {
+        success = (creg.charAt(10) == '1' || creg.charAt(10) == '5');
+    }
 
-    if (creg.length() < 10)
-        return false;
+    if (!success){
+        m_console->printError("AT+CREG=failed; // Response: " + creg);
+    }
 
-    return (creg.charAt(10) == '1' || creg.charAt(10) == '5');
+    return success;
 }
 
 bool SIMModem::init()

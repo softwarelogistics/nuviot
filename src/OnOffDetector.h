@@ -77,12 +77,17 @@ public:
         for (int idx = 0; idx < m_registeredChannels; ++idx)
         {
             bool state = digitalRead(m_channels[idx]);
-            if(m_invert[idx])
+            if (m_invert[idx])
                 state = !state;
-                
+
             m_pinStates[idx] = state;
             m_payload->ioValues->setValue(8 + (m_channelIndex[idx] - 1), m_pinStates[idx]);
         }
+    }
+
+    bool getPinState(int idx)
+    {
+        return m_pinStates[idx];
     }
 
     void debugPrint()

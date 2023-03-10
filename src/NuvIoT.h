@@ -85,15 +85,12 @@ TwoWire twoWire(1);
 #define BOARD_CONFIG 5
 #endif
 
-
 #ifdef DEFAULT_BRD
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
 #define BOARD_CONFIG 1
 #endif
-
-
 
 Console console(&consoleSerial);
 
@@ -138,7 +135,8 @@ PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
 
 BLE BT(&console, &hal, &state, &ioConfig, &sysConfig, &relayManager, &ota, payload);
 
-void configureI2C(){
+void configureI2C()
+{
   if (!twoWire.setPins(configPins.Sda1, configPins.Scl1))
   {
     while (true)
@@ -148,13 +146,14 @@ void configureI2C(){
     }
   }
   else
-  {  
-    twoWire.begin();  
+  {
+    twoWire.begin();
     console.println("i2c=initialized; Pins SDA=" + String(configPins.Sda1) + ", SCL=" + String(configPins.Scl1) + ".");
   }
 }
 
-void configureFileSystem(){
+void configureFileSystem()
+{
   if (!SPIFFS.begin(true))
   {
     display.drawStr("Could not initialize SPIFFS.");
@@ -181,8 +180,9 @@ void configureModem(unsigned long baudRate = 115200)
 {
   console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX" + String(configPins.SimTx));
 
-  gprsPort.begin(baudRate, SERIAL_8N1); //, configPins.SimRx, configPins.SimTx);
   console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000)));
+  gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
+
   delay(500);
 }
 
@@ -192,12 +192,23 @@ void welcome(String firmwareSKU, String version)
   console.println("SOFTWARE LOGISTICS FIRMWARE");
   console.println("SKU    : " + firmwareSKU);
   console.println("VERSION: " + version);
-  switch(BOARD_CONFIG) {
-    case 1: console.println("BOARD 1: GPIO_BRD_V1, GPIO_BRD_V2, DEFAULT"); break;
-    case 2: console.println("BOARD 2: PROD_BRD_V1"); break;
-    case 3: console.println("BOARD 3: RELAY_BRD_V1"); break;
-    case 4: console.println("BOARD 4: REMOTE_TEMP_SENSOR"); break;
-    default: console.println("BOARD ?: UNKNOWN"); break;
+  switch (BOARD_CONFIG)
+  {
+  case 1:
+    console.println("BOARD 1: GPIO_BRD_V1, GPIO_BRD_V2, DEFAULT");
+    break;
+  case 2:
+    console.println("BOARD 2: PROD_BRD_V1");
+    break;
+  case 3:
+    console.println("BOARD 3: RELAY_BRD_V1");
+    break;
+  case 4:
+    console.println("BOARD 4: REMOTE_TEMP_SENSOR");
+    break;
+  default:
+    console.println("BOARD ?: UNKNOWN");
+    break;
   }
   delay(1000);
   console.println("Continue Startup");
@@ -243,7 +254,7 @@ void spinWhileNotCommissioned()
 
 #define MAX_RETRY_ATTEMPTS 4
 
-//TODO: Not a lot of value here...
+// TODO: Not a lot of value here...
 void connect(bool reconnect = false, unsigned long baud = 115200)
 {
   if (sysConfig.WiFiEnabled)
@@ -287,18 +298,19 @@ GPSData *readGPS()
 }
 
 #ifdef BOARD_CONFIG
-void initPins(){
+void initPins()
+{
   configPins.init(BOARD_CONFIG);
 }
 #endif
 
 /**
  * \brief Setup the console.
- * 
+ *
  * \param baud Baud rate for serial console (default 115200)
  * \param serialEnabled Use the configured serial port for transmitting data.
  * \param btEnabled Use Bluetooth Serial to send data.
- * 
+ *
  **/
 void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled = true)
 {
@@ -401,23 +413,26 @@ void mqttCallback(String topic, byte *buffer, size_t len)
 
 void commonLoop()
 {
-  if (sysConfig.WiFiEnabled)
+  if (sysConfig.Commissioned)
   {
-    wifiMgr.loop();
-    if (sysConfig.SrvrType == "mqtt")
+    if (sysConfig.WiFiEnabled)
     {
-      if (wifiMgr.isConnected() && sysConfig.SrvrHostName != NULL && sysConfig.SrvrHostName.length() > 0)
+      wifiMgr.loop();
+      if (sysConfig.SrvrType == "mqtt")
       {
-        wifiMQTT.loop();
+        if (wifiMgr.isConnected() && sysConfig.SrvrHostName != NULL && sysConfig.SrvrHostName.length() > 0)
+        {
+          wifiMQTT.loop();
+        }
       }
     }
-  }
-  else if (sysConfig.CellEnabled)
-  {
-    if (sysConfig.SrvrType == "mqtt")
+    else if (sysConfig.CellEnabled)
     {
-      cellMQTT.loop();
-      ping();
+      if (sysConfig.SrvrType == "mqtt")
+      {
+        cellMQTT.loop();
+        ping();
+      }
     }
   }
 
@@ -452,20 +467,25 @@ void mqttPublish(String topic, String value)
   }
 }
 
+void mqttPublish(String topic, byte *buffer, uint16_t size, byte qos)
+{
+  cellMQTT.publish(topic, buffer, size, qos);
+}
+
 void mqttPublish(String topic)
 {
   mqttPublish(topic, "");
 }
 
-
-void writeConfigPins() {
-  console.println("Has Display :" + configPins.HasDisplay ? "Yes" : "No");  
-  console.println("Has Leds    :" + configPins.HasLeds ? "Yes" : "No");  
+void writeConfigPins()
+{
+  console.println("Has Display :" + configPins.HasDisplay ? "Yes" : "No");
+  console.println("Has Leds    :" + configPins.HasLeds ? "Yes" : "No");
   console.println("LED-ONLINE  :" + String(configPins.OnlineLED));
   console.println("LED-ERROR   :" + String(configPins.ErrorLED));
-  console.println("INVERT LEDS :" + configPins.InvertLED ? "Yes" : "No");  
+  console.println("INVERT LEDS :" + configPins.InvertLED ? "Yes" : "No");
   console.println("BUZZER      :" + String(configPins.Buzzer));
-  console.println("Has Relays  :" + configPins.HasI2C ? "Yes" : "No");  
+  console.println("Has Relays  :" + configPins.HasI2C ? "Yes" : "No");
   console.println("I2C-SDA     :" + String(configPins.Sda1));
   console.println("I2C-SCL     :" + String(configPins.Scl1));
   console.println("CONSOLE-RX  :" + String(configPins.ConsoleRx));
@@ -488,12 +508,12 @@ void writeConfigPins() {
   console.println("IO5         :" + String(configPins.Gpio5));
   console.println("IO6         :" + String(configPins.Gpio6));
   console.println("IO7         :" + String(configPins.Gpio7));
-  console.println("IO8         :" + String(configPins.Gpio8));  
-  console.println("Buzzer      :" + String(configPins.Buzzer));  
-  console.println("Has Relays  :" + configPins.HasRelays ? "Yes" : "No");  
-  console.println("K1CTL       :" + String(configPins.K1Ctl));  
-  console.println("K2CTL       :" + String(configPins.K2Ctl));  
-  console.println("K3CTL       :" + String(configPins.K3Ctl));  
-  console.println("K4CTL       :" + String(configPins.K4Ctl));  
-  console.println("K5CTL       :" + String(configPins.K5Ctl));  
+  console.println("IO8         :" + String(configPins.Gpio8));
+  console.println("Buzzer      :" + String(configPins.Buzzer));
+  console.println("Has Relays  :" + configPins.HasRelays ? "Yes" : "No");
+  console.println("K1CTL       :" + String(configPins.K1Ctl));
+  console.println("K2CTL       :" + String(configPins.K2Ctl));
+  console.println("K3CTL       :" + String(configPins.K3Ctl));
+  console.println("K4CTL       :" + String(configPins.K4Ctl));
+  console.println("K5CTL       :" + String(configPins.K5Ctl));
 }
