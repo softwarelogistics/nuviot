@@ -321,24 +321,19 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
         }
 
         retryCount = 0;
-        m_console->println("mqtt=connected;");
+        m_console->println("mqttserver=connected;");
         sendStatusUpdate("MQTT", "MQTT Connected");
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
 
         m_console->println("Will connect to [" + m_sysConfig->SrvrUID + "] [" + m_sysConfig->SrvrPWD + "] [" + m_sysConfig->DeviceId + "]");
 
-        while (!m_cellMqtt->connect(m_sysConfig->SrvrUID, m_sysConfig->SrvrPWD, m_sysConfig->DeviceId) && retryCount < RETRY_COUNT)
-        {
-            handleWarning("MQTT002", "Failed to authenticate to m_mqtt server: " + m_sysConfig->SrvrHostName + " with device id => ", retryCount++);
-            delayAndCheckState(1000);
-        }
-
-        if (retryCount == RETRY_COUNT)
+        if (!m_cellMqtt->connect(m_sysConfig->SrvrUID, m_sysConfig->SrvrPWD, m_sysConfig->DeviceId))
         {
             handleError("MQTT002", "Failed to authenticate to m_mqtt: " + m_sysConfig->SrvrHostName);
             return false;
         }
+
         retryCount = 0;
         m_console->println("mqtt=authorized;");
         ;

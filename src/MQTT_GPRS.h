@@ -44,8 +44,10 @@ private:
     Console *m_console;
     Channel *m_channel;
     String m_lastError;
+    uint8_t m_lastErrorCode;
 
     bool m_closed = true;
+
 
     byte m_rxBuffer[4096];
     byte m_txBuffer[4096];

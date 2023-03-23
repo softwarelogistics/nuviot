@@ -77,6 +77,14 @@ TwoWire twoWire(1);
 #define BOARD_CONFIG 1
 #endif
 
+#ifdef CHARGE_BOARD_V1
+#undef DEFAULT_BRD
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+TwoWire twoWire(0);
+#define BOARD_CONFIG 6
+#endif
+
 #ifdef ESP32_Relay_X8
 #undef DEFAULT_BRD
 HardwareSerial gprsPort(1);
@@ -289,7 +297,6 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
   {
     modem.startGPS();
   }
-#endif
 }
 
 GPSData *readGPS()
@@ -517,3 +524,5 @@ void writeConfigPins()
   console.println("K4CTL       :" + String(configPins.K4Ctl));
   console.println("K5CTL       :" + String(configPins.K5Ctl));
 }
+
+#endif

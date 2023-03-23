@@ -464,9 +464,14 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
   // Create the BLE Server
   pServer = BLEDevice::createServer();
+
+  freeHeep = ESP.getFreeHeap();
+
   pServer->setCallbacks(new BLECustomServerCallbacks(this, pConsole));
 
   pService = pServer->createService(BLEUUID(SVC_UUID_NUVIOT));
+
+  freeHeep = ESP.getFreeHeap();
 
   pCharState = pService->createCharacteristic(CHAR_UUID_STATE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   pCharState->setCallbacks(_characteristicCallback);

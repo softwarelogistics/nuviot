@@ -864,7 +864,7 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
                 }
                 else if (msg == S_ERROR)
                 {
-                    m_console->printVerbose(String(m_cmdIdx) + " [" + msg + "] - ok");
+                    m_console->printVerbose(String(m_cmdIdx) + " [" + msg + "] - error");
                     return S_ERROR;
                 }
                 else if (msg == "+CPIN: NOT INSERTED")
@@ -1071,7 +1071,7 @@ bool SIMModem::resetModem()
 
 bool SIMModem::setPDPContext()
 {
-    sendCommand("AT+CGDCONT=?");
+    //sendCommand("AT+CGDCONT=?");
     m_console->printVerbose("existingvalue;");
     uint8_t retryCount = 0;
     while (retryCount < 5)

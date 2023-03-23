@@ -11,6 +11,9 @@
 #define GP0O1_BRD_V2_GPRS_RX 23
 #define GP0O1_BRD_V2_GPRS_TX 19
 
+#define CHARGE_BOARD_RX 19
+#define CHARGE_BOARD_TX 19
+
 #define CONSOLE_RX 5
 #define CONSOLE_TX 17
 
@@ -357,6 +360,28 @@ public:
 
             OnlineLED = 23;
             ErrorLED = -1;
+        } else if(boardType == 6) {
+            NumberRelays = 0;
+
+            ConsoleRx = CONSOLE_RX;
+            ConsoleTx = CONSOLE_TX;    
+
+            SimRx = 19;
+            SimTx = 18;
+
+            Gpio1 = 25;
+            Gpio2 = 26;
+
+            ModemResetPin = 02;
+            
+            HasDisplay = false;
+            HasRelays = false;
+            HasLeds = true;
+            HasI2C = false;
+
+            InvertLED = false;
+            ErrorLED = 33;
+            OnlineLED = 32;
         }
     }
 };

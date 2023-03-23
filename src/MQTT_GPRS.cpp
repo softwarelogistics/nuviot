@@ -84,7 +84,7 @@ bool MQTT::flush()
         String sendMessage = "AT+CIPSEND=" + String(enqueuedBytes);
         m_channel->println(sendMessage);        
         String response = m_channel->readStringUntil('\n', 3000);
-        m_console->printVerbose("mqttflush=begin; // NotTrans CIP Response: " + response + " enqueued " + String(enqueuedBytes));
+        m_console->printVerbose("mqttflush=begin; // NotTrans CIP Response: " + response);
 
         uint8_t ch = 0x00;
         uint16_t retryCount = 0;
@@ -118,10 +118,7 @@ bool MQTT::flush()
     }
 
     String response = m_channel->readStringUntil('\n', 3000);
-    m_console->printVerbose(response);
-    response = m_channel->readStringUntil('\n', 3000);
-    m_console->printVerbose(response);
-    
+    response = m_channel->readStringUntil('\n', 3000);    
     m_console->printVerbose("mqttflush=success;");
 
     return true;
@@ -146,7 +143,6 @@ int MQTT::readRemainingLength()
 
 void MQTT::handlePublishedMessage(byte qos)
 {
-    m_console->setVerboseLogging(true);
     int remainingLength = readRemainingLength();
     if (remainingLength > 0)
     {
@@ -300,8 +296,6 @@ bool MQTT::readResponse(byte expected)
 
 bool MQTT::connect(String uid, String pwd, String clientId)
 {
-    m_console->setVerboseLogging(true);
-
     byte connectFlag = 0x03;
 
     bool isAuth = uid.length() > 0 && pwd.length() > 0;
@@ -345,17 +339,51 @@ bool MQTT::connect(String uid, String pwd, String clientId)
         return false;
     }
 
+    m_closed = true;
+
+    m_lastErrorCode = 0;
+
     if (readResponse(0x20))
     {
+        size_t bytesRead = m_channel->readBytes(m_rxBuffer, 1);
+        if(bytesRead != 1)
+        {
+            m_console->printError("mqttconnect=fail; // invalid response count, expected 1 received " + String(bytesRead));
+            m_lastErrorCode = 60;
+            return false;
+        }
+
+        uint8_t expected = m_rxBuffer[0];
+
+        if(expected != 2)
+        {
+            m_console->printError("mqttconnect=fail; // invalid response count.");
+            m_lastErrorCode = 61;
+            return false;
+        }
+
+        bytesRead = m_channel->readBytes(m_rxBuffer, expected);
+        if(bytesRead != expected)
+        {
+            m_console->printError("mqttconnect=fail; // invalid response count, expected " + String(expected) + " received " + String(bytesRead) + ".");
+            m_lastErrorCode = 62;
+            return false;
+        }
+
+        if(m_rxBuffer[1] != 0x00)
+        {
+            m_console->printError("mqttconnect=fail; // could not authorize, response code: " + String(m_rxBuffer[1]));
+            m_lastErrorCode = m_rxBuffer[1];
+            return false;
+        }
+
         m_closed = false;
         m_console->printVerbose("mqttconnect=success;");
-        m_console->setVerboseLogging(true);
         return true;
     }
     else
     {
         m_console->printError("mqttconnect=fail; // invalid response.");
-        m_console->setVerboseLogging(true);
         return false;
     }
 }
@@ -528,8 +556,6 @@ bool MQTT::ping()
         return false;
     }
         
-    m_console->setVerboseLogging(true);
-
     if (readResponse(0xD0))
     {
         return readResponse(0x00);
@@ -549,8 +575,6 @@ void MQTT::loop()
 {
     if (m_channel->available() > 0)
     {
-        m_console->setVerboseLogging(true);
         checkForReceivedMessages();
-        m_console->setVerboseLogging(false);
     }
 }

@@ -40,10 +40,7 @@ size_t Channel::readBytes(byte *buffer, size_t length)
 
         if (bufflen > 0)
         {
-            bool isVerbose = m_console->getVerboseLogging();
-            m_console->setVerboseLogging(true);
             m_console->printByteArray(buffer, bufflen);
-            m_console->setVerboseLogging(isVerbose);
         }
 
         return -1;
@@ -58,8 +55,6 @@ void Channel::clearBuffers()
     size_t bufflen = m_stream->available();
     if (bufflen > 0)
     {
-        bool isVerbose = m_console->getVerboseLogging();
-        m_console->setVerboseLogging(true);
         m_console->println("channel=clearbuffer;  // start");
         m_console->println("channel=remaining;  // Bytes left in buffer " + String(bufflen));
         size_t bytes_to_read = bufflen > RX_BUFFER_SIZE ? RX_BUFFER_SIZE : bufflen;
@@ -72,8 +67,6 @@ void Channel::clearBuffers()
                 bytes_to_read = bufflen > RX_BUFFER_SIZE ? RX_BUFFER_SIZE : bufflen;
         }
         m_console->println("channel=clearbuffer;  // complete");
-
-        m_console->setVerboseLogging(isVerbose);
     }
     m_txHead = 0;
     m_txTail = 0;
