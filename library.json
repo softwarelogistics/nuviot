@@ -6,7 +6,11 @@
         "type": "git",
         "url": "https://github.com/softwarelogistics/FirmwareExamples"
     },
+<<<<<<< HEAD
     "version": "3.2",
+=======
+    "version": "3.0",
+>>>>>>> f9a9a26b0972909d34905bc49cb44355bb889cdc
     "exclude": "tests",
     "exclude": ".git",
     "exclude": ".vscode",
