@@ -39,6 +39,7 @@ class Hal {
         void enableHWWatchdog(long delaySeconds);
         void disableHWWatchdog();
         void feedHWWatchdog();
+        String getBLEAddress();
         void loop();
 };
 

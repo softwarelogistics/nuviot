@@ -35,6 +35,7 @@
 #include "Rest.h"
 #include <PubSubClient.h>
 
+
 #define DEFAULT_BRD
 
 #ifdef PROD_BRD_V1
@@ -218,8 +219,22 @@ void welcome(String firmwareSKU, String version)
     console.println("BOARD ?: UNKNOWN");
     break;
   }
+  console.println("Continue Startup");  
+  if(sysConfig.DeviceId != NULL && sysConfig.DeviceId.length() > 0)
+    console.println("Device Id        : " + String(sysConfig.DeviceId));
+  else
+    console.println("Device Id        : Not Configured");
+
+  console.println("Cellular Enabled : " + String(sysConfig.CellEnabled));
+  console.println("WiFi Enabled     : " + String(sysConfig.WiFiEnabled));
+  console.println("Commissioned     : " + String(sysConfig.Commissioned));
+  console.println("GPS Enabled      : " + String(sysConfig.GPSEnabled));
+  if(sysConfig.SrvrType != NULL && sysConfig.SrvrType.length() > 0)
+    console.println("Server Type     : " + String(sysConfig.SrvrType));
+  else
+    console.println("Server Type     : Not Configured");
+
   delay(1000);
-  console.println("Continue Startup");
 }
 
 void loadConfigurations()
@@ -443,8 +458,48 @@ void commonLoop()
     }
   }
 
+  hal.loop();
   console.loop();
   state.loop();
+  ledManager.loop();
+  probes.loop();
+}
+
+long __nextSend = 0;
+
+void sendIOValues()
+{
+  String pathOrTopic = "nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/iovalues";
+
+  if (sysConfig.Commissioned && __nextSend < millis())
+  {
+    __nextSend = millis() + sysConfig.SendUpdateRate;
+
+    if (sysConfig.WiFiEnabled)
+    {
+      if (sysConfig.SrvrType == "mqtt")
+      {
+        console.println(ioValues.getCSV());
+        wifiMQTT.publish(pathOrTopic, ioValues.getCSV());
+      }
+      else if (sysConfig.SrvrType == "rest")
+      {
+        wifiMgr.post(sysConfig.SrvrHostName,sysConfig.Port, pathOrTopic, ioValues.getCSV());
+      }
+    }
+    else if (sysConfig.CellEnabled)
+    {
+      if (sysConfig.SrvrType == "mqtt")
+      {
+        cellMQTT.publish(pathOrTopic, ioValues.getCSV(), 1);
+      }
+      else if (sysConfig.SrvrType == "rest")
+      {
+        String url = "http://" + sysConfig.SrvrHostName + ":" + sysConfig.Port + "/" + pathOrTopic;
+        httpPost(url, ioValues.getCSV());
+      }
+    }
+  }
 }
 
 void mqttSubscribe(String topic)
@@ -476,7 +531,14 @@ void mqttPublish(String topic, String value)
 
 void mqttPublish(String topic, byte *buffer, uint16_t size, byte qos)
 {
-  cellMQTT.publish(topic, buffer, size, qos);
+  if (sysConfig.WiFiEnabled)
+  {
+    wifiMQTT.publish(topic, buffer, size);
+  }
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.publish(topic, buffer, size, qos);
+  }
 }
 
 void mqttPublish(String topic)

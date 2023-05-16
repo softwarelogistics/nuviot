@@ -17,11 +17,13 @@ NuvIoTState::NuvIoTState(Display *display, IOConfig *config, SysConfig *sysConfi
     m_ledManager = ledManager;
 }
 
-void NuvIoTState::init(String firmwareSku, String firmwareVersion, String hardwareRevision, String deviceConfigKey, uint16_t structureVersion)
+void NuvIoTState::init(String firmwareSku, String firmwareVersion, String hardwareRevision, String deviceModelKey, uint16_t structureVersion)
 {
     m_firmwareSku = firmwareSku;
     m_firmwareVersion = firmwareVersion;
     m_hardwareRevision = hardwareRevision;    
+    m_deviceModelKey = deviceModelKey;
+    
     esp_err_t openStat = nvs_open_from_partition("nvs", "kvp", NVS_READWRITE, &m_nvsHandle);
     if (openStat != ESP_OK)
     {
@@ -800,3 +802,4 @@ void NuvIoTState::registerBool(const char *keyName, boolean defaultValue)
 String NuvIoTState::getHardwareRevision() { return m_hardwareRevision; }
 String NuvIoTState::getFirmwareVersion() { return m_firmwareVersion; }
 String NuvIoTState::getFirmwareSKU() { return m_firmwareSku; }
+String NuvIoTState::getDeviceModelKey() {return m_deviceModelKey; }

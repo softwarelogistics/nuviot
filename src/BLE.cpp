@@ -160,20 +160,21 @@ void BLE::refreshCharacteristics()
 {
   String state =
       pState->getFirmwareSKU() + "," +                   // 0
-      pState->getFirmwareVersion() + "," +               // 1
-      pState->getHardwareRevision() + "," +              // 2
-      (pSysConfig->Commissioned ? "1," : "0,") +         // 3
-      String(pState->getWiFiState()) + "," +             // 4
-      String(pState->getWiFiRSSI()) + "," +              // 5
-      pState->getWiFiIPAddress()+  "," +                 // 6
-      (pState->getIsCellConnected() ? "1," : "0,") +     // 7
-      String(pState->getCellRSSI()) + "," +              // 8
-      pState->getCellIPAddress()+  "," +                 // 9
-      (pState->getIsCloudConnected() ? "1," : "0,") +    // 10
-      String(pState->getInputVoltage()) + "," +          // 11
-      (pState->getExternalPower() ? "1," : "0,") +       // 12
-      String(pState->OTAState) + "," +                   // 13
-      String(pState->OTAParam);                          // 14
+      pState->getDeviceModelKey() + "," +                // 1
+      pState->getFirmwareVersion() + "," +               // 2
+      pState->getHardwareRevision() + "," +              // 3
+      (pSysConfig->Commissioned ? "1," : "0,") +         // 4
+      String(pState->getWiFiState()) + "," +             // 5
+      String(pState->getWiFiRSSI()) + "," +              // 6
+      pState->getWiFiIPAddress()+  "," +                 // 7
+      (pState->getIsCellConnected() ? "1," : "0,") +     // 8
+      String(pState->getCellRSSI()) + "," +              // 9
+      pState->getCellIPAddress()+  "," +                 // 10
+      (pState->getIsCloudConnected() ? "1," : "0,") +    // 11
+      String(pState->getInputVoltage()) + "," +          // 12
+      (pState->getExternalPower() ? "1," : "0,") +       // 13
+      String(pState->OTAState) + "," +                   // 14
+      String(pState->OTAParam);                          // 15
 
   pCharState->setValue((uint8_t *)state.c_str(), state.length());
 
@@ -513,7 +514,7 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
   double freeBytes = ESP.getFreeHeap() / 1024.0;
 
   pConsole->println("ble=allocated; // allocated for BLE: " + String(bleBytes) + "KB; free: " + String(freeBytes) + "KB");
-
+  pConsole->println("bleaddress=" + pHal->getBLEAddress() + "; // Address of BLE interface (may not be same as iOS)" );
   refreshCharacteristics();
 
   return true;

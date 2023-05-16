@@ -175,7 +175,7 @@ public:
         PingRate = 120;
         SendUpdateRate = 120;
         GPSUpdateRate = 5;
-        GPSEnabled = true;
+        GPSEnabled = false;
 
         OrgId = "";
         Id = "";

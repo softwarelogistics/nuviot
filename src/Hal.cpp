@@ -1,5 +1,7 @@
 #include "Hal.h"
 #include <esp_task_wdt.h>
+#include <esp_bt_main.h>
+#include <esp_bt_device.h>
 
 void Hal::restart(long pauseMS)
 {
@@ -12,20 +14,23 @@ void Hal::restart()
     ESP.restart();
 }
 
-void Hal::loop() {
-    if(m_restartMS > 0 && millis() > m_restartMS){
+void Hal::loop()
+{
+    if (m_restartMS > 0 && millis() > m_restartMS)
+    {
         ESP.restart();
     }
 }
 
-void Hal::queueRestart(long delayMS) {
-    m_restartMS = millis() + delayMS;    
+void Hal::queueRestart(long delayMS)
+{
+    m_restartMS = millis() + delayMS;
 }
 
 void Hal::enableHWWatchdog(long delaySeconds)
 {
-    esp_task_wdt_init(delaySeconds, true); //enable panic so ESP32 restarts
-    esp_task_wdt_add(NULL);                //add current thread to WDT watch
+    esp_task_wdt_init(delaySeconds, true); // enable panic so ESP32 restarts
+    esp_task_wdt_add(NULL);                // add current thread to WDT watch
 }
 
 void Hal::disableHWWatchdog()
@@ -35,6 +40,28 @@ void Hal::disableHWWatchdog()
 void Hal::feedHWWatchdog()
 {
     esp_task_wdt_reset();
+}
+
+String Hal::getBLEAddress()
+{
+    String bleAddress = "";
+    const uint8_t *point = esp_bt_dev_get_address();
+    if(point == NULL)
+        return "BLE NOT RUNNING";
+    
+    for (int i = 0; i < 6; i++)
+    {
+        char hexChar[3];
+        uint8_t pt = point[i];        
+        sprintf(hexChar, "%02X", pt);
+        bleAddress.concat(String(hexChar));
+        if (i < 5)
+        {
+            bleAddress.concat(":");
+        }
+    }
+
+    return bleAddress;
 }
 
 reset_reason_t Hal::resetReason()

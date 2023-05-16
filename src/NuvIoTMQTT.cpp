@@ -317,6 +317,11 @@ void NuvIoTMQTT::loop()
     }
 }
 
+void NuvIoTMQTT::publish(String topic, byte* buffer, uint16_t length) {
+    if(isConnected())
+        m_mqtt->publish_P(topic.c_str(), buffer, length, false);
+}
+
 void NuvIoTMQTT::publish(String topic, String payload)
 {
     if(isConnected())

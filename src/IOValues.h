@@ -58,6 +58,16 @@ public:
         return "-1";
     }
 
+    String getCSV() {
+        String csv;
+        csv.reserve(255);
+        for(int idx = 0; idx < PORT_COUNT; ++idx){
+            csv += (idx > 0 ? "," : "") + Values[idx];
+        }
+
+        return csv;
+    }
+
     double getDoubleValue(byte idx) {
         if(idx < PORT_COUNT){
             return atof(Values[idx].c_str());

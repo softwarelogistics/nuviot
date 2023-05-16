@@ -52,6 +52,7 @@ class NuvIoTMQTT {
         bool isConnected();
         void addSubscriptions(String subscription);
         void publish(String topic, String payload);        
+        void publish(String topic, byte* buffer, uint16_t length);
         void setMessageReceivedCallback(void (*callback)(String topic, unsigned char *buffer, size_t len));
         void handleMqttCallback(char *topic, byte *payload, unsigned int length);    
         void sendIOValues(IOValues *values);

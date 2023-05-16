@@ -114,6 +114,7 @@ private:
     String m_firmwareSku;
     String m_firmwareVersion;
     String m_hardwareRevision;
+    String m_deviceModelKey;
     String m_wiFi_ipAddress = "0.0.0.0";
     String m_cell_ipAddress = "0.0.0.0";
 
@@ -135,7 +136,7 @@ private:
 
 public:
     NuvIoTState(Display *display, IOConfig *ioConfig, SysConfig *sysConfig, LedManager *ledManager, FS *fs, Hal *hal, Console *console);
-    void init(String firmwareSku, String firmwareVersion, String hardwareRevision, String deviceConfigKey, uint16_t deviceConfigVersion);
+    void init(String firmwareSku, String firmwareVersion, String hardwareRevision, String deviceModelKey, uint16_t deviceConfigVersion);
     bool isValid();
     void loop();
 
@@ -149,6 +150,7 @@ public:
     String getHardwareRevision();
     String getFirmwareVersion();
     String getFirmwareSKU();
+    String getDeviceModelKey();
 
     
     WiFiConnectionStates getWiFiState() { return m_isWiFiConnectionState; }
