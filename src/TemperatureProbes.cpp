@@ -67,7 +67,7 @@ void TemperatureProbes::readTemperatures()
                 }
                 else
                 {
-                    m_payload->ioValues->setValue(idx + 8, temperature);
+                    m_payload->ioValues->setValue(idx, temperature);
                     success = true;
                 }
             }
@@ -95,7 +95,7 @@ void TemperatureProbes::readTemperatures()
                     }
                     else {
                         success = true;
-                        m_payload->ioValues->setValue(idx + 8, temperature);                    
+                        m_payload->ioValues->setValue(idx, temperature);                    
                     }
                 }
                 else 
@@ -167,7 +167,7 @@ void TemperatureProbes::loop(double values[])
 {
     for(int idx = 0; idx < 8; ++idx){
         if(m_sensorConfigurations[idx] != None){
-            m_payload->ioValues->setValue(idx + 8, values[idx]);
+            m_payload->ioValues->setValue(idx, values[idx]);
         }
     }
 }

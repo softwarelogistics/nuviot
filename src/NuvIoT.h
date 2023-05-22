@@ -479,7 +479,6 @@ void sendIOValues()
     {
       if (sysConfig.SrvrType == "mqtt")
       {
-        console.println(ioValues.getCSV());
         wifiMQTT.publish(pathOrTopic, ioValues.getCSV());
       }
       else if (sysConfig.SrvrType == "rest")
