@@ -76,8 +76,10 @@ void NuvIoTMQTT::connect(){
         m_console->println("wifimqtt=mqttconnected; // host=" + m_sysConfig->SrvrHostName + ".");
         for (int idx = 0; idx < m_subscriptionCount; ++idx)
         {
-            m_mqtt->subscribe(m_subscriptions[idx].c_str());
-            m_console->println("wifimqtt=subscribed; // subscription=" + m_subscriptions[idx]);
+            if(m_mqtt->subscribe(m_subscriptions[idx].c_str()))
+                m_console->println("wifimqtt-subscribed=success; // subscription=" + m_subscriptions[idx]);
+            else
+                m_console->println("wifimqtt=subscribed=failed; // subscription=" + m_subscriptions[idx]);
         }
 
         m_mqtt->setCallback(mqttCallback);

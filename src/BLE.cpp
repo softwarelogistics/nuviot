@@ -111,7 +111,9 @@ void otaCallback::onNotify(BLECharacteristic *pCharacteristic)
 
 void otaCallback::onWrite(BLECharacteristic *pCharacteristic)
 {
-  pBle->handleWriteCharacteristic(pCharacteristic);
+  String value = String(pCharacteristic->getValue().c_str());
+
+  pBle->handleWriteCharacteristic(pCharacteristic, value);
 }
 
 void BLECustomServerCallbacks::onConnect(BLEServer *pServer)
@@ -287,11 +289,15 @@ void BLE::handleReadCharacteristic(BLECharacteristic *characteristic)
   refreshCharacteristics();
 }
 
-void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
+void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String value)
 {
   m_lastClientActivity = millis();
 
-  String input = String(characteristic->getValue().c_str());
+  unsigned char cstr[characteristic->getValue().size()];
+  memcpy(cstr, characteristic->getValue().data(), characteristic->getValue().size());
+
+  String input = value;
+
   const char *uuid = characteristic->getUUID().toString().c_str();
   String charId = String(characteristic->getUUID().toString().c_str());
 
@@ -363,19 +369,22 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic)
         pSysConfig->Id = value;
       else if (key == "repoid")
         pSysConfig->RepoId = value;
-      else if (key == "dfu") 
-        pOta->downloadOverWiFi("http://firmware.nuviot.com:14236/api/firmware/download/" + value);
-      else if(key == "reboot" && value == "1")
+      else if (key == "dfu")  {
+        pState->OTAState = 100;
+        pOta->setDownloadUrl("http://firmware.nuviot.com:14236/api/firmware/download/" + value);
+        stop();
+      } else if(key == "reboot" && value == "1") {
         pHal->restart();      
-      else if(key == "factoryreset" && value == "1") {
+      } else if(key == "factoryreset" && value == "1") {
         pSysConfig->setDefaults();
         pSysConfig->write();
         pIOConfig->setDefaults();
         pIOConfig->write();
         pHal->queueRestart(1000);
       }
-      else
+      else {
         pConsole->printError("UKNOWN KEY TYPE: " + key);
+      }
     }
 
     pSysConfig->write();
@@ -513,8 +522,8 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
   double bleBytes = (freeHeep - ESP.getFreeHeap()) / 1024.0;
   double freeBytes = ESP.getFreeHeap() / 1024.0;
 
-  pConsole->println("ble=allocated; // allocated for BLE: " + String(bleBytes) + "KB; free: " + String(freeBytes) + "KB");
-  pConsole->println("bleaddress=" + pHal->getBLEAddress() + "; // Address of BLE interface (may not be same as iOS)" );
+  pConsole->println(String(F("ble=allocated; // allocated for BLE: ")) + String(bleBytes) + "KB; free: " + String(freeBytes) + "KB");
+  pConsole->println(String(F("bleaddress=")) + pHal->getBLEAddress() + String(F("; // Address of BLE interface (may not be same as iOS)")) );
   refreshCharacteristics();
 
   return true;
@@ -522,28 +531,36 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
 void BLE::update()
 {
-  this->refreshCharacteristics();
-
-  if (m_isConnected)
+  if(pService != NULL)
   {
-    if (m_nextNotify < millis())
-    {
-      m_nextNotify = pSysConfig->SendUpdateRate + millis();
-      pCharState->notify(true);
-      pCharIOValue->notify(true);
-      pConsole->println("send");
-    }
+    this->refreshCharacteristics();
 
-    /*if (millis() - m_lastClientActivity > 5000)
+    if (m_isConnected)
     {
-      pServer->disconnect(m_connectionId);
-      pConsole->printWarning(F("ble=activitytimeout;"));
-    }*/
+      if (m_nextNotify < millis())
+      {
+        m_nextNotify = pSysConfig->SendUpdateRate + millis();
+        pCharState->notify(true);
+        pCharIOValue->notify(true);
+        pConsole->println(F("[BLE__update]"));
+      }
+
+      /*if (millis() - m_lastClientActivity > 5000)
+      {
+        pServer->disconnect(m_connectionId);
+        pConsole->printWarning(F("ble=activitytimeout;"));
+      }*/
+    }
   }
 }
 
 void BLE::stop()
 {
+  pConsole->println(F("[BLE__stopping]"));
+
+  m_isConnected = false;
+  
+  
   if (pService != NULL)
   {
     pService->stop();
@@ -555,6 +572,10 @@ void BLE::stop()
     m_pAdvertising->stop();
     m_pAdvertising = NULL;
   }
+
+  BLEDevice::deinit(true);
+
+  pConsole->println(F("[BLE__stop]"));
 }
 
 //

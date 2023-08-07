@@ -79,6 +79,9 @@ void WiFiConnectionHelper::loop()
             m_state->setWiFiState(WiFi_Connected);
             m_state->setWiFiIPAddress(sIPAddress);
             m_wifiState = NuvIoTWiFi_Connected;
+
+            uint32_t freeHeep = ESP.getFreeHeap();
+            m_console->println("[WiFiConnectionHelper__loop]: freeafterconnect= " + String(freeHeep));
         }
 
         // This is the state we normally want to be in.

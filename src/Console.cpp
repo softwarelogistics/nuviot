@@ -30,7 +30,6 @@ void Console::loop()
         for (int idx = 0; idx < bytesToRead; ++idx)
         {
             int ch = m_stream->read();
-            m_stream->write(ch);            
             if (ch == '\n')
             {
                 String cmd = String(m_consoleInBuffer);

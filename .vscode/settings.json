@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.h": "cpp",
         "istream": "cpp",
         "xlocale": "cpp",
         "xlocinfo": "cpp",
@@ -15,6 +16,7 @@
         "xlocmon": "cpp",
         "xlocnum": "cpp",
         "limits": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "ostream": "cpp"
     }
 }

@@ -120,7 +120,7 @@ GPSData *gps = NULL;
 
 Channel channel(&gprsPort, &console);
 SIMModem modem(&display, &channel, &console, &hal, &configPins);
-OtaServices ota(&display, &console, &modem, &hal);
+OtaServices ota(&display, &console, &state, &modem, &hal);
 
 WiFiClient wifiClient;
 WiFiConnectionHelper wifiMgr(&wifiClient, &display, &ledManager, &state, &hal, &console, &sysConfig);
@@ -190,6 +190,8 @@ void configureModem(unsigned long baudRate = 115200)
   console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX" + String(configPins.SimTx));
 
   console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000)));
+
+  modem.init();
   gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
 
   delay(500);
@@ -199,8 +201,9 @@ void welcome(String firmwareSKU, String version)
 {
   console.println("WELCOME");
   console.println("SOFTWARE LOGISTICS FIRMWARE");
-  console.println("SKU    : " + firmwareSKU);
-  console.println("VERSION: " + version);
+  console.println("SKU        : " + firmwareSKU);
+  console.println("APP-VERSION: " + version);
+  console.println("LIB-VERSION: " + state.getLibraryVersion());
   switch (BOARD_CONFIG)
   {
   case 1:
@@ -327,7 +330,7 @@ void initPins()
 #endif
 
 /**
- * \brief Setup the console.
+ * \brief Setup the c.
  *
  * \param baud Baud rate for serial console (default 115200)
  * \param serialEnabled Use the configured serial port for transmitting data.
@@ -336,7 +339,7 @@ void initPins()
  **/
 void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled = true)
 {
-  consoleSerial.begin(baud, SERIAL_8N1, configPins.ConsoleRx, configPins.ConsoleTx);
+  consoleSerial.begin(baud, SERIAL_8N1);
   console.enableSerialOut(serialEnabled);
   console.enableBTOut(btEnabled);
   console.registerCallback(handleConsoleCommand);

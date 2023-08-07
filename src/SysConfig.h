@@ -55,8 +55,6 @@ public:
     unsigned long GPRSModemBaudRate;
 
     String toJSON(){
-        uint32_t freeHeep = ESP.getFreeHeap();
-        m_pConsole->println("Free Memory: " + String(freeHeep));
 
         const size_t capacity = JSON_OBJECT_SIZE(64);
         DynamicJsonDocument doc(capacity);

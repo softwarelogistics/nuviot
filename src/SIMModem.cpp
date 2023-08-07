@@ -516,7 +516,7 @@ bool SIMModem::beginDownload(String url)
     m_channel->clearBuffers();
     delay(1000);
 
-    m_display->drawStr("Starting firware", "update process.");
+    m_display->drawStr("Starting firmware", "update process.");
 
     m_console->println("fwupdate=start; // url=" + url);
 
@@ -1212,6 +1212,12 @@ bool SIMModem::getCGREG()
 
 bool SIMModem::init()
 {
+   if(m_rxBuffer == NULL)
+        m_rxBuffer = (byte*)malloc(DOWNLOAD_BUFFER_SIZE);
+
+    if(m_tempBuffer == NULL)
+        m_tempBuffer = (byte*)malloc(TEMP_BUFFER_SIZE);
+
     m_console->printVerbose("Initialization of SIM Modem Started.");
 
     if (!setBand())

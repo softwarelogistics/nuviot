@@ -296,6 +296,12 @@ bool MQTT::readResponse(byte expected)
 
 bool MQTT::connect(String uid, String pwd, String clientId)
 {
+    if(m_rxBuffer == NULL)
+        m_rxBuffer = (byte*)malloc(BUFF_SIZE);
+
+    if(m_txBuffer == NULL)
+        m_txBuffer = (byte*)malloc(BUFF_SIZE);
+
     byte connectFlag = 0x03;
 
     bool isAuth = uid.length() > 0 && pwd.length() > 0;

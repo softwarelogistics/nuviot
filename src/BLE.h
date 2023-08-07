@@ -90,13 +90,13 @@ public:
   void writeConsoleOutput(String msg);
 
   void handleReadCharacteristic(BLECharacteristic *characteristic);
-  void handleWriteCharacteristic(BLECharacteristic *characteristic);
+  void handleWriteCharacteristic(BLECharacteristic *characteristic, String value);
   void handleNotifyCharacteristic(BLECharacteristic *characteristic);
 
   void clientConnected(int connectionId)
   {
     m_connectionId = connectionId;
-    pConsole->println("ble=connected; // Conenction Id: " + String(connectionId));
+    pConsole->println("ble=connected; // Connection Id: " + String(connectionId));
     refreshCharacteristics();
     m_lastClientActivity = millis();
     m_isConnected = true;    
@@ -105,7 +105,7 @@ public:
   void clientDisconnected(int connectionId)
   {
     m_isConnected = false;
-    pConsole->println("ble=disconnected; // Conenction Id: " + String(connectionId));    
+    pConsole->println("ble=disconnected; // Connection Id: " + String(connectionId));    
   }
 
   bool getIsConnected(){

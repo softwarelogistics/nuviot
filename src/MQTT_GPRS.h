@@ -13,6 +13,8 @@
 #define QOS1 1
 #define QOS2 2
 
+#define BUFF_SIZE 4092
+
 class MQTT {
 public:
     MQTT(Channel *stream, Console *console);
@@ -48,9 +50,8 @@ private:
 
     bool m_closed = true;
 
-
-    byte m_rxBuffer[4096];
-    byte m_txBuffer[4096];
+    byte *m_rxBuffer = NULL;
+    byte *m_txBuffer = NULL;
 
     int m_rxBufferHead = 0;
     int m_rxBufferTail = 0;

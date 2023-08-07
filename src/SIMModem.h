@@ -34,6 +34,7 @@ public:
     SIMModem(Display *display, Channel *channel, Console *console, Hal *hal, ConfigPins *pins);
     SIMModem(Channel *channel, Console *console, Hal *hal, ConfigPins *pins);
 
+    bool init();
     bool isServiceConnected();
     bool isModemOnline();
     bool connectGPRS();
@@ -58,7 +59,6 @@ public:
     bool softwarePowerOff();
 
     bool beginDownload(String url);
-    bool init();
     bool enableTransparentMode();
     bool disableTransparentMode();
     bool exitDataMode();
@@ -77,8 +77,8 @@ public:
     GPSData *readGPS();
     
 private:
-    byte m_tempBuffer[TEMP_BUFFER_SIZE];
-    byte m_rxBuffer[DOWNLOAD_BUFFER_SIZE];
+    byte *m_tempBuffer = NULL;
+    byte *m_rxBuffer = NULL;
 
     String m_lastError;
     String m_apn;
