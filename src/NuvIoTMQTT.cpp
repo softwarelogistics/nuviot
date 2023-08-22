@@ -25,8 +25,10 @@ NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, Console *console, W
     mqttInstance = this;
 }
 
-void NuvIoTMQTT::connect(){
-    if(m_sysConfig->SrvrHostName == "") {
+void NuvIoTMQTT::connect()
+{
+    if (m_sysConfig->SrvrHostName == "")
+    {
         m_console->printWarning("wifimqtt=notconfigured; // No mqtt host configured, will not attempt to connect.");
         return;
     }
@@ -76,11 +78,17 @@ void NuvIoTMQTT::connect(){
         m_console->println("wifimqtt=mqttconnected; // host=" + m_sysConfig->SrvrHostName + ".");
         for (int idx = 0; idx < m_subscriptionCount; ++idx)
         {
-            if(m_mqtt->subscribe(m_subscriptions[idx].c_str()))
+            if (m_mqtt->subscribe(m_subscriptions[idx].c_str()))
                 m_console->println("wifimqtt-subscribed=success; // subscription=" + m_subscriptions[idx]);
             else
-                m_console->println("wifimqtt=subscribed=failed; // subscription=" + m_subscriptions[idx]);
+                m_console->printError("wifimqtt=subscribed=failed; // subscription=" + m_subscriptions[idx]);
         }
+
+        String dvcServiceSubscription = "nuviot/dvcsrvc/" + m_sysConfig->DeviceId + "/#";
+        if (m_mqtt->subscribe(dvcServiceSubscription.c_str()))
+            m_console->println("wifimqtt-subscribed=success; // subscription=" + dvcServiceSubscription);
+        else
+            m_console->printError("wifimqtt=subscribed=failed; // subscription=" + dvcServiceSubscription);
 
         m_mqtt->setCallback(mqttCallback);
 
@@ -158,7 +166,7 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
         if (parts[0] == "nuviot" &&
             parts[1] == "dvcsrvc")
         {
-            /* ok if we were on a micro-controller, I'd probably be less tempted 
+            /* ok if we were on a micro-controller, I'd probably be less tempted
              * to take a short cut and use a string...we'll we aren't.
              */
             String action = parts[3];
@@ -222,9 +230,15 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
             {
                 if (partIdx >= 4)
                 {
-                    String url = "http://api.nuviot.com/api/firmware/download/" + parts[4];
+                    String url = "http://firmware.nuviot.com:14236/api/firmware/download/" + parts[4];
                     publish(String("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/fwupdate/start"), String("{'url':'" + url + "'}"));
-                    m_ota->start(url);
+
+                    if(m_wifi->isConnected()) {
+                        m_ota->downloadOverWiFi(url);
+                    }
+                    else {                        
+                        m_ota->start(url);                        
+                    }
                 }
             }
         }
@@ -318,23 +332,26 @@ void NuvIoTMQTT::loop()
     }
 }
 
-void NuvIoTMQTT::publish(String topic, byte* buffer, uint16_t length) {
-    if(isConnected())
+void NuvIoTMQTT::publish(String topic, byte *buffer, uint16_t length)
+{
+    if (isConnected())
         m_mqtt->publish_P(topic.c_str(), buffer, length, false);
 }
 
 void NuvIoTMQTT::publish(String topic, String payload)
 {
-    if(isConnected())
+    if (isConnected())
         m_mqtt->publish_P(topic.c_str(), (uint8_t *)payload.c_str(), payload.length(), false);
 }
 
-void NuvIoTMQTT::sendIOValues(IOValues *values) {
+void NuvIoTMQTT::sendIOValues(IOValues *values)
+{
     String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/iovalues";
     publish(topic, values->toString());
 }
 
-void NuvIoTMQTT::sendRelayStatus(RelayManager *mgr){
+void NuvIoTMQTT::sendRelayStatus(RelayManager *mgr)
+{
     String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/relays";
     m_console->println(mgr->toString());
     publish(topic, mgr->toString());

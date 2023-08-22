@@ -48,6 +48,7 @@ public:
     ~OtaServices();
 
     bool downloadWithModem(String url);
+    bool downloadWithModem();
     bool downloadOverWiFi();
     bool downloadOverWiFi(String url);
     void setDownloadUrl(String url) {m_url = url;}

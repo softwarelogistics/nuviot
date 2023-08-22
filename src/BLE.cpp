@@ -321,7 +321,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       String key = input.substring(lastEnd, equalDelimiter);
       String value = input.substring(equalDelimiter + 1, valueEnd == -1 ? final : valueEnd);
 
-      pConsole->println("blewrite=write; // char=sysconfig; Set: " + key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
+      pConsole->println("blewrite=write; //char=sysconfig; set: " + key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
 
       // if we don't have a , that means we are past the final item
       done = valueEnd == -1;
@@ -370,9 +370,15 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       else if (key == "repoid")
         pSysConfig->RepoId = value;
       else if (key == "dfu")  {
+
+        pConsole->println("Starting firmware update process");
+        //Note we can't start the download on this thread, so set the OTA STate = 100 to let 
+        //a different thread know that we have a URL that can be used to start download process.
+        String url = "http://firmware.nuviot.com:14236/api/firmware/download/" + value;
+        pConsole->println("Starting Download: " + url);
+        pOta->setDownloadUrl(url);        
         pState->OTAState = 100;
-        pOta->setDownloadUrl("http://firmware.nuviot.com:14236/api/firmware/download/" + value);
-        stop();
+        // give it about one second for the client to finalize the connection;
       } else if(key == "reboot" && value == "1") {
         pHal->restart();      
       } else if(key == "factoryreset" && value == "1") {
@@ -559,19 +565,23 @@ void BLE::stop()
   pConsole->println(F("[BLE__stopping]"));
 
   m_isConnected = false;
-  
-  
-  if (pService != NULL)
-  {
-    pService->stop();
-    pService = NULL;
-  }
 
-  if (m_pAdvertising != NULL)
+
+  pConsole->println(F("[BLE__stop] - Advertising Stop"));
+  /*if (m_pAdvertising != NULL)
   {
     m_pAdvertising->stop();
     m_pAdvertising = NULL;
   }
+
+  pConsole->println(F("[BLE__stop] - Service Stop"));
+  if (pService != NULL)
+  {
+    pService->stop();
+    pService = NULL;
+  }*/
+
+  pConsole->println(F("[BLE__stop] - Before DeInit"));
 
   BLEDevice::deinit(true);
 

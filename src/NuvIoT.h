@@ -461,6 +461,14 @@ void commonLoop()
     }
   }
 
+  if(state.OTAState == 100)
+  {
+    if(wifiMgr.isConnected())
+      ota.downloadOverWiFi();
+    else 
+      ota.downloadWithModem();
+  }
+
   hal.loop();
   console.loop();
   state.loop();

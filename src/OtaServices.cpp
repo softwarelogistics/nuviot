@@ -32,11 +32,30 @@ OtaServices::~OtaServices()
 bool OtaServices::downloadWithModem(String url)
 {
     m_display->clearBuffer();
-    m_display->drawStr("Updating Firmare");
+    m_display->drawStr("Updating Firmware");
     m_display->sendBuffer();
 
     return m_modem->beginDownload(url);
 }
+
+bool OtaServices::downloadWithModem()
+{
+    m_display->clearBuffer();
+    m_display->drawStr("Updating Firmware");
+    m_display->sendBuffer();
+
+    if (m_url == NULL || m_url.length() == 0)
+    {
+        m_console->println(F("[OtaServices__downloadOverWiFi] - no url set."));
+
+        return false;
+    }
+
+    m_state->OTAState = 101;
+
+    return m_modem->beginDownload(m_url);
+}
+
 
 bool OtaServices::start(String url)
 {
@@ -116,11 +135,32 @@ int32_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, 
 {
     url += "?start=" + String(start) + "&length=" + String(blockSize);
 
-    client->begin(url);
-    uint8_t responseCode = client->GET();
-    m_console->println(String(F("[OtaServices__applyBlock] responseCode=")) + String(responseCode) + "; url" + String(url));
-    uint32_t bytesRead = downloadContent(client->getStreamPtr(), blockSize);
-    client->end();
+    m_console->println(String(F("[OtaServices__applyBlock] url:")) + String(url));
+
+    uint8_t responseCode = -1;
+    int retryCount = 0;
+    uint32_t bytesRead;
+    while(responseCode != 200 && retryCount++ < 5)
+    {        
+        client->begin(url);
+        responseCode = client->GET();
+        if(responseCode == 200)
+        {
+            m_console->println(String(F("[OtaServices__applyBlock] responseCode=")) + String(responseCode) + ";");
+            bytesRead = downloadContent(client->getStreamPtr(), blockSize);
+        }
+        else 
+        {
+            m_console->println(String(F("[OtaServices__applyBlock] responseCode=")) + String(responseCode) + "; status=warning,retryCount: " + String(retryCount));
+        }
+        client->end();
+    }
+
+    if(responseCode != 200)
+    {
+        m_console->println("[OtaServices__applyBlock] - too many retries");
+        return ERR_DOWNLOAD_HTTP_COULD_NOT_DOWNLOAD;
+    }
 
     uint32_t bytesWritten = Update.write(m_recvBuffer, bytesRead);
     if (bytesWritten != bytesRead)
