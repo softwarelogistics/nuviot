@@ -127,6 +127,16 @@ public:
         }
     }
 
+
+    bool writeFlag = false;
+    void setWriteFlag() {
+        writeFlag = true;
+    }
+
+    bool getWriteFlag() {
+        return writeFlag;
+    }
+
     void write()
     {
         File file = SPIFFS.open(SYSCONFIG_FN, FILE_WRITE);
@@ -150,6 +160,8 @@ public:
                 m_pConsole->println("sysconfig=writefile; // wrote " + String(written) + " bytes to " + SYSCONFIG_FN);
             }
         }
+
+        writeFlag = false;
     }
 
     void setDefaults(){

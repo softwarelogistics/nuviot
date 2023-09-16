@@ -501,20 +501,36 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
 
                         charPointer++;
 
+                        /* yes there is a better, please please implement
+                           KDW 2023/9/16 */
+                        String zero = "";
                         String scaler = "";
+                        String calibration = "";
 
+                        while (payload[charPointer] != ',')
+                            zero += (char)payload[charPointer++];
+
+                        charPointer++;
+                        
                         while (payload[charPointer] != ',')
                             scaler += (char)payload[charPointer++];
 
                         charPointer++;
+                        
+                        while (payload[charPointer] != ',')
+                            calibration += (char)payload[charPointer++];
+
+                        charPointer++;
 
                         int32_t configValue = atoi(config.c_str());
+                        float zeroValue = atof(zero.c_str());
                         float scalerValue = atof(scaler.c_str());
+                        float calibrationValue = atof(calibration.c_str());
 
                         if (value == "adc")
-                            m_state->setADCConfig(idx, configValue, scalerValue);
+                            m_state->setADCConfig(idx, configValue, zeroValue, scalerValue, calibrationValue);
                         else if (value == "gpio")
-                            m_state->setIOCConfig(idx, configValue, scalerValue);
+                            m_state->setIOCConfig(idx, configValue, zeroValue, scalerValue, calibrationValue);
                     }
 
                     m_state->persistConfig();

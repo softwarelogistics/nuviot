@@ -61,10 +61,11 @@ void WiFiConnectionHelper::loop()
 
         if (m_wifiState != NuvIoTWiFi_Connected)
         {
-            m_display->clearBuffer();
-            m_display->drawString(0, 0, "Connected to:");
-            m_display->drawString(80, 0, m_sysConfig->WiFiSSID.c_str());
-            m_display->sendBuffer();
+            
+            // m_display->clearBuffer();
+            // m_display->drawString(0, 0, "Connected to:");
+            // m_display->drawString(80, 0, m_sysConfig->WiFiSSID.c_str());
+            // m_display->sendBuffer();
             m_console->println("wifi=connected;");
 
             IPAddress ip = WiFi.localIP();
@@ -105,27 +106,27 @@ void WiFiConnectionHelper::loop()
     connect(true);
 
     m_attempt++;
-    m_display->clearBuffer();
-    m_display->drawString(0, 0, "NuvIoT");
-    m_display->drawString(0, 16, "Connecting WiFi");
-    m_display->drawString(0, 32, m_sysConfig->WiFiSSID.c_str());
+    // m_display->clearBuffer();
+    // m_display->drawString(0, 0, "NuvIoT");
+    // m_display->drawString(0, 16, "Connecting WiFi");
+    // m_display->drawString(0, 32, m_sysConfig->WiFiSSID.c_str());
 
-    if (m_spinnerIndex == 0)
-        m_display->drawString(90, 0, "/");
-    else if (m_spinnerIndex == 1)
-        m_display->drawString(90, 0, "-");
-    else if (m_spinnerIndex == 2)
-        m_display->drawString(90, 0, "\\");
+    // if (m_spinnerIndex == 0)
+    //     m_display->drawString(90, 0, "/");
+    // else if (m_spinnerIndex == 1)
+    //     m_display->drawString(90, 0, "-");
+    // else if (m_spinnerIndex == 2)
+    //     m_display->drawString(90, 0, "\\");
 
-    m_display->drawString(70, 0, String(m_attempt).c_str());
+    // m_display->drawString(70, 0, String(m_attempt).c_str());
 
     m_spinnerIndex++;
     if (m_spinnerIndex == 3)
         m_spinnerIndex = 0;
 
     String statusMsg = getWiFiStatus();
-    m_display->drawString(0, 48, statusMsg);
-    m_display->sendBuffer();
+    // m_display->drawString(0, 48, statusMsg);
+    // m_display->sendBuffer();
     m_console->println("wifi=connecting; // attempt=" + String(m_attempt) + ", status=" + statusMsg);
 
     if (m_attempt == 60)
@@ -173,8 +174,8 @@ void WiFiConnectionHelper::connect(bool isReconnect)
     {
         statusMsg = "Fail enable STA";
         m_console->println("wifi=connecting; // attempt=" + String(m_attempt) + ", status=fail enable STA");
-        m_display->drawString(0, 48, "Fail enable STA");
-        m_display->sendBuffer();
+        // m_display->drawString(0, 48, "Fail enable STA");
+        // m_display->sendBuffer();
         m_ledManager->setErrFlashRate(2);
         return;
     }

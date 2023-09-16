@@ -192,8 +192,8 @@ public:
     bool getSecureTransport();
     bool getIsAnonymous();
 
-    void setADCConfig(int idx, uint8_t config, float scaler);
-    void setIOCConfig(int idx, uint8_t config, float scaler);
+    void setADCConfig(int idx, uint8_t config, float zero, float scaler, float calibration);
+    void setIOCConfig(int idx, uint8_t config, float zero, float scaler, float calibration);
     void persistConfig();
 
     void updateProperty(String fieldType, String field, String value);

@@ -291,84 +291,116 @@ float NuvIoTState::getFlt(String key)
     }
 }
 
-void NuvIoTState::setADCConfig(int idx, uint8_t config, float scaler)
+void NuvIoTState::setADCConfig(int idx, uint8_t config,  float zero, float scaler, float calibration)
 {
-    m_console->println("setadc=true; // index=" + String(idx) + ", " + String(config) + ", " + String(scaler));
+    m_console->println("setadc=true; // index=" + String(idx) + ", " + String(config) + ", " + String(zero) + ", " + String(scaler) + ", " + String(calibration) + ";");
 
     switch (idx)
     {
     case 0:
         m_ioConfig->ADC1Config = config;
+        m_ioConfig->ADC1Zero = zero;
         m_ioConfig->ADC1Scaler = scaler;
+        m_ioConfig->ADC1Calibration = calibration;
         break;
     case 1:
         m_ioConfig->ADC2Config = config;
+        m_ioConfig->ADC2Zero = zero;
         m_ioConfig->ADC2Scaler = scaler;
+        m_ioConfig->ADC2Calibration = calibration;
         break;
     case 2:
         m_ioConfig->ADC3Config = config;
+        m_ioConfig->ADC3Zero = zero;
         m_ioConfig->ADC3Scaler = scaler;
+        m_ioConfig->ADC3Calibration = calibration;
         break;
     case 3:
         m_ioConfig->ADC4Config = config;
+        m_ioConfig->ADC4Zero = zero;
         m_ioConfig->ADC4Scaler = scaler;
+        m_ioConfig->ADC4Calibration = calibration;
         break;
     case 4:
         m_ioConfig->ADC5Config = config;
+        m_ioConfig->ADC5Zero = zero;
         m_ioConfig->ADC5Scaler = scaler;
+        m_ioConfig->ADC5Calibration = calibration;
         break;
     case 5:
         m_ioConfig->ADC6Config = config;
+        m_ioConfig->ADC6Zero = zero;
         m_ioConfig->ADC6Scaler = scaler;
+        m_ioConfig->ADC6Calibration = calibration;
         break;
     case 6:
         m_ioConfig->ADC7Config = config;
+        m_ioConfig->ADC7Zero = zero;
         m_ioConfig->ADC7Scaler = scaler;
+        m_ioConfig->ADC7Calibration = calibration;
         break;
     case 7:
         m_ioConfig->ADC8Config = config;
+        m_ioConfig->ADC8Zero = zero;
         m_ioConfig->ADC8Scaler = scaler;
+        m_ioConfig->ADC8Calibration = calibration;
         break;
     }
 }
 
-void NuvIoTState::setIOCConfig(int idx, uint8_t config, float scaler)
+void NuvIoTState::setIOCConfig(int idx, uint8_t config,  float zero, float scaler, float calibration)
 {
-    m_console->println("setioconfig=true; // index=" + String(idx) + ", " + String(config) + ", " + String(scaler));
+    m_console->println("setioconfig=true; // index=" + String(idx) + ", " + String(config) + ", " + String(zero) + ", " + String(scaler) + ", " + String(calibration) + ";");
 
     switch (idx)
     {
     case 0:
         m_ioConfig->GPIO1Config = config;
+        m_ioConfig->GPIO1Zero = zero;
         m_ioConfig->GPIO1Scaler = scaler;
+        m_ioConfig->GPIO1Calibration = calibration;
         break;
     case 1:
         m_ioConfig->GPIO2Config = config;
+        m_ioConfig->GPIO2Zero = zero;
         m_ioConfig->GPIO2Scaler = scaler;
+        m_ioConfig->GPIO2Calibration = calibration;
         break;
     case 2:
         m_ioConfig->GPIO3Config = config;
+        m_ioConfig->GPIO3Zero = zero;
         m_ioConfig->GPIO3Scaler = scaler;
+        m_ioConfig->GPIO3Calibration = calibration;
         break;
     case 3:
         m_ioConfig->GPIO4Config = config;
+        m_ioConfig->GPIO4Zero = zero;
         m_ioConfig->GPIO4Scaler = scaler;
+        m_ioConfig->GPIO4Calibration = calibration;
         break;
     case 4:
         m_ioConfig->GPIO5Config = config;
+        m_ioConfig->GPIO5Zero = zero;
         m_ioConfig->GPIO5Scaler = scaler;
+        m_ioConfig->GPIO5Calibration = calibration;
         break;
     case 5:
         m_ioConfig->GPIO6Config = config;
+        m_ioConfig->GPIO6Zero = zero;
         m_ioConfig->GPIO6Scaler = scaler;
+        m_ioConfig->GPIO6Calibration = calibration;
         break;
     case 6:
         m_ioConfig->GPIO7Config = config;
+        m_ioConfig->GPIO7Zero = zero;
         m_ioConfig->GPIO7Scaler = scaler;
+        m_ioConfig->GPIO7Calibration = calibration;
         break;
     case 7:
         m_ioConfig->GPIO8Config = config;
+        m_ioConfig->GPIO8Zero = zero;
         m_ioConfig->GPIO8Scaler = scaler;
+        m_ioConfig->GPIO8Calibration = calibration;
         break;
     }
 }

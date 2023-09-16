@@ -36,28 +36,28 @@ void NuvIoTMQTT::connect()
     m_mqtt->disconnect();
     m_wifi->loop();
 
-    m_display->clearBuffer();
-    m_display->drawString(0, 0, "Connecting MQTT");
-    m_display->drawString(0, 16, m_sysConfig->SrvrHostName.c_str());
-    m_display->drawString(0, 32, "Attempt");
-    m_display->drawString(90, 32, String(m_connectAttempt).c_str());
-    m_display->drawString(0, 48, resolveConnectFail().c_str());
+    // m_display->clearBuffer();
+    // m_display->drawString(0, 0, "Connecting MQTT");
+    // m_display->drawString(0, 16, m_sysConfig->SrvrHostName.c_str());
+    // m_display->drawString(0, 32, "Attempt");
+    // m_display->drawString(90, 32, String(m_connectAttempt).c_str());
+    // m_display->drawString(0, 48, resolveConnectFail().c_str());
 
-    if (m_spinnerIndex == 0 || m_spinnerIndex == 4)
-        m_display->drawString(60, 32, "|");
-    else if (m_spinnerIndex == 1 || m_spinnerIndex == 5)
-        m_display->drawString(60, 32, "/");
-    else if (m_spinnerIndex == 2 || m_spinnerIndex == 6)
-        m_display->drawString(60, 32, "-");
-    else if (m_spinnerIndex == 3)
-        m_display->drawString(60, 32, "\\");
-    else if (m_spinnerIndex == 7)
-    {
-        m_display->drawString(60, 32, "\\");
-        m_spinnerIndex = 0;
-    }
+    // if (m_spinnerIndex == 0 || m_spinnerIndex == 4)
+    //     m_display->drawString(60, 32, "|");
+    // else if (m_spinnerIndex == 1 || m_spinnerIndex == 5)
+    //     m_display->drawString(60, 32, "/");
+    // else if (m_spinnerIndex == 2 || m_spinnerIndex == 6)
+    //     m_display->drawString(60, 32, "-");
+    // else if (m_spinnerIndex == 3)
+    //     m_display->drawString(60, 32, "\\");
+    // else if (m_spinnerIndex == 7)
+    // {
+    //     m_display->drawString(60, 32, "\\");
+    //     m_spinnerIndex = 0;
+    // }
 
-    m_display->sendBuffer();
+    // m_display->sendBuffer();
 
     m_state->loop();
     m_mqtt->loop();
@@ -92,11 +92,11 @@ void NuvIoTMQTT::connect()
 
         m_mqtt->setCallback(mqttCallback);
 
-        m_display->clearBuffer();
-        m_display->drawString(0, 0, "Success");
-        m_display->drawString(0, 16, m_sysConfig->SrvrHostName.c_str());
-        m_display->drawString(0, 32, "Connected MQTT");
-        m_display->sendBuffer();
+        // m_display->clearBuffer();
+        // m_display->drawString(0, 0, "Success");
+        // m_display->drawString(0, 16, m_sysConfig->SrvrHostName.c_str());
+        // m_display->drawString(0, 32, "Connected MQTT");
+        // m_display->sendBuffer();
         delay(1500);
         m_lastConnectAttempt = 0;
         m_connectAttempt = 0;
@@ -305,10 +305,10 @@ void NuvIoTMQTT::loop()
         m_state->setIsCloudConnected(false);
         m_console->printError("wifimqtt=notconnected; // wifi not connected will not attempt to connect to mqtt;");
 
-        m_display->clearBuffer();
-        m_display->drawString(0, 0, "Client Not Connected");
-        m_display->drawString(0, 16, resolveConnectFail().c_str());
-        m_display->sendBuffer();
+        // m_display->clearBuffer();
+        // m_display->drawString(0, 0, "Client Not Connected");
+        // m_display->drawString(0, 16, resolveConnectFail().c_str());
+        // m_display->sendBuffer();
     }
     else if (!m_mqtt->connected())
     {
@@ -316,10 +316,10 @@ void NuvIoTMQTT::loop()
         m_state->setIsCloudConnected(false);
         m_console->printError("wifimqtt=notconnected;");
 
-        m_display->clearBuffer();
-        m_display->drawString(0, 0, "MQTT Not Connected");
-        m_display->drawString(0, 16, resolveConnectFail().c_str());
-        m_display->sendBuffer();
+        // m_display->clearBuffer();
+        // m_display->drawString(0, 0, "MQTT Not Connected");
+        // m_display->drawString(0, 16, resolveConnectFail().c_str());
+        // m_display->sendBuffer();
         delay(250);
 
         connect();

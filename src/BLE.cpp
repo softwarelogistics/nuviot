@@ -292,24 +292,22 @@ void BLE::handleReadCharacteristic(BLECharacteristic *characteristic)
 void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String value)
 {
   m_lastClientActivity = millis();
-
   unsigned char cstr[characteristic->getValue().size()];
   memcpy(cstr, characteristic->getValue().data(), characteristic->getValue().size());
 
   String input = value;
 
-  const char *uuid = characteristic->getUUID().toString().c_str();
-  String charId = String(characteristic->getUUID().toString().c_str());
+  const char *uuid = characteristic->getUUID().toString().c_str();  
 
   if (0 == strcmp(uuid, CHAR_UUID_STATE))
   {
-    pConsole->println("ble=read; // char=sysstate; value=" + input + ";");
-    // pSysConfig->Commissioned = characteristic->getData()[0] == '1';
+    //pConsole->println("ble=read; // char=sysstate; value=" + input + ";");
+    //pSysConfig->Commissioned = characteristic->getData()[0] == '1';
 
     refreshCharacteristics();
   }
   else if (0 == strcmp(uuid, CHAR_UUID_SYS_CONFIG)) {
-    pConsole->println("ble=read; // char=sysconfig; value=" + input);
+  //  pConsole->println("ble=read; // char=sysconfig; value=" + input);
     boolean done = false;
     int lastEnd = 0;
     while (!done)
@@ -321,7 +319,8 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       String key = input.substring(lastEnd, equalDelimiter);
       String value = input.substring(equalDelimiter + 1, valueEnd == -1 ? final : valueEnd);
 
-      pConsole->println("blewrite=write; //char=sysconfig; set: " + key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
+      //pConsole->println("blewrite=write; //char=sysconfig; set: " + key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
+      
 
       // if we don't have a , that means we are past the final item
       done = valueEnd == -1;
@@ -371,11 +370,10 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
         pSysConfig->RepoId = value;
       else if (key == "dfu")  {
 
-        pConsole->println("Starting firmware update process");
+        //pConsole->println("Starting firmware update process");
         //Note we can't start the download on this thread, so set the OTA STate = 100 to let 
         //a different thread know that we have a URL that can be used to start download process.
         String url = "http://firmware.nuviot.com:14236/api/firmware/download/" + value;
-        pConsole->println("Starting Download: " + url);
         pOta->setDownloadUrl(url);        
         pState->OTAState = 100;
         // give it about one second for the client to finalize the connection;
@@ -393,7 +391,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       }
     }
 
-    pSysConfig->write();
+    pSysConfig->setWriteFlag();
     
   }
   else if (0 == strcmp(uuid, CHAR_UUID_IOCONFIG)) {

@@ -474,6 +474,9 @@ void commonLoop()
   state.loop();
   ledManager.loop();
   probes.loop();
+
+  if(sysConfig.getWriteFlag())
+    sysConfig.write();
 }
 
 long __nextSend = 0;
