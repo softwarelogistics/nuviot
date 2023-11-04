@@ -5,6 +5,7 @@
 #define ADC_CONFIG_ADC 1
 #define ADC_CONFIG_CT 2
 #define ADC_CONFIG_ON_OFF 3
+#define ADC_CONFIG_THERMISTOR 4
 
 #define GPIO_CONFIG_NONE 0
 #define GPIO_CONFIG_INPUT 1
@@ -14,6 +15,7 @@
 #define GPIO_CONFIG_DHT11 5
 #define GPIO_CONFIG_DHT22 6
 #define GPIO_CONFIG_DHT22_HUMIDITY 7
+#define GPIO_CONFIG_HX711 8
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
