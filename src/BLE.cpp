@@ -130,6 +130,13 @@ void BLECustomServerCallbacks::onDisconnect(BLEServer *pServer)
 
 void BLE::writeConsoleOutput(String msg)
 {
+  if(msg.startsWith("ble"))
+    return;
+
+  if(msg.startsWith("[BLE_"))
+    return;
+
+
   if (pCharConsole != NULL && m_isConnected)
   {
     const char *str = msg.c_str();
@@ -378,7 +385,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
         pState->OTAState = 100;
         // give it about one second for the client to finalize the connection;
       } else if(key == "reboot" && value == "1") {
-        pHal->restart();      
+        pHal->queueRestart(1000);
       } else if(key == "factoryreset" && value == "1") {
         pSysConfig->setDefaults();
         pSysConfig->write();

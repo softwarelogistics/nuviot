@@ -56,8 +56,8 @@
 #define GP0O1_BRD_V2_ERR_LED 5
 
 /* Production Board V1 */
-//#define PROD_BRD_V1_GPRS_RX 23
-//#define PROD_BRD_V1_GPRS_TX 19
+#define PROD_BRD_V1_GPRS_RX 3
+#define PROD_BRD_V1_GPRS_TX 1
 
 #define PROD_BRD_V1_SCL1 22
 #define PROD_BRD_V1_SDA1 21
@@ -237,8 +237,8 @@ public:
             Scl1 = PROD_BRD_V1_SCL1;
             Sda1 = PROD_BRD_V1_SDA1;
 
-            SimRx = PROD_BRD_V1_RX;
-            SimTx = PROD_BRD_V1_TX;
+            SimRx = PROD_BRD_V1_GPRS_RX;
+            SimTx = PROD_BRD_V1_GPRS_TX;
 
             ADCChannel1 = PROD_BRD_V1_ADC1;
             ADCChannel2 = PROD_BRD_V1_ADC2;

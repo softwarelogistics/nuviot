@@ -191,8 +191,9 @@ void configureModem(unsigned long baudRate = 115200)
 
   console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000)));
 
-  modem.init();
   gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
+  if(modem.isModemOnline())
+    modem.init();
 
   delay(500);
 }
@@ -294,24 +295,20 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
   else if (sysConfig.CellEnabled)
   {
     while (state.isValid())
-    {
-      if (!state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
+    {    
+      if (modem.isModemOnline() && !state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
       {
-        if (sysConfig.SrvrType == "mqtt")
-        {
-          cellMQTT.subscribe("nuviot/paw/" + sysConfig.DeviceId + "/#", QOS1);
-        }
-
+        console.println("cellconnection=established;");
         if (sysConfig.GPSEnabled)
         {
+          console.println("cellconnection=startinggps;");
           modem.startGPS();
         }
 
         return;
       }
     }
-  }
-  else if (sysConfig.GPSEnabled)
+  } else if (sysConfig.GPSEnabled) // GPS Only
   {
     modem.startGPS();
   }
@@ -339,7 +336,7 @@ void initPins()
  **/
 void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled = true)
 {
-  consoleSerial.begin(baud, SERIAL_8N1);
+  consoleSerial.begin(baud, SERIAL_8N1, configPins.ConsoleRx, configPins.ConsoleTx);
   console.enableSerialOut(serialEnabled);
   console.enableBTOut(btEnabled);
   console.registerCallback(handleConsoleCommand);
@@ -416,8 +413,13 @@ void ping()
 
     if (!cellMQTT.ping())
     {
+      state.setIsCloudConnected(false);
       reconnect();
       lastPing = 0;
+    }
+    else 
+    {
+      state.setIsCloudConnected(true);
     }
 
     ledManager.setOnlineFlashRate(-1);
@@ -477,6 +479,8 @@ void commonLoop()
 
   if(sysConfig.getWriteFlag())
     sysConfig.write();
+
+  delay(100);
 }
 
 long __nextSend = 0;

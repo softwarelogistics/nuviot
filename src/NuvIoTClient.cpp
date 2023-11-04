@@ -290,11 +290,18 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
 
     if (!m_modem->isServiceConnected() || !isReconnect)
     {
+        m_state->setIsCellConnected(false);
+        m_state->setCellIPAddress("not connected");
         m_console->println("serviceconnected=false; // will connect to GRPS with baud rate " + String(baudRate));
         if (!connectToAPN(transparentMode, true, baudRate))
         {
             return false;
         }
+        else 
+        {
+            m_state->setCellIPAddress(m_modem->getIPAddress());
+        }
+
     }
     else
     {
@@ -334,9 +341,10 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
             return false;
         }
 
+        m_state->setIsCellConnected(true);
+
         retryCount = 0;
         m_console->println("mqtt=authorized;");
-        ;
         sendStatusUpdate("MQTT Authorized", "Publish Connect");
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
