@@ -204,10 +204,11 @@ void BLE::refreshCharacteristics()
       (pSysConfig->WiFiEnabled ? "1," : "0,") +
       pSysConfig->WiFiSSID + "," +
       pSysConfig->WiFiPWD + "," +
-      String(pSysConfig->PingRate) + "," +
-      String(pSysConfig->SendUpdateRate) + "," +
+      String(pSysConfig->PingRateSecond) + "," +
+      String(pSysConfig->SendUpdateRateMS) + "," +
       (pSysConfig->GPSEnabled ? "1," : "0,") +
-      String(pSysConfig->GPSUpdateRate);
+      String(pSysConfig->GPSUpdateRateMS) + "," + 
+      String(pSysConfig->LoopUpdateRateMS);
 
   pCharConfig->setValue(config.c_str());
 
@@ -362,11 +363,13 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       else if (key == "key")
         pSysConfig->DeviceAccessKey = value;
       else if (key == "gpsrate")
-        pSysConfig->GPSUpdateRate = atoi(value.c_str());
+        pSysConfig->GPSUpdateRateMS = atoi(value.c_str());
       else if (key == "pingrate")
-        pSysConfig->PingRate = atoi(value.c_str());
+        pSysConfig->PingRateSecond = atoi(value.c_str());
       else if (key == "sendrate")
-        pSysConfig->SendUpdateRate = atoi(value.c_str());
+        pSysConfig->SendUpdateRateMS = atoi(value.c_str());
+      else if (key == "looprate")
+        pSysConfig->LoopUpdateRateMS = atoi(value.c_str());
       else if (key == "commissioned")
         pSysConfig->Commissioned = value != "0";
       else if (key == "orgid")
@@ -537,6 +540,9 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
   pConsole->println(String(F("bleaddress=")) + pHal->getBLEAddress() + String(F("; // Address of BLE interface (may not be same as iOS)")) );
   refreshCharacteristics();
 
+  pConsole->println(F("bluetooth=started;"));
+  pConsole->println("bluetoothname=" + String(localName) + ";");
+
   return true;
 }
 
@@ -550,9 +556,11 @@ void BLE::update()
     {
       if (m_nextNotify < millis())
       {
-        m_nextNotify = pSysConfig->SendUpdateRate + millis();
+        m_nextNotify = 1000 + millis();
         pCharState->notify(true);
         pCharIOValue->notify(true);
+        pCharConsole->notify(true);
+        pCharRelay->notify(true);
         pConsole->println(F("[BLE__update]"));
       }
 

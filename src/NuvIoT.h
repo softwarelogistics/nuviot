@@ -35,7 +35,6 @@
 #include "Rest.h"
 #include <PubSubClient.h>
 
-
 #define DEFAULT_BRD
 
 #ifdef PROD_BRD_V1
@@ -192,7 +191,7 @@ void configureModem(unsigned long baudRate = 115200)
   console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000)));
 
   gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
-  if(modem.isModemOnline())
+  if (modem.isModemOnline())
     modem.init();
 
   delay(500);
@@ -223,8 +222,8 @@ void welcome(String firmwareSKU, String version)
     console.println("BOARD ?: UNKNOWN");
     break;
   }
-  console.println("Continue Startup");  
-  if(sysConfig.DeviceId != NULL && sysConfig.DeviceId.length() > 0)
+  console.println("Continue Startup");
+  if (sysConfig.DeviceId != NULL && sysConfig.DeviceId.length() > 0)
     console.println("Device Id        : " + String(sysConfig.DeviceId));
   else
     console.println("Device Id        : Not Configured");
@@ -233,7 +232,7 @@ void welcome(String firmwareSKU, String version)
   console.println("WiFi Enabled     : " + String(sysConfig.WiFiEnabled));
   console.println("Commissioned     : " + String(sysConfig.Commissioned));
   console.println("GPS Enabled      : " + String(sysConfig.GPSEnabled));
-  if(sysConfig.SrvrType != NULL && sysConfig.SrvrType.length() > 0)
+  if (sysConfig.SrvrType != NULL && sysConfig.SrvrType.length() > 0)
     console.println("Server Type     : " + String(sysConfig.SrvrType));
   else
     console.println("Server Type     : Not Configured");
@@ -295,7 +294,7 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
   else if (sysConfig.CellEnabled)
   {
     while (state.isValid())
-    {    
+    {
       if (modem.isModemOnline() && !state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
       {
         console.println("cellconnection=established;");
@@ -308,7 +307,8 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
         return;
       }
     }
-  } else if (sysConfig.GPSEnabled) // GPS Only
+  }
+  else if (sysConfig.GPSEnabled) // GPS Only
   {
     modem.startGPS();
   }
@@ -388,7 +388,8 @@ void clearError(String err, String details)
   }
 }
 
-long lastPing = 0;
+long __nextPing = 0;
+long __nextLoop = 0;
 
 bool httpGetNoContent(String url)
 {
@@ -407,17 +408,17 @@ String httpPost(String url, String body)
 
 void ping()
 {
-  if (lastPing == 0 || ((millis() - lastPing) > sysConfig.PingRate * 1000))
+  if (__nextPing < millis())
   {
-    lastPing = millis();
+    __nextPing = millis() + sysConfig.PingRateSecond * 1000;
 
     if (!cellMQTT.ping())
     {
       state.setIsCloudConnected(false);
       reconnect();
-      lastPing = 0;
+      __nextPing = 0;
     }
-    else 
+    else
     {
       state.setIsCloudConnected(true);
     }
@@ -427,15 +428,52 @@ void ping()
 
   if (cellMQTT.getIsClosed())
   {
-    // Reconnect will either return connected or resteart the device.
+    // Reconnect will either return connected or restart the device.
     reconnect();
-    lastPing = 0;
+    __nextPing = 0;
   }
 }
 
 void mqttCallback(String topic, byte *buffer, size_t len)
 {
   console.println("mqtt=handltopic; // Topic: " + topic);
+}
+
+long __nextSend = 0;
+long __nextGPS = 0;
+
+void sendIOValues()
+{
+  String pathOrTopic = "nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/iovalues";
+
+  if (sysConfig.Commissioned && __nextSend < millis())
+  {
+    __nextSend = millis() + sysConfig.SendUpdateRateMS;
+
+    if (sysConfig.WiFiEnabled)
+    {
+      if (sysConfig.SrvrType == "mqtt")
+      {
+        wifiMQTT.publish(pathOrTopic, ioValues.toString());
+      }
+      else if (sysConfig.SrvrType == "rest")
+      {
+        wifiMgr.post(sysConfig.SrvrHostName, sysConfig.Port, pathOrTopic, ioValues.toString());
+      }
+    }
+    else if (sysConfig.CellEnabled)
+    {
+      if (sysConfig.SrvrType == "mqtt")
+      {
+        cellMQTT.publish(pathOrTopic, ioValues.toString(), QOS0);
+      }
+      else if (sysConfig.SrvrType == "rest")
+      {
+        String url = "http://" + sysConfig.SrvrHostName + ":" + sysConfig.Port + "/" + pathOrTopic;
+        httpPost(url, ioValues.toString());
+      }
+    }
+  }
 }
 
 void commonLoop()
@@ -463,60 +501,61 @@ void commonLoop()
     }
   }
 
-  if(state.OTAState == 100)
+  if (sysConfig.GPSEnabled)
   {
-    if(wifiMgr.isConnected())
+    if (__nextGPS < millis())
+    {
+      __nextGPS = millis() + sysConfig.GPSUpdateRateMS;
+
+      GPSData *gps = modem.readGPS();
+      if (gps != NULL)
+      {
+        console.println("gps=valid; // " + gps->toCSV());
+        if (sysConfig.WiFiEnabled)
+        {
+          wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/geo", gps->toCSV());
+        }
+        else if (sysConfig.CellEnabled)
+        {
+          cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/geo", gps->toCSV(), QOS0);
+        }
+      }
+      else
+      {
+        console.println("gps=invalid;");
+      }
+    }
+  }
+
+  if (state.OTAState == 100)
+  {
+    if (wifiMgr.isConnected())
       ota.downloadOverWiFi();
-    else 
+    else
       ota.downloadWithModem();
   }
 
-  hal.loop();
-  console.loop();
-  state.loop();
-  ledManager.loop();
-  probes.loop();
-
-  if(sysConfig.getWriteFlag())
-    sysConfig.write();
-
-  delay(100);
-}
-
-long __nextSend = 0;
-
-void sendIOValues()
-{
-  String pathOrTopic = "nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/iovalues";
-
-  if (sysConfig.Commissioned && __nextSend < millis())
+  if (__nextLoop < millis())
   {
-    __nextSend = millis() + sysConfig.SendUpdateRate;
-
-    if (sysConfig.WiFiEnabled)
-    {
-      if (sysConfig.SrvrType == "mqtt")
-      {
-        wifiMQTT.publish(pathOrTopic, ioValues.getCSV());
-      }
-      else if (sysConfig.SrvrType == "rest")
-      {
-        wifiMgr.post(sysConfig.SrvrHostName,sysConfig.Port, pathOrTopic, ioValues.getCSV());
-      }
-    }
-    else if (sysConfig.CellEnabled)
-    {
-      if (sysConfig.SrvrType == "mqtt")
-      {
-        cellMQTT.publish(pathOrTopic, ioValues.getCSV(), 1);
-      }
-      else if (sysConfig.SrvrType == "rest")
-      {
-        String url = "http://" + sysConfig.SrvrHostName + ":" + sysConfig.Port + "/" + pathOrTopic;
-        httpPost(url, ioValues.getCSV());
-      }
-    }
+    __nextLoop = millis() + sysConfig.LoopUpdateRateMS;
+    hal.loop();
+    console.loop();
+    state.loop();
+    ledManager.loop();
+    probes.loop();
+    adc.loop();
+    onOffDetector.loop();
+    pulseCounter.loop();
+    powerSensor.loop();
+    relayManager.loop();
   }
+
+  // timing on these is handled in the method for sending.
+  BT.update();
+  sendIOValues();
+
+  if (sysConfig.getWriteFlag())
+    sysConfig.write();
 }
 
 void mqttSubscribe(String topic)

@@ -81,7 +81,7 @@ public:
                 state = !state;
 
             m_pinStates[idx] = state;
-            m_payload->ioValues->setValue(8 + (m_channelIndex[idx] - 1), m_pinStates[idx]);
+            m_payload->ioValues->setValue((m_channelIndex[idx] - 1), m_pinStates[idx]);
         }
     }
 

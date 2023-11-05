@@ -406,11 +406,9 @@ bool MQTT::disconnect()
 
 bool MQTT::publish(String topic, String payload, byte qos)
 {
-    m_console->println("mqttpublish=start; // Topic: " + topic);
+    m_console->println("mqttpublish=start; // Topic: " + topic + ", " + payload);
 
-    int rl = 2 + topic.length() +
-             (qos == QOS0 ? 0 : 2) + // packet id
-             payload.length();
+    int rl = 2 + topic.length() + (qos == QOS0 ? 0 : 2) + payload.length();
 
     byte controlField = MQTT_PUBLISH;
 
@@ -549,7 +547,7 @@ byte MQTT::subscribe(String topic, byte qos)
 
 bool MQTT::ping()
 {
-    m_console->println("mqttping=start;");
+    m_console->println(F("\r\nmqttping=start;"));
 
     byte pingMsg[] = {0xC0, 0x00};
 
@@ -558,16 +556,23 @@ bool MQTT::ping()
     writeByteArray(pingMsg, sizeof(pingMsg));
     if (!flush())
     {
-        m_console->printError("mqttping=failed;");
+        m_console->printError(F("mqttping=failed; //flush \r\n"));
         return false;
     }
         
     if (readResponse(0xD0))
     {
-        return readResponse(0x00);
+        bool result = readResponse(0x00);
+        if(result)
+            m_console->println(F("mqttping=success;"));
+        else
+            m_console->println(F("mqttping=failed; // read 0x00"));
+
+        return result;
     }
     else
     {
+        m_console->println(F("mqttping=failed; // read 0xD0"));
         return false;
     }
 }

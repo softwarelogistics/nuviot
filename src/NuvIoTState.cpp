@@ -120,9 +120,7 @@ String NuvIoTState::queryFirmwareVersion()
 
 String NuvIoTState::getRemoteProperties()
 {
-    String state =
-        "readonly-firmwareSku=" + m_firmwareSku + "," +
-        "readonly-firmwareVersion=" + m_firmwareVersion;
+    String state = "firmwareSku=" + m_firmwareSku + "," + "firmwareVersion=" + m_firmwareVersion;
 
     Param *pNext = m_pBoolParamHead;
     while (pNext != NULL)
@@ -346,6 +344,8 @@ void NuvIoTState::setADCConfig(int idx, uint8_t config,  float zero, float scale
         m_ioConfig->ADC8Calibration = calibration;
         break;
     }
+
+    m_ioConfig->write();
 }
 
 void NuvIoTState::setIOCConfig(int idx, uint8_t config,  float zero, float scaler, float calibration)
@@ -403,6 +403,8 @@ void NuvIoTState::setIOCConfig(int idx, uint8_t config,  float zero, float scale
         m_ioConfig->GPIO8Calibration = calibration;
         break;
     }
+
+    m_ioConfig->write();
 }
 
 void NuvIoTState::persistConfig()
@@ -542,13 +544,25 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
         int32_t intValue = atol(value.c_str());
         if (field == "updaterate")
         {
-            m_sysConfig->SendUpdateRate = intValue;
+            m_sysConfig->SendUpdateRateMS = intValue;
+            m_sysConfig->write();
+            m_console->println("setint=success," + field + ";");
+        }
+        else if (field == "looprate")
+        {
+            m_sysConfig->LoopUpdateRateMS = intValue;
+            m_sysConfig->write();
+            m_console->println("setint=success," + field + ";");
+        }
+        else if (field == "gps")
+        {
+            m_sysConfig->GPSUpdateRateMS = intValue;
             m_sysConfig->write();
             m_console->println("setint=success," + field + ";");
         }
         else if (field == "pingrate")
         {
-            m_sysConfig->PingRate = intValue;
+            m_sysConfig->PingRateSecond = intValue;
             m_sysConfig->write();
             m_console->println("setint=success," + field + ";");
         }
@@ -617,33 +631,40 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
     }
     else if (fieldType == "TrueFalse")
     {
-        Param *pParam = findKey(m_pBoolParamHead, field.c_str());
-        if (pParam != NULL)
-        {
-            uint8_t boolValue = value == "true" || value == "True" ? 255 : 0;
-            esp_err_t err = nvs_set_u8(m_nvsHandle, field.c_str(), boolValue);
-            if (err == ESP_OK)
+        if(field == "gps") {
+            m_sysConfig->GPSEnabled = value == "true" || value == "True";
+            m_sysConfig->write();
+            m_console->println("setbool=success," + field + ";");
+        }
+        else {
+            Param *pParam = findKey(m_pBoolParamHead, field.c_str());
+            if (pParam != NULL)
             {
-                err = nvs_commit(m_nvsHandle);
+                uint8_t boolValue = value == "true" || value == "True" ? 255 : 0;
+                esp_err_t err = nvs_set_u8(m_nvsHandle, field.c_str(), boolValue);
                 if (err == ESP_OK)
                 {
-                    m_console->println("setbool=success," + field + ";");
+                    err = nvs_commit(m_nvsHandle);
+                    if (err == ESP_OK)
+                    {
+                        m_console->println("setbool=success," + field + ";");
+                    }
+                    else
+                    {
+                        String errMsg = resolveError(err);
+                        m_console->printError("setbool=failed,commit," + field + "; // error: " + errMsg);
+                    }
                 }
                 else
                 {
                     String errMsg = resolveError(err);
-                    m_console->printError("setbool=failed,commit," + field + "; // error: " + errMsg);
+                    m_console->printError("setbool=failed,write," + field + "; // error: " + errMsg);
                 }
             }
             else
             {
-                String errMsg = resolveError(err);
-                m_console->printError("setbool=failed,write," + field + "; // error: " + errMsg);
+                m_console->printError("setbool=failed,find" + field + "; // error: could not find field.");
             }
-        }
-        else
-        {
-            m_console->printError("setbool=failed,find" + field + "; // error: could not find field.");
         }
     }
 }

@@ -244,12 +244,12 @@ public:
         for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx){
             if (m_portEnabled[idx]){
                 m_rawValues[idx] = ((m_rawValues[idx] * m_calibration[idx]) - m_zero[idx]) * m_scalers[idx];
-                m_payload->ioValues->setValue(idx, m_rawValues[idx]);
+                m_payload->ioValues->setValue(idx + 8, m_rawValues[idx]);
             }
             else
             {
                 m_rawValues[idx] = -1;
-                m_payload->ioValues->clearValue(idx);
+                m_payload->ioValues->clearValue(idx + 8);
             }
         }
     }
@@ -300,14 +300,14 @@ public:
         m_pins[6] = m_configPins->ADCChannel7;
         m_pins[7] = m_configPins->ADCChannel8;
 
-        enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC);
-        enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC);
-        enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC);
-        enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config == ADC_CONFIG_ADC);
-        enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config == ADC_CONFIG_ADC);
-        enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config == ADC_CONFIG_ADC);
-        enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config == ADC_CONFIG_ADC);
-        enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config == ADC_CONFIG_ADC);
+        enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC || ioConfig->ADC1Config == ADC_CONFIG_VOLTS);
+        enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC || ioConfig->ADC2Config == ADC_CONFIG_VOLTS);
+        enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC || ioConfig->ADC3Config == ADC_CONFIG_VOLTS);
+        enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config == ADC_CONFIG_ADC || ioConfig->ADC4Config == ADC_CONFIG_VOLTS);
+        enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config == ADC_CONFIG_ADC || ioConfig->ADC5Config == ADC_CONFIG_VOLTS);
+        enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config == ADC_CONFIG_ADC || ioConfig->ADC6Config == ADC_CONFIG_VOLTS);
+        enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config == ADC_CONFIG_ADC || ioConfig->ADC7Config == ADC_CONFIG_VOLTS);
+        enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config == ADC_CONFIG_ADC || ioConfig->ADC8Config == ADC_CONFIG_VOLTS);
 
         setScaler(0, ioConfig->ADC1Scaler);
         setScaler(1, ioConfig->ADC2Scaler);

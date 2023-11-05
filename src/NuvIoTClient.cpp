@@ -349,7 +349,8 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
 
-        String onlinePayload = "readonly-rssi=" + String(m_modem->getSignalQuality()) + ",readonly-reconnect=" + (isReconnect ? "true" : "false") + ",";
+        String onlinePayload = "rssi=" + String(m_modem->getSignalQuality()) + ",reconnect=" + (isReconnect ? "true" : "false") + ",";
+        onlinePayload += "ipAddress=" + String(m_modem->getIPAddress()) + ",";
         onlinePayload += m_state->getRemoteProperties();
 
         while (!m_cellMqtt->publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", onlinePayload, QOS0) && retryCount < RETRY_COUNT)

@@ -49,9 +49,10 @@ public:
     bool WiFiEnabled;
     bool VerboseLogging;
 
-    uint32_t PingRate;
-    uint32_t SendUpdateRate;
-    uint32_t GPSUpdateRate;
+    uint32_t PingRateSecond;
+    uint32_t SendUpdateRateMS;
+    uint32_t LoopUpdateRateMS;
+    uint32_t GPSUpdateRateMS;
     unsigned long GPRSModemBaudRate;
 
     String toJSON(){
@@ -70,10 +71,11 @@ public:
         doc["anonymous"] = Anonymous;
         doc["srvrUid"] = SrvrUID;
         doc["srvrPwd"] = SrvrPWD;
-        doc["pingRate"] = PingRate;
+        doc["pingRate"] = PingRateSecond;
         doc["verboseLogging"] = VerboseLogging;
-        doc["sendUpdateRate"] = SendUpdateRate;
-        doc["gpsUpdateRate"] = GPSUpdateRate;
+        doc["sendUpdateRate"] = SendUpdateRateMS;
+        doc["loopUpdateRate"] = LoopUpdateRateMS;
+        doc["gpsUpdateRate"] = GPSUpdateRateMS;
         doc["gpsEnabled"] = GPSEnabled;
         doc["wifiEnabled"] = WiFiEnabled;
         doc["cellEnabled"] = CellEnabled;
@@ -182,9 +184,11 @@ public:
         SrvrPWD = "";
         DeviceAccessKey = "";
 
-        PingRate = 120;
-        SendUpdateRate = 120;
-        GPSUpdateRate = 5;
+        PingRateSecond = 30;
+        SendUpdateRateMS = 250;
+        LoopUpdateRateMS = 250;
+
+        GPSUpdateRateMS = 1000;        
         GPSEnabled = false;
 
         OrgId = "";
@@ -222,11 +226,15 @@ public:
             Anonymous = doc["anonymous"].as<bool>();
             SrvrUID = doc["srvrUid"].as<String>();
             SrvrPWD = doc["srvrPwd"].as<String>();
-            PingRate = doc["pingRate"].as<uint32_t>();
+            PingRateSecond = doc["pingRate"].as<uint32_t>();
             GPSEnabled = doc["gpsEnabled"].as<bool>();
-            SendUpdateRate = doc["sendUpdateRate"].as<uint32_t>();
-            GPSUpdateRate = doc["gpsUpdateRate"].as<uint32_t>();
+            SendUpdateRateMS = doc["sendUpdateRate"].as<uint32_t>();
+            LoopUpdateRateMS = doc["loopUpdateRate"].as<uint32_t>();
+            GPSUpdateRateMS = doc["gpsUpdateRate"].as<uint32_t>();
             GPRSModemBaudRate = doc["baud"].as<unsigned long>();
+
+            if(LoopUpdateRateMS == 0) LoopUpdateRateMS = 250;            
+            if(SendUpdateRateMS < 250) SendUpdateRateMS = 250;
 
             OrgId = doc["orgId"].as<String>();
             RepoId = doc["repoId"].as<String>();
@@ -263,6 +271,10 @@ public:
         m_pConsole->println("ORG : " + OrgId);
         m_pConsole->println("REP : " + RepoId);
         m_pConsole->println("ID  : " + Id);
+        m_pConsole->println("PNGR: " + String(PingRateSecond));
+        m_pConsole->println("SNDR: " + String(SendUpdateRateMS));
+        m_pConsole->println("LOPR: " + String(LoopUpdateRateMS));
+        m_pConsole->println("GPSR: " + String(GPSUpdateRateMS));
     }
 
 };

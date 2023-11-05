@@ -6,6 +6,7 @@
 #define ADC_CONFIG_CT 2
 #define ADC_CONFIG_ON_OFF 3
 #define ADC_CONFIG_THERMISTOR 4
+#define ADC_CONFIG_VOLTS 5
 
 #define GPIO_CONFIG_NONE 0
 #define GPIO_CONFIG_INPUT 1
@@ -16,6 +17,7 @@
 #define GPIO_CONFIG_DHT22 6
 #define GPIO_CONFIG_DHT22_HUMIDITY 7
 #define GPIO_CONFIG_HX711 8
+#define GPIO_CONFIG_RPM 9
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -153,7 +155,7 @@ public:
     String toJSON()
     {
         // Note the size is the number of elements.
-        const size_t capacity = JSON_OBJECT_SIZE(1024);
+        const size_t capacity = JSON_OBJECT_SIZE(128);
         DynamicJsonDocument doc(capacity);
         doc["adc1c"] = ADC1Config;
         doc["adc2c"] = ADC2Config;
@@ -273,12 +275,12 @@ public:
         File file = SPIFFS.open(SETTINGS_FN, FILE_READ);
         if (file)
         {
-            m_pConsole->printVerbose("ioconfig=fileexits;");
+            m_pConsole->printVerbose(F("ioconfig=fileexits;"));
             String json = file.readString();
             file.close();
             if (json.length() == 0)
             {
-                m_pConsole->printWarning("ioconfig=errorread; // file length = 0");
+                m_pConsole->printWarning(F("ioconfig=errorread; // file length = 0"));
                 setDefaults();
                 write();
             }
@@ -286,19 +288,19 @@ public:
             {
                 if (!parseJSON(json))
                 {
-                    m_pConsole->printError("sysconfig=errorread; //could not parse json");
+                    m_pConsole->printError(F("ioconfig=errorread; //could not parse json"));
                     setDefaults();
                     write();
                 }
                 else
                 {
-                    m_pConsole->printVerbose("sysconfig=fileread;");
+                    m_pConsole->printVerbose("ioconfig=fileread; // file length = " + String(json.length()) + " bytes");                    
                 }
             }
         }
         else
         {
-            m_pConsole->printWarning("ioconfig=filedoesnotexists;");
+            m_pConsole->printWarning(F("ioconfig=filedoesnotexists;"));
             setDefaults();
             write();
         }
@@ -311,7 +313,7 @@ public:
         if (!file)
         {
             m_pConsole->println("ERROR.");
-            m_pConsole->printError("ioconfig=failwrite; // could not open file or write");
+            m_pConsole->printError(F("ioconfig=failwrite; // could not open file or write"));
         }
         else
         {
@@ -334,7 +336,7 @@ public:
 
     bool parseJSON(String str)
     {
-        const size_t capacity = JSON_OBJECT_SIZE(1024);
+        const size_t capacity = JSON_OBJECT_SIZE(512);
         DynamicJsonDocument doc(capacity);
 
         DeserializationError result = deserializeJson(doc, str.c_str());

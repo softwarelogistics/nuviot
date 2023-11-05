@@ -127,6 +127,13 @@ public:
         }
     }
 
+    String toCSV() {
+        if(String(Fixstatus) != "1")
+            return "nofix";
+        else
+            return String(latitude) + "," + String(longitude) + "," + String(altitude);
+    }
+
     void debugPrint(Console *console)
     {
         console->printVerbose("gnssstatus=" + String(GNSSrunstatus));
