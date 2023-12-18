@@ -550,7 +550,6 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
   pCharCAN->setCallbacks(_characteristicCallback);
   pCharCAN->addDescriptor(new BLE2902());
 
-
   BLEAdvertising *pAdvertising = pServer->getAdvertising();
 
   pAdvertising->addServiceUUID(SVC_UUID_NUVIOT);
