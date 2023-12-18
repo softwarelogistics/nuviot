@@ -1,5 +1,6 @@
 #include "BLE.h"
 #include "NuvIoTState.h"
+#include <stdio.h>
 
 // List of BLE Services:
 // https://www.bluetooth.com/specifications/specs/
@@ -82,6 +83,8 @@
  *
  */
 
+#define CHAR_UUID_CAN_MSG "d804b639-6ce7-5e88-9f89-ce0f699085eb"
+
 #define FULL_PACKET 512
 #define CHARPOS_UPDATE_FLAG 5
 
@@ -144,17 +147,19 @@ void BLE::writeConsoleOutput(String msg)
     for (uint8_t idx = 0; idx < msg.length(); idx++)
     {
       char ch = str[idx];
-      if (ch == '\n')
+      if (ch == '\n' || ch == '\r')
       {
         uint32_t deltaT = millis() - m_lastConsoleNotify;
         if (deltaT < 80)
           delay(80 - deltaT);
 
         uint16_t len = outBuffer.length() > 600 ? 600 : outBuffer.length();
+        if(len > 0) {
+          pCharConsole->setValue((uint8_t *)outBuffer.c_str(), len);
+          pCharConsole->notify();
+          m_lastConsoleNotify = millis();
+        }
 
-        pCharConsole->setValue((uint8_t *)outBuffer.c_str(), len);
-        pCharConsole->notify();
-        m_lastConsoleNotify = millis();
         outBuffer = "";
       }
       else
@@ -162,6 +167,27 @@ void BLE::writeConsoleOutput(String msg)
         outBuffer += ch;
       }
     }
+  }
+}
+
+void BLE::writeCANMessage(uint32_t msgId, uint8_t msg[], uint8_t len) {
+  if (pCharCAN != NULL && m_isConnected)
+  {
+    size_t fullMessageLength = (sizeof(uint8_t) * len) + sizeof(uint32_t);
+
+    //TODO: can probably do all of this with memcpy
+    uint8_t *buffer = (uint8_t*)malloc(fullMessageLength);
+    buffer[3] = msgId << 24;
+    buffer[2] = msgId << 16;
+    buffer[1] = msgId << 8;
+    buffer[0] = 0;
+
+    for(uint16_t idx = 0; idx < len; idx++)
+      buffer[idx + sizeof(uint32_t)] = msg[idx];
+
+    pCharCAN->setValue(buffer, fullMessageLength);
+    pCharCAN->notify();
+    delete buffer;
   }
 }
 
@@ -287,8 +313,7 @@ void BLE::refreshCharacteristics()
       String(pRelayManager->getRelayState(3) ? "1," : "0,") +
       String(pRelayManager->getRelayState(4) ? "1" : "0");
 
-  pCharRelay->setValue(relay.c_str());
-
+  pCharRelay->setValue(relay.c_str());  
   pCharIOValue->setValue(pPayload->ioValues->toString().c_str());
 }
 
@@ -493,7 +518,7 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
   pServer->setCallbacks(new BLECustomServerCallbacks(this, pConsole));
 
-  pService = pServer->createService(BLEUUID(SVC_UUID_NUVIOT));
+  pService = pServer->createService(BLEUUID(SVC_UUID_NUVIOT), 30, 0);
 
   freeHeep = ESP.getFreeHeap();
 
@@ -504,22 +529,27 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
   pCharConfig = pService->createCharacteristic(CHAR_UUID_SYS_CONFIG, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
   pCharConfig->setCallbacks(_characteristicCallback);
   pCharConfig->addDescriptor(new BLE2902());
-
-  pCharIOConfig = pService->createCharacteristic(CHAR_UUID_IOCONFIG, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
-  pCharIOConfig->setCallbacks(_characteristicCallback);
-  pCharIOConfig->addDescriptor(new BLE2902());
-
+  
   pCharIOValue = pService->createCharacteristic(CHAR_UUID_IO_VALUE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   pCharIOValue->setCallbacks(_characteristicCallback);
   pCharIOValue->addDescriptor(new BLE2902());
 
-  pCharConsole = pService->createCharacteristic(CHAR_UUID_CONSOLE, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
+  pCharConsole = pService->createCharacteristic(CHAR_UUID_CONSOLE,  BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   pCharConsole->setCallbacks(_characteristicCallback);
   pCharConsole->addDescriptor(new BLE2902());
+  
+  pCharIOConfig = pService->createCharacteristic(CHAR_UUID_IOCONFIG, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  pCharIOConfig->setCallbacks(_characteristicCallback);
+  pCharIOConfig->addDescriptor(new BLE2902());
 
   pCharRelay = pService->createCharacteristic(CHAR_UUID_RELAY, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
   pCharRelay->setCallbacks(_characteristicCallback);
   pCharRelay->addDescriptor(new BLE2902());
+
+  pCharCAN = pService->createCharacteristic(CHAR_UUID_CAN_MSG, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
+  pCharCAN->setCallbacks(_characteristicCallback);
+  pCharCAN->addDescriptor(new BLE2902());
+
 
   BLEAdvertising *pAdvertising = pServer->getAdvertising();
 
@@ -559,7 +589,6 @@ void BLE::update()
         m_nextNotify = 1000 + millis();
         pCharState->notify(true);
         pCharIOValue->notify(true);
-        pCharConsole->notify(true);
         pCharRelay->notify(true);
         pConsole->println(F("[BLE__update]"));
       }

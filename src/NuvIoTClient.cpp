@@ -97,7 +97,8 @@ void NuvIoTClient::delayAndCheckState(long ms)
 bool NuvIoTClient::WifiConnect(bool isReconnect)
 {
     m_wifiConnectionHelper->connect(isReconnect);
-    m_nuviotMqtt->connect();
+    if(m_wifiConnectionHelper->isConnected())
+        m_nuviotMqtt->connect();
 
     return true;
 }
@@ -573,7 +574,7 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
             {
                 if (partIdx >= 4)
                 {
-                    String url = "http://api.nuviot.com/api/firmware/download/" + parts[4];
+                    String url = "http://firmware.nuviot.com:14236/api/firmware/download/" + parts[4];
                     m_console->println("Request Download.");
                     m_console->println(url);
                     m_ota->start(url);

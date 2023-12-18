@@ -128,6 +128,7 @@ void WiFiConnectionHelper::loop()
     // m_display->drawString(0, 48, statusMsg);
     // m_display->sendBuffer();
     m_console->println("wifi=connecting; // attempt=" + String(m_attempt) + ", status=" + statusMsg);
+    delay(250);
 
     if (m_attempt == 60)
     {
@@ -135,9 +136,8 @@ void WiFiConnectionHelper::loop()
     }
 }
 
-void WiFiConnectionHelper::connect(bool isReconnect)
-{
-    if(millis() - m_lastReconnect < 5000) {
+void WiFiConnectionHelper::connect(bool isReconnect){
+    if((millis() - m_lastReconnect) < 5000) {
         m_console->println("wifi=pauseconnect;");
         return;
     }
@@ -182,6 +182,7 @@ void WiFiConnectionHelper::connect(bool isReconnect)
 
     m_console->println("wifi=connecting; // ssid=" + m_sysConfig->WiFiSSID + ", pwd=" + m_sysConfig->WiFiPWD.c_str());
     wl_status_t beginResult = WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
+    
 
     m_ledManager->setErrFlashRate(6);
 }

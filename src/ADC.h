@@ -32,6 +32,7 @@ private:
     float m_zero[NUMBER_ADC_PORTS];
     float m_rawValues[NUMBER_ADC_PORTS];
     uint8_t m_pins[NUMBER_ADC_PORTS];
+    uint8_t m_adcConfig[NUMBER_ADC_PORTS];
     String m_names[NUMBER_ADC_PORTS];
     MedianFilter *m_filters[NUMBER_ADC_PORTS];
 
@@ -41,7 +42,7 @@ private:
     bool m_useFilter = false;
     uint8_t m_filterSize = 10;
     uint8_t m_throwAway = 2;
-    
+
 public:
     ADC(TwoWire *wire, NuvIoTState *state, ConfigPins *configPins, Console *console, Display *display, MessagePayload *payload)
     {
@@ -63,9 +64,9 @@ public:
             m_isCt[idx] = false;
         }
 
-        /* 
+        /*
          *
-         * Bank 1 
+         * Bank 1
          * =================
          * idx: LBL  - Connector
          * 0 = VBATT - POWER
@@ -73,20 +74,22 @@ public:
          * 2 = ADC3  - CT 3 ADC6
          * 3 = ADC4  - N/C
          *
-         *  
+         *
          * Bank 2
          * =================
          * 4 = ADC6  - CT 2 ADC5
          * 5 = ADC5  - CT 1 ADC4
          * 6 = ADC7  - ADC 2
          * 7 = ADC8  - ADC 1
-         * 
+         *
          */
 
         for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
         {
             m_scalers[idx] = 1.0;
         }
+
+        setConversionDelay(20);
     }
 
     void setScaler(uint8_t channel, float scaler)
@@ -240,45 +243,80 @@ public:
         configure(ioConfig);
     }
 
-    void applyValues(){
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx){
-            if (m_portEnabled[idx]){
-                m_rawValues[idx] = ((m_rawValues[idx] * m_calibration[idx]) - m_zero[idx]) * m_scalers[idx];
-                m_payload->ioValues->setValue(idx + 8, m_rawValues[idx]);
+#define DEFAULT_NUM_SAMPLES 10
+#define DEFAULT_BCOEF 3950
+#define TEMPERATURENOMINAL 25
+#define DEFAULT_NOMINAL_RES 10000
+
+    float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07;
+    float R1 = 10000.0;
+
+    float thermistorRead(float rawVoltage)
+    {
+        float R2 = R1 * (5.0f/ (float)rawVoltage - 1.0);
+        float logR2  = log(R2); // ln(R/Ro)
+        float T = (1.0 / (c1 + c2*logR2 + c3*logR2*logR2*logR2));
+        T = T - 273.15;
+        return  (T * 9.0)/ 5.0 + 32.0;
+    }
+
+    void applyValues()
+    {
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
+        {
+            if (m_portEnabled[idx])
+            {
+                if (m_adcConfig[idx] == ADC_CONFIG_THERMISTOR)
+                {
+                    m_rawValues[idx] = thermistorRead(m_rawValues[idx]);
+                    m_payload->ioValues->setValue(idx + 8, m_rawValues[idx]);
+                }
+                else
+                {
+                    m_rawValues[idx] = ((m_rawValues[idx] * m_calibration[idx]) - m_zero[idx]) * m_scalers[idx];
+                    m_payload->ioValues->setValue(idx + 8, m_rawValues[idx]);
+                }
             }
             else
             {
                 m_rawValues[idx] = -1;
-                m_payload->ioValues->clearValue(idx + 8);
             }
         }
     }
 
-    void loop(double values[]){
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx){
+    void loop(double values[])
+    {
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
+        {
             m_rawValues[idx] = values[idx];
         }
 
         applyValues();
     }
 
-    void loop(){
-        if (!_bank1->isOnline() && m_bank1Enabled){
+    void loop()
+    {
+        if (!_bank1->isOnline() && m_bank1Enabled)
+        {
             m_payload->lastError = "ADC 1 Offline";
             m_console->printError("adc1=offline;");
             m_payload->status = "Error";
         }
-        else if (!_bank2->isOnline() && m_bank2Enabled){
+        else if (!_bank2->isOnline() && m_bank2Enabled)
+        {
             m_payload->lastError = "ADC 2 Offline";
             m_console->printError("adc2=offline;");
             m_payload->status = "Error";
         }
 
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx){
-            if (m_portEnabled[idx]){
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
+        {
+            if (m_portEnabled[idx])
+            {
                 float voltage = getVoltage(m_pins[idx]);
 
-                if(m_useFilter) {
+                if (m_useFilter)
+                {
                     voltage = m_filters[idx]->apply(voltage);
                 }
 
@@ -300,14 +338,23 @@ public:
         m_pins[6] = m_configPins->ADCChannel7;
         m_pins[7] = m_configPins->ADCChannel8;
 
-        enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC || ioConfig->ADC1Config == ADC_CONFIG_VOLTS);
-        enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC || ioConfig->ADC2Config == ADC_CONFIG_VOLTS);
-        enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC || ioConfig->ADC3Config == ADC_CONFIG_VOLTS);
-        enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config == ADC_CONFIG_ADC || ioConfig->ADC4Config == ADC_CONFIG_VOLTS);
-        enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config == ADC_CONFIG_ADC || ioConfig->ADC5Config == ADC_CONFIG_VOLTS);
-        enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config == ADC_CONFIG_ADC || ioConfig->ADC6Config == ADC_CONFIG_VOLTS);
-        enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config == ADC_CONFIG_ADC || ioConfig->ADC7Config == ADC_CONFIG_VOLTS);
-        enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config == ADC_CONFIG_ADC || ioConfig->ADC8Config == ADC_CONFIG_VOLTS);
+        m_adcConfig[0] = ioConfig->ADC1Config;
+        m_adcConfig[1] = ioConfig->ADC2Config;
+        m_adcConfig[2] = ioConfig->ADC3Config;
+        m_adcConfig[3] = ioConfig->ADC4Config;
+        m_adcConfig[4] = ioConfig->ADC5Config;
+        m_adcConfig[5] = ioConfig->ADC6Config;
+        m_adcConfig[6] = ioConfig->ADC7Config;
+        m_adcConfig[7] = ioConfig->ADC8Config;
+
+        enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC || ioConfig->ADC1Config == ADC_CONFIG_VOLTS || ioConfig->ADC1Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC || ioConfig->ADC2Config == ADC_CONFIG_VOLTS || ioConfig->ADC2Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC || ioConfig->ADC3Config == ADC_CONFIG_VOLTS || ioConfig->ADC3Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config == ADC_CONFIG_ADC || ioConfig->ADC4Config == ADC_CONFIG_VOLTS || ioConfig->ADC4Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config == ADC_CONFIG_ADC || ioConfig->ADC5Config == ADC_CONFIG_VOLTS || ioConfig->ADC5Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config == ADC_CONFIG_ADC || ioConfig->ADC6Config == ADC_CONFIG_VOLTS || ioConfig->ADC6Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config == ADC_CONFIG_ADC || ioConfig->ADC7Config == ADC_CONFIG_VOLTS || ioConfig->ADC7Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config == ADC_CONFIG_ADC || ioConfig->ADC8Config == ADC_CONFIG_VOLTS || ioConfig->ADC8Config == ADC_CONFIG_THERMISTOR);
 
         setScaler(0, ioConfig->ADC1Scaler);
         setScaler(1, ioConfig->ADC2Scaler);
@@ -336,23 +383,29 @@ public:
         setCalibration(6, ioConfig->ADC7Calibration);
         setCalibration(7, ioConfig->ADC8Calibration);
 
-        if(m_useFilter) {
-            for(int idx = 0; idx < 8; ++idx) {
-                if(m_portEnabled[idx])
+        if (m_useFilter)
+        {
+            for (int idx = 0; idx < 8; ++idx)
+            {
+                if (m_portEnabled[idx])
                     m_filters[idx] = new MedianFilter(m_filterSize, m_throwAway);
             }
         }
     }
 
-    void setUseFiltering(uint8_t size, uint8_t throwAway) {
+    void setUseFiltering(uint8_t size, uint8_t throwAway)
+    {
         m_filterSize = size;
         m_throwAway = throwAway;
         m_useFilter = true;
     }
 
-    void debugPrint(){
-        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx){
-            if (m_portEnabled[idx] && !m_isCt[idx]){
+    void debugPrint()
+    {
+        for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
+        {
+            if (m_portEnabled[idx] && !m_isCt[idx])
+            {
                 m_console->printVerbose(m_names[idx] + "=" + String(m_rawValues[idx]) + ";");
             }
         }
@@ -360,18 +413,20 @@ public:
 
     /**
      * \brief Enable ADC Bank
-     * 
-     * Each board has two ADC converters, each ADC Converter has 4 channels. 
-     * 
+     *
+     * Each board has two ADC converters, each ADC Converter has 4 channels.
+     *
      * In some cases you may not need 8 ADC channels, if that's the case
      * then you don't install the ADC bank and not enable it.
-     * 
+     *
      * \param bank Index of bank to initialized (1 or 2)
      * \param enabled True to enable, false to disable.
-     * 
+     *
      */
-    bool setBankEnabled(int bank, bool enabled){
-        switch (bank){
+    bool setBankEnabled(int bank, bool enabled)
+    {
+        switch (bank)
+        {
         case 1:
             m_bank1Enabled = enabled;
             break;
@@ -385,35 +440,39 @@ public:
 
     /**
      * \brief Determine if bank one is online.
-     * 
+     *
      * This method can be called to make an I2C call
      * to the ADC on bank one, if it finds it, the method
      * will return true otherewise it return false.
-     * 
+     *
      * \return True if the ADC respondes, false if not.
      **/
-    bool isBankOneOnline(){
+    bool isBankOneOnline()
+    {
         return _bank1->isOnline();
     }
 
-    bool isBank1Enabled(){
+    bool isBank1Enabled()
+    {
         return m_bank1Enabled;
     }
 
     /**
      * \brief Determine if bank two is online.
-     * 
+     *
      * This method can be called to make an I2C call
      * to the ADC on bank two, if it finds it, the method
      * will return true otherewise it return false.
-     * 
+     *
      * \return True if the ADC respondes, false if not.
      **/
-    bool isBankTwoOnline(){
+    bool isBankTwoOnline()
+    {
         return _bank2->isOnline();
     }
 
-    bool isBank2Enabled(){
+    bool isBank2Enabled()
+    {
         return m_bank2Enabled;
     }
 };

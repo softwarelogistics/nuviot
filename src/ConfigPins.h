@@ -17,6 +17,9 @@
 #define CONSOLE_RX 5
 #define CONSOLE_TX 17
 
+#define CAN_RX 5
+#define CAN_TX 17
+
 #define GP0O1_BRD_V1_SCL1 15
 #define GP0O1_BRD_V1_SDA1 4
 
@@ -110,6 +113,9 @@ public:
     int8_t ConsoleRx = CONSOLE_RX;
     int8_t ConsoleTx = CONSOLE_TX;    
 
+    int8_t CANTx = -1;
+    int8_t CANRx = -1;
+
     int8_t Scl1 = GP0O1_BRD_V2_SCL1;
     int8_t Sda1 = GP0O1_BRD_V2_SDA1;
 
@@ -134,6 +140,10 @@ public:
     int8_t Gpio6 = -1;
     int8_t Gpio7 = -1;
     int8_t Gpio8 = -1;
+    
+    int OnbaordADC1 = -1;
+    int OnbaordADC2 = -1;
+    int OnbaordADC3 = -1;
 
     bool InvertGpio1 = false;
     bool InvertGpio2 = false;
@@ -142,13 +152,17 @@ public:
     bool InvertGpio5 = false;
     bool InvertGpio6 = false;
     bool InvertGpio7 = false;
+    bool InvertGpio8 = false;
 
     int8_t ErrorLED = -1;
     int8_t OnlineLED = -1;
     int8_t Buzzer = -1;
+    int8_t CANActivity = -1;
+
     bool InvertLED = false;
 
     int8_t ModemResetPin = -1;
+    int8_t ModemSleepPin = -1;
     bool  InvertModemPower = false;
 
     bool HasDisplay;
@@ -237,8 +251,16 @@ public:
             Scl1 = PROD_BRD_V1_SCL1;
             Sda1 = PROD_BRD_V1_SDA1;
 
+
+#ifdef CAN_ENABLED
+            ConsoleRx = PROD_BRD_V1_GPRS_RX;
+            ConsoleTx = PROD_BRD_V1_GPRS_TX;
+            SimRx  = -1;
+            SimTx = -1;
+#else
             SimRx = PROD_BRD_V1_GPRS_RX;
             SimTx = PROD_BRD_V1_GPRS_TX;
+#endif
 
             ADCChannel1 = PROD_BRD_V1_ADC1;
             ADCChannel2 = PROD_BRD_V1_ADC2;
@@ -382,6 +404,43 @@ public:
             InvertLED = false;
             ErrorLED = 33;
             OnlineLED = 32;
+         } else if(boardType == 7) {
+            
+
+            ConsoleRx = 3;
+            ConsoleTx = 1;    
+
+            SimRx = 19;
+            SimTx = 18;
+
+            Gpio1 = 25;
+            Gpio2 = 26;
+            Gpio3 = 27;
+
+            OnbaordADC1 = 34;
+            OnbaordADC2 = 35;
+            OnbaordADC3 = 32;
+
+            ModemResetPin = 14;
+            ModemSleepPin = 16;
+
+            SimRx = 18;
+            SimTx = 17;
+
+            NumberRelays = 0;
+            
+            HasDisplay = false;
+            HasRelays = false;
+            HasLeds = true;
+            HasI2C = false;
+
+            InvertLED = false;
+            ErrorLED = 33;
+            OnlineLED = 13;
+            CANActivity = 21;
+
+            CANTx = 19;
+            CANRx = 5;
         }
     }
 };

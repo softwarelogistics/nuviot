@@ -232,7 +232,7 @@ bool NuvIoTState::getBool(String key)
         Param *pParam = findKey(m_pIntParamHead, key.c_str());
         if (pParam == NULL)
         {
-            m_console->printWarning("getbool=failed; // err: not found and not registerd, key: " + String(key) + ";");
+            m_console->printWarning("getbool=failed; // err: not found and not registered, key: " + String(key) + ";");
             return false;
         }
 
@@ -255,7 +255,7 @@ int32_t NuvIoTState::getInt(String key)
         Param *pParam = findKey(m_pIntParamHead, key.c_str());
         if (pParam == NULL)
         {
-            m_console->printWarning("getint=failed; // err: not found and not registerd, key: " + String(key) + ";");
+            m_console->printWarning("getint=failed; // err: not found and not registered, key: " + String(key) + ";");
             return false;
         }
 
@@ -280,7 +280,7 @@ float NuvIoTState::getFlt(String key)
         Param *pParam = findKey(m_pIntParamHead, key.c_str());
         if (pParam == NULL)
         {
-            m_console->printWarning("getflt=failed," + key + "; // err: not found and not registerd, key: " + String(key) + ";");
+            m_console->printWarning("getflt=failed," + key + "; // err: not found and not registered, key: " + String(key) + ";");
             return 0;
         }
 
@@ -539,7 +539,7 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
 {
     m_console->println("-- " + fieldType + " - " + field + " - " + value);
 
-    if (fieldType == "Integer")
+    if (fieldType == "Integer" || fieldType == "State")
     {
         int32_t intValue = atol(value.c_str());
         if (field == "updaterate")
@@ -598,7 +598,7 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             }
         }
     }
-    else if (fieldType == "Decimal")
+    else if (fieldType == "Decimal" || fieldType == "UnitSet")
     {
         Param *pParam = findKey(m_pFloatParamHead, field.c_str());
         if (pParam != NULL)

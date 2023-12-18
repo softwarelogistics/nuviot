@@ -88,6 +88,7 @@ public:
   void refreshCharacteristics();
 
   void writeConsoleOutput(String msg);
+  void writeCANMessage(uint32_t msgId, uint8_t msg[], uint8_t len);
 
   void handleReadCharacteristic(BLECharacteristic *characteristic);
   void handleWriteCharacteristic(BLECharacteristic *characteristic, String value);
@@ -165,6 +166,8 @@ private:
 
   BLECharacteristic *pCharConsole = NULL;
   BLECharacteristic *pCharRelay = NULL;  
+
+  BLECharacteristic *pCharCAN = NULL;  
 };
 
 #endif

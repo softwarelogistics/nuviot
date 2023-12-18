@@ -29,7 +29,6 @@
 #include "RelayManager.h"
 #include "BluetoothServer.h"
 
-#include "ConfigPins.h"
 #include "LedManager.h"
 #include "NuvIoTMQTT.h"
 #include "Rest.h"
@@ -44,6 +43,28 @@ HardwareSerial consoleSerial(1);
 TwoWire twoWire(1);
 #define BOARD_CONFIG 2
 #endif
+
+#ifdef PROD_BRD_V1_CAN
+#undef DEFAULT_BRD
+#ifdef CAN_ENABLED
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+#else
+HardwareSerial gprsPort(0);
+HardwareSerial consoleSerial(1);
+#endif
+TwoWire twoWire(1);
+#define BOARD_CONFIG 2
+#endif
+
+#ifdef CAN_BRD_V1
+#undef DEFAULT_BRD
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+TwoWire twoWire(1);
+#define BOARD_CONFIG 7
+#endif
+
 
 #ifdef RELAY_BRD_V1
 #undef DEFAULT_BRD
@@ -100,6 +121,8 @@ TwoWire twoWire(1);
 #define BOARD_CONFIG 1
 #endif
 
+#include "ConfigPins.h"
+
 Console console(&consoleSerial);
 
 IOValues ioValues(&console);
@@ -132,7 +155,7 @@ NuvIoTClient client(&modem, &wifiMgr, &cellMQTT, &wifiMQTT, &console, &display, 
 Rest rest(&client, &display, &modem, &wifiMgr, &sysConfig, &console);
 
 // drivers
-PulseCounter pulseCounter(&console, &configPins);
+PulseCounter pulseCounter(&console, &configPins, payload);
 ADC adc(&twoWire, &state, &configPins, &console, &display, payload);
 TemperatureProbes probes(&console, &configPins, payload);
 
@@ -218,6 +241,12 @@ void welcome(String firmwareSKU, String version)
   case 4:
     console.println("BOARD 4: REMOTE_TEMP_SENSOR");
     break;
+  case 6:
+    console.println("BOARD 6: CHARGE_BOARD_V1");
+    break;    
+  case 7:
+    console.println("BOARD 7: CAN_BRD_V1");
+    break;    
   default:
     console.println("BOARD ?: UNKNOWN");
     break;
@@ -543,7 +572,7 @@ void commonLoop()
     state.loop();
     ledManager.loop();
     probes.loop();
-    adc.loop();
+    //adc.loop();
     onOffDetector.loop();
     pulseCounter.loop();
     powerSensor.loop();

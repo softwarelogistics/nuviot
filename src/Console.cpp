@@ -34,7 +34,6 @@ void Console::loop()
             {
                 String cmd = String(m_consoleInBuffer);
                 newline();
-                println(cmd);
 
                 if (m_callback != NULL)
                 {

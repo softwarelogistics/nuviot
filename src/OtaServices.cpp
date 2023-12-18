@@ -77,6 +77,7 @@ bool OtaServices::start(String url)
 #define ERR_DOWNLOAD_NON_HTTP_SUCCESS_CODE -0x6
 #define ERR_CONTENT_DOWNLOAD_MISMATCH -0x7
 #define ERR_UPDATER_FAILED_WRITE -0x8
+#define ERR_DOWNLOAD_SIZE -0x9
 
 void OtaServices::markCompleted(HTTPClient *client, String url, bool success)
 {
@@ -86,7 +87,7 @@ void OtaServices::markCompleted(HTTPClient *client, String url, bool success)
     client->end();
 }
 
-int32_t OtaServices::getFileSize(HTTPClient *client, String url)
+int64_t OtaServices::getFileSize(HTTPClient *client, String url)
 {
     client->begin(url);
     int responseCode = client->GET();
@@ -112,7 +113,7 @@ int32_t OtaServices::getFileSize(HTTPClient *client, String url)
     }
 }
 
-uint32_t OtaServices::downloadContent(Stream *stream, uint32_t contentSize)
+int64_t OtaServices::downloadContent(Stream *stream, uint32_t contentSize)
 {
     long start = millis();
 
@@ -131,7 +132,7 @@ uint32_t OtaServices::downloadContent(Stream *stream, uint32_t contentSize)
     return actualRead;
 }
 
-int32_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, uint16_t blockSize)
+int64_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, uint16_t blockSize)
 {
     url += "?start=" + String(start) + "&length=" + String(blockSize);
 
@@ -148,6 +149,10 @@ int32_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, 
         {
             m_console->println(String(F("[OtaServices__applyBlock] responseCode=")) + String(responseCode) + ";");
             bytesRead = downloadContent(client->getStreamPtr(), blockSize);
+            if(bytesRead < 0)
+            {
+                responseCode = 0;
+            }
         }
         else 
         {
@@ -165,7 +170,7 @@ int32_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, 
     uint32_t bytesWritten = Update.write(m_recvBuffer, bytesRead);
     if (bytesWritten != bytesRead)
     {
-        m_console->println("[OtaServices__applyBlock] - bytesRead=" + String(bytesRead) + ", written=" + String(bytesWritten));
+        m_console->println("[OtaServices__applyBlock]  - size mismatch, failed bytesRead=" + String(bytesRead) + ", written=" + String(bytesWritten));
         return ERR_UPDATER_FAILED_WRITE;
     }
 
@@ -188,21 +193,25 @@ bool OtaServices::downloadOverWiFi()
 
 bool OtaServices::downloadOverWiFi(String url)
 {
+    m_console->enableBTOut(false);
     uint32_t freeHeep = ESP.getFreeHeap();
     m_console->println(String(F("[OtaServices__downloadOverWiFi] free1=")) + String(freeHeep));
 
-    if (m_tempBuffer == NULL)
-        m_tempBuffer = (byte *)malloc(TEMP_BUFFER_SIZE);
-
     if (m_recvBuffer == NULL)
-        m_recvBuffer = (byte *)malloc(RCV_BUFFER_SIZE);
+        m_recvBuffer = (byte *)malloc(BLOCK_SIZE);
 
     HTTPClient http;
 
     freeHeep = ESP.getFreeHeap();
     m_console->println(String(F("[OtaServices__downloadOverWiFi] free2=")) + String(freeHeep));
 
-    int32_t contentSize = getFileSize(&http, url + "/size");
+    int64_t contentSize = getFileSize(&http, url + "/size");
+    if(contentSize < 0) {        
+        m_console->printError(String(F("[OtaServices__downloadOverWifi] Could not download size")));
+        markCompleted(&http, url, false);
+        m_hal->restart();
+        return ERR_DOWNLOAD_SIZE;
+    }
 
     m_console->println(String(F("[OtaServices__downloadOverWifi] start; // url=")) + url);
     int downloaded = 0;
@@ -222,7 +231,7 @@ bool OtaServices::downloadOverWiFi(String url)
     bool hasCompleted = false;
     uint8_t lastError = 0;
 
-    if (Update.begin(contentSize, U_FLASH))
+    if (Update.begin((uint32_t)contentSize, U_FLASH))
     {
         while (!hasCompleted)
         {
@@ -238,7 +247,7 @@ bool OtaServices::downloadOverWiFi(String url)
                 hasCompleted = true;
             }
 
-            uint32_t result = applyBlock(&http, url, start, blockSize);
+            int32_t result = applyBlock(&http, url, start, blockSize);
             m_hal->feedHWWatchdog();
 
             if (result < 0)

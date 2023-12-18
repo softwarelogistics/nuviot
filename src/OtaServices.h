@@ -14,7 +14,7 @@ typedef enum
 } DlState;
 
 #define TEMP_BUFFER_SIZE 2048
-#define RCV_BUFFER_SIZE 32767
+#define RCV_BUFFER_SIZE 8192
 
 
 typedef struct
@@ -34,12 +34,11 @@ private:
     Console *m_console;
     NuvIoTState *m_state;
 
-    uint8_t *m_tempBuffer= NULL;
     uint8_t *m_recvBuffer = NULL;
     
-    int32_t getFileSize(HTTPClient *client, String url);
-    int32_t applyBlock(HTTPClient *client, String url, uint32_t start, uint16_t contentSize);
-    uint32_t downloadContent(Stream *stream, uint32_t contentSize);
+    int64_t getFileSize(HTTPClient *client, String url);
+    int64_t applyBlock(HTTPClient *client, String url, uint32_t start, uint16_t contentSize);
+    int64_t downloadContent(Stream *stream, uint32_t contentSize);
     void markCompleted(HTTPClient *client, String url, bool success);
 
 public:
