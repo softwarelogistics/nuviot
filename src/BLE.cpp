@@ -177,10 +177,10 @@ void BLE::writeCANMessage(uint32_t msgId, uint8_t msg[], uint8_t len) {
 
     //TODO: can probably do all of this with memcpy
     uint8_t *buffer = (uint8_t*)malloc(fullMessageLength);
-    buffer[3] = msgId << 24;
-    buffer[2] = msgId << 16;
-    buffer[1] = msgId << 8;
-    buffer[0] = 0;
+    buffer[0] = (msgId >> 24) & 0xFF;
+    buffer[1] = (msgId >> 16) & 0xFF;
+    buffer[2] = (msgId >> 8) & 0xFF;
+    buffer[3] = (msgId & 0xFF);
 
     for(uint16_t idx = 0; idx < len; idx++)
       buffer[idx + sizeof(uint32_t)] = msg[idx];
