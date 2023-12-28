@@ -139,7 +139,7 @@ public:
         }
     }
 
-    float getVoltage(uint8_t channel)
+    float getVoltageADS1115(uint8_t channel)
     {
         if (channel < 0)
             return -1;
@@ -253,11 +253,11 @@ public:
 
     float thermistorRead(float rawVoltage)
     {
-        float R2 = R1 * (5.0f/ (float)rawVoltage - 1.0);
-        float logR2  = log(R2); // ln(R/Ro)
-        float T = (1.0 / (c1 + c2*logR2 + c3*logR2*logR2*logR2));
+        float R2 = R1 * (5.0f / (float)rawVoltage - 1.0);
+        float logR2 = log(R2); // ln(R/Ro)
+        float T = (1.0 / (c1 + c2 * logR2 + c3 * logR2 * logR2 * logR2));
         T = T - 273.15;
-        return  (T * 9.0)/ 5.0 + 32.0;
+        return (T * 9.0) / 5.0 + 32.0;
     }
 
     void applyValues()
@@ -296,24 +296,31 @@ public:
 
     void loop()
     {
-        if (!_bank1->isOnline() && m_bank1Enabled)
+        if (m_configPins->ADCProvider == ADS111X)
         {
-            m_payload->lastError = "ADC 1 Offline";
-            m_console->printError("adc1=offline;");
-            m_payload->status = "Error";
-        }
-        else if (!_bank2->isOnline() && m_bank2Enabled)
-        {
-            m_payload->lastError = "ADC 2 Offline";
-            m_console->printError("adc2=offline;");
-            m_payload->status = "Error";
+            if (!_bank1->isOnline() && m_bank1Enabled)
+            {
+                m_payload->lastError = "ADC 1 Offline";
+                m_console->printError("adc1=offline;");
+                m_payload->status = "Error";
+            }
+            else if (!_bank2->isOnline() && m_bank2Enabled)
+            {
+                m_payload->lastError = "ADC 2 Offline";
+                m_console->printError("adc2=offline;");
+                m_payload->status = "Error";
+            }
         }
 
         for (int idx = 0; idx < NUMBER_ADC_PORTS; ++idx)
         {
             if (m_portEnabled[idx])
             {
-                float voltage = getVoltage(m_pins[idx]);
+                float voltage = 0.0;
+                if (m_configPins->ADCProvider == ADS111X)
+                    voltage = getVoltageADS1115(m_pins[idx]);
+                else if (m_configPins->ADCProvider == ESP32OnBoard)
+                    voltage = analogRead(m_pins[idx]) * 0.001220703125;
 
                 if (m_useFilter)
                 {
@@ -347,16 +354,20 @@ public:
         m_adcConfig[6] = ioConfig->ADC7Config;
         m_adcConfig[7] = ioConfig->ADC8Config;
 
-        enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC || ioConfig->ADC1Config == ADC_CONFIG_VOLTS || ioConfig->ADC1Config == ADC_CONFIG_THERMISTOR);
-        enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC || ioConfig->ADC2Config == ADC_CONFIG_VOLTS || ioConfig->ADC2Config == ADC_CONFIG_THERMISTOR);
-        enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC || ioConfig->ADC3Config == ADC_CONFIG_VOLTS || ioConfig->ADC3Config == ADC_CONFIG_THERMISTOR);
-        enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config == ADC_CONFIG_ADC || ioConfig->ADC4Config == ADC_CONFIG_VOLTS || ioConfig->ADC4Config == ADC_CONFIG_THERMISTOR);
-        enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config == ADC_CONFIG_ADC || ioConfig->ADC5Config == ADC_CONFIG_VOLTS || ioConfig->ADC5Config == ADC_CONFIG_THERMISTOR);
-        enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config == ADC_CONFIG_ADC || ioConfig->ADC6Config == ADC_CONFIG_VOLTS || ioConfig->ADC6Config == ADC_CONFIG_THERMISTOR);
-        enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config == ADC_CONFIG_ADC || ioConfig->ADC7Config == ADC_CONFIG_VOLTS || ioConfig->ADC7Config == ADC_CONFIG_THERMISTOR);
-        enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config == ADC_CONFIG_ADC || ioConfig->ADC8Config == ADC_CONFIG_VOLTS || ioConfig->ADC8Config == ADC_CONFIG_THERMISTOR);
+        if (m_configPins->ADCProvider == ADS111X)
+        {
+            enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC || ioConfig->ADC1Config == ADC_CONFIG_VOLTS || ioConfig->ADC1Config == ADC_CONFIG_THERMISTOR);
+            enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC || ioConfig->ADC2Config == ADC_CONFIG_VOLTS || ioConfig->ADC2Config == ADC_CONFIG_THERMISTOR);
+            enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC || ioConfig->ADC3Config == ADC_CONFIG_VOLTS || ioConfig->ADC3Config == ADC_CONFIG_THERMISTOR);
+            enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config == ADC_CONFIG_ADC || ioConfig->ADC4Config == ADC_CONFIG_VOLTS || ioConfig->ADC4Config == ADC_CONFIG_THERMISTOR);
+            enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config == ADC_CONFIG_ADC || ioConfig->ADC5Config == ADC_CONFIG_VOLTS || ioConfig->ADC5Config == ADC_CONFIG_THERMISTOR);
+            enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config == ADC_CONFIG_ADC || ioConfig->ADC6Config == ADC_CONFIG_VOLTS || ioConfig->ADC6Config == ADC_CONFIG_THERMISTOR);
+            enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config == ADC_CONFIG_ADC || ioConfig->ADC7Config == ADC_CONFIG_VOLTS || ioConfig->ADC7Config == ADC_CONFIG_THERMISTOR);
+            enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config == ADC_CONFIG_ADC || ioConfig->ADC8Config == ADC_CONFIG_VOLTS || ioConfig->ADC8Config == ADC_CONFIG_THERMISTOR);
+        }
+        else
 
-        setScaler(0, ioConfig->ADC1Scaler);
+            setScaler(0, ioConfig->ADC1Scaler);
         setScaler(1, ioConfig->ADC2Scaler);
         setScaler(2, ioConfig->ADC3Scaler);
         setScaler(3, ioConfig->ADC4Scaler);

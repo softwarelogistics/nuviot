@@ -93,6 +93,11 @@
 #define PROD_BRD_V1_ONLINE_LED 5
 #define PROD_BRD_V1_ERR_LED 5
 
+typedef enum ADCProviders {
+    NoADC,
+    ADS111X,
+    ESP32OnBoard
+} ADCProviders_t;
 
 class ConfigPins
 {
@@ -123,6 +128,9 @@ public:
     int8_t CTChannel2 = -1;
     int8_t CTChannel3 = -1;
 
+    ADCProviders_t ADCProvider = NoADC;
+    uint8_t ADCChannels = 0;
+    
     int8_t ADCChannel1 = -1;
     int8_t ADCChannel2 = -1;
     int8_t ADCChannel3 = -1;
@@ -140,11 +148,9 @@ public:
     int8_t Gpio6 = -1;
     int8_t Gpio7 = -1;
     int8_t Gpio8 = -1;
-    
-    int OnbaordADC1 = -1;
-    int OnbaordADC2 = -1;
-    int OnbaordADC3 = -1;
 
+    
+    
     bool InvertGpio1 = false;
     bool InvertGpio2 = false;
     bool InvertGpio3 = false;
@@ -190,6 +196,8 @@ public:
             Scl1 = GP0O1_BRD_V1_SCL1;
             Sda1 = GP0O1_BRD_V1_SDA1;
 
+            ADCProvider = ADS111X;
+            ADCChannels = 8;
             ADCChannel1 = GP0O1_BRD_V2_ADC1;
             ADCChannel2 = GP0O1_BRD_V2_ADC2;
             ADCChannel3 = GP0O1_BRD_V2_ADC3;
@@ -223,6 +231,8 @@ public:
             Scl1 = GP0O1_BRD_V2_SCL1;
             Sda1 = GP0O1_BRD_V2_SDA1;
 
+            ADCProvider = ADS111X;
+            ADCChannels = 8;
             ADCChannel1 = GP0O1_BRD_V2_ADC1;
             ADCChannel2 = GP0O1_BRD_V2_ADC2;
             ADCChannel3 = GP0O1_BRD_V2_ADC3;
@@ -262,6 +272,8 @@ public:
             SimTx = PROD_BRD_V1_GPRS_TX;
 #endif
 
+            ADCProvider = ADS111X;
+            ADCChannels = 8;
             ADCChannel1 = PROD_BRD_V1_ADC1;
             ADCChannel2 = PROD_BRD_V1_ADC2;
             ADCChannel3 = PROD_BRD_V1_ADC3;
@@ -308,6 +320,8 @@ public:
             SimRx = PROD_BRD_V1_RX;
             SimTx = PROD_BRD_V1_TX;
 
+            ADCProvider = ADS111X;
+            ADCChannels = 8;
             ADCChannel1 = PROD_BRD_V1_ADC1;
             ADCChannel2 = PROD_BRD_V1_ADC2;
             ADCChannel3 = PROD_BRD_V1_ADC3;
@@ -349,6 +363,7 @@ public:
 
             ModemResetPin = 02;
             
+            ADCProvider = NoADC;
             HasDisplay = false;
             HasRelays = false;
             HasLeds = true;
@@ -367,6 +382,7 @@ public:
             HasLeds = false;
             NumberRelays = 8;
 
+            ADCProvider = NoADC;
             K1Ctl = 32;
             K2Ctl = 33;
             K3Ctl = 25;
@@ -396,6 +412,7 @@ public:
 
             ModemResetPin = 02;
             
+            ADCProvider = NoADC;
             HasDisplay = false;
             HasRelays = false;
             HasLeds = true;
@@ -417,9 +434,11 @@ public:
             Gpio2 = 26;
             Gpio3 = 27;
 
-            OnbaordADC1 = 34;
-            OnbaordADC2 = 35;
-            OnbaordADC3 = 32;
+            ADCProvider = ESP32OnBoard;
+            ADCChannels = 3;
+            ADCChannel1 = 34;
+            ADCChannel2 = 35;
+            ADCChannel3 = 32;
 
             ModemResetPin = 14;
             ModemSleepPin = 16;

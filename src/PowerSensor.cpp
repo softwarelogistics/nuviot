@@ -58,7 +58,7 @@ void PowerSensor::loop()
 
             while (millis() - startAvg < samplePeriodMS)
             {
-                m_sampleBuffer[iterations] = m_adc->getVoltage(adcChannel);
+                m_sampleBuffer[iterations] = m_adc->getVoltageADS1115(adcChannel);
                 iterations++;
             }
 
