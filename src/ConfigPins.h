@@ -140,6 +140,7 @@ public:
     int8_t ADCChannel7 = -1;
     int8_t ADCChannel8 = -1;
 
+    uint8_t GpioChannels = 0;
     int8_t Gpio1 = -1;
     int8_t Gpio2 = -1;
     int8_t Gpio3 = -1;
@@ -207,6 +208,7 @@ public:
             ADCChannel7 = GP0O1_BRD_V2_ADC7;
             ADCChannel8 = GP0O1_BRD_V2_ADC8;
 
+            GpioChannels = 8;
             Gpio1 = GP0O1_BRD_V1_IO1;
             Gpio2 = GP0O1_BRD_V1_IO2;
             Gpio3 = GP0O1_BRD_V1_IO3;
@@ -245,6 +247,7 @@ public:
             ModemResetPin = PROD_BRD_MODEM_RESET_V2;
             InvertModemPower = true;
 
+            GpioChannels = 8;
             Gpio1 = GP0O1_BRD_V2_IO1;
             Gpio2 = GP0O1_BRD_V2_IO2;
             Gpio3 = GP0O1_BRD_V2_IO3;
@@ -263,13 +266,15 @@ public:
 
 
 #ifdef CAN_ENABLED
-            ConsoleRx = PROD_BRD_V1_GPRS_RX;
-            ConsoleTx = PROD_BRD_V1_GPRS_TX;
-            SimRx  = -1;
-            SimTx = -1;
+            SimRx  = PROD_BRD_V1_GPRS_RX;
+            SimTx = PROD_BRD_V1_GPRS_TX;
+            CANRx = 5;
+            CANTx = 17;
 #else
             SimRx = PROD_BRD_V1_GPRS_RX;
-            SimTx = PROD_BRD_V1_GPRS_TX;
+            SimTx = PROD_BRD_V1_GPRS_TX;       
+            ConsoleRx = CONSOLE_RX;
+            ConsoleTx = CONSOLE_TX;         
 #endif
 
             ADCProvider = ADS111X;
@@ -283,6 +288,7 @@ public:
             ADCChannel7 = PROD_BRD_V1_ADC7;
             ADCChannel8 = PROD_BRD_V1_ADC8;
 
+            GpioChannels = 8;
             Gpio1 = PROD_BRD_V1_IO1;
             Gpio2 = PROD_BRD_V1_IO2;
             Gpio3 = PROD_BRD_V1_IO3;
@@ -333,6 +339,7 @@ public:
 
             ModemResetPin = PROD_BRD_MODEM_RESET_V2;
             
+            GpioChannels = 8;
             Gpio1 = PROD_BRD_V1_IO1;
             Gpio2 = PROD_BRD_V1_IO2;
             Gpio3 = PROD_BRD_V1_IO3;
@@ -422,14 +429,10 @@ public:
             ErrorLED = 33;
             OnlineLED = 32;
          } else if(boardType == 7) {
-            
-
             ConsoleRx = 3;
             ConsoleTx = 1;    
 
-            SimRx = 19;
-            SimTx = 18;
-
+            GpioChannels = 3;
             Gpio1 = 25;
             Gpio2 = 26;
             Gpio3 = 27;

@@ -1337,7 +1337,7 @@ bool SIMModem::connectServer(String hostName, String port)
 
     String connect = "AT+CIPSTART=\"TCP\",\"" + hostName + "\",\"" + port + "\"";
 
-    response = sendCommand(connect, S_CONNECT_OK, 0, 5000, false);
+    response = sendCommand(connect, S_CONNECT_OK, 0, 15000, false);
 
     if (response != S_OK)
     {
@@ -1442,23 +1442,22 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
         return false;
     }
 
-    long start = millis();
-
     m_apn = apn;
     m_apnUid = apnUid;
     m_apnPwd = apnPwd;
 
     boolean connected = false;
+    uint8_t retryCount = 0;
     while (!connected)
     {
-        start = millis();
         m_console->printVerbose("Connect to cell service.");
         while (!getCGREG())
         {
+            retryCount++;
             m_console->printWarning("Not connect to cell service.");
-            delay(1500);
+            delay(retryCount * 250);
 
-            if (millis() - start > 60000)
+            if (retryCount > 20)
             {
                 m_lastError = "SIM0010";
                 return false;
@@ -1480,37 +1479,36 @@ bool SIMModem::connect(String apn, String apnUid, String apnPwd)
 
         setAPN();
 
-        start = millis();
-
+        retryCount = 0;
         while (!isServiceConnected())
         {
-            delay(500);
+            retryCount++;
+            delay(retryCount * 250);
             m_console->printWarning("Service status is not up, retrying.");
 
-            if (millis() - start > 60000)
+            if (retryCount > 20)
             {
                 m_lastError = "SIM0011";
-
-                m_console->printError("Timeout waiting for service connection.");
+                m_console->printError("connect=failed; // service not connected.");
                 return false;
             }
         }
 
         m_console->println("servicestatus=up;");
-
+        retryCount = 0;
         m_ipAddress = "";
         if (m_ipAddress == "")
         {
             bool isGPRSConnected = false;
-            start = millis();
             while (!isGPRSConnected)
             {
+                retryCount++;
+                delay(retryCount * 100);
                 m_console->printVerbose("GPRS Not Connected - Connecting.");
-                delay(500);
-
+            
                 isGPRSConnected = connectGPRS();
 
-                if (millis() - start > 60000)
+                if (retryCount > 20)
                 {
                     m_lastError = "SIM0012";
                     m_console->printError("Could not connect to GPRS.");

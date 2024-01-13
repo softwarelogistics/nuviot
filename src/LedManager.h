@@ -56,80 +56,12 @@ public:
         digitalWrite(beeperPin, HIGH);
     }
 
-    void setup(IOConfig *config)
-    {
-        errPin = m_configPins->ErrorLED;
-        onlinePin = m_configPins->OnlineLED;
-        beeperPin = m_configPins->Buzzer;
-
-        if(m_configPins->InvertLED) {
-            LED_ON_STATE = LOW;
-            LED_OFF_STATE = HIGH;
-        }
-        else {
-            LED_ON_STATE = HIGH;
-            LED_OFF_STATE = LOW;
-        }
-
-        m_timer = timerBegin(0, 5, true);
-
-        timerAttachInterrupt(m_timer, &onTimer, true);
-        timerAlarmWrite(m_timer, 1000000, true);
-        timerAlarmEnable(m_timer);
-
-        if (errPin != -1)
-            pinMode(m_configPins->ErrorLED, OUTPUT);
-        if (onlinePin != -1)
-            pinMode(m_configPins->OnlineLED, OUTPUT);
-        if (beeperPin != -1)
-            pinMode(m_configPins->Buzzer, OUTPUT);
-
-        errPinState = LED_OFF_STATE;
-        onlinePinState = LED_OFF_STATE;
-
-        if (errPin != -1)
-            digitalWrite(errPin, errPinState);
-
-        if (onlinePin != -1)
-            digitalWrite(onlinePin, onlinePinState);
-
-        if (beeperPin != -1) 
-            digitalWrite(beeperPin, beeperPinState);            
-
-        errFlashRate = 0;
-        beepRate = 0;
-        onlineFlashRate = 4;
-    }
-
-    void loop()
-    {
-        if (isManualBeep && millis() > _beepComplete)
-        {
-            isManualBeep = false;
-            _beepComplete = 0;
-            if (beeperPin != -1)
-                digitalWrite(beeperPin, LOW);
-        }
-    }
-
-    void debugPrint()
-    {
-    }
-
-    void setBeepRate(uint8_t rate)
-    {
-        beepRate = rate;
-    }
-
-    void setErrFlashRate(uint8_t rate)
-    {
-        errFlashRate = rate;
-    }
-
-    void setOnlineFlashRate(uint8_t rate)
-    {
-        onlineFlashRate = rate;
-    }
+    void setup(IOConfig *config);
+    void loop();
+    void debugPrint(){}
+    void setBeepRate(uint8_t rate){beepRate = rate;}
+    void setErrFlashRate(uint8_t rate){errFlashRate = rate;}
+    void setOnlineFlashRate(uint8_t rate){onlineFlashRate = rate;}
 };
 
 #endif

@@ -37,6 +37,7 @@ public:
     size_t available();
     size_t readBytes(byte *buffer, size_t len);
     byte readByte();
+    void write(uint8_t byte);
     void loop();
 
     bool waitForCH(uint8_t ch);

@@ -19,6 +19,7 @@
 #define GPIO_CONFIG_HX711 8
 #define GPIO_CONFIG_RPM 9
 
+
 #include <Arduino.h>
 #include <ArduinoJson.h>
 

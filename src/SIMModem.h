@@ -53,6 +53,8 @@ public:
     int getSignalQuality();    
     bool setBearer();
 
+    void printStatus();
+
     void hardwareReset();
     bool hardwarePowerOn();
     bool hardwarePowerOff();

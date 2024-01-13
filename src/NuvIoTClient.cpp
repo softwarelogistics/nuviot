@@ -283,7 +283,7 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     return true;
 }
 
-#define RETRY_COUNT 2
+#define RETRY_COUNT 5
 
 bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
 {

@@ -60,7 +60,7 @@ private:
     int m_txBufferTail = 0;
 
     int m_packetId = 0;
-    byte m_subscriptionId = 0;
+    byte m_subscriptionId = 1;
 
     Stream *m_stream;
 
@@ -79,6 +79,8 @@ private:
     bool flush();
 
     bool readResponse(byte expected);
+
+    bool getStatus();
 };
 
 #endif

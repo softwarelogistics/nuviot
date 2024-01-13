@@ -23,6 +23,7 @@
 #include "PulseCounter.h"
 #include "OnOffDetector.h"
 
+#include "CANBus.h"
 #include "WiFiConnectionHelper.h"
 
 #include "Telemetry.h"
@@ -35,6 +36,7 @@
 #include <PubSubClient.h>
 
 #define DEFAULT_BRD
+#define SERIAL_CONSOLE_ENABLED
 
 #ifdef PROD_BRD_V1
 #undef DEFAULT_BRD
@@ -49,6 +51,7 @@ TwoWire twoWire(1);
 #ifdef CAN_ENABLED
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
+#undef SERIAL_CONSOLE_ENABLED
 #else
 HardwareSerial gprsPort(0);
 HardwareSerial consoleSerial(1);
@@ -64,7 +67,6 @@ HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
 #define BOARD_CONFIG 7
 #endif
-
 
 #ifdef RELAY_BRD_V1
 #undef DEFAULT_BRD
@@ -166,6 +168,10 @@ PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
 
 BLE BT(&console, &hal, &state, &ioConfig, &sysConfig, &relayManager, &ota, payload);
 
+#ifdef CAN_ENABLED
+CANBus canBus(&console, &configPins, &BT);
+#endif
+
 void configureI2C()
 {
   if (!twoWire.setPins(configPins.Sda1, configPins.Scl1))
@@ -243,10 +249,10 @@ void welcome(String firmwareSKU, String version)
     break;
   case 6:
     console.println("BOARD 6: CHARGE_BOARD_V1");
-    break;    
+    break;
   case 7:
     console.println("BOARD 7: CAN_BRD_V1");
-    break;    
+    break;
   default:
     console.println("BOARD ?: UNKNOWN");
     break;
@@ -316,7 +322,6 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
   {
     if (!state.getIsConfigurationModeActive() && client.WifiConnect(reconnect))
     {
-      wifiMQTT.addSubscriptions("nuviot/paw/" + sysConfig.DeviceId + "/#");
       return;
     }
   }
@@ -326,6 +331,9 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
     {
       if (modem.isModemOnline() && !state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
       {
+
+        ledManager.setOnlineFlashRate(-1);
+        ledManager.setErrFlashRate(0);
         console.println("cellconnection=established;");
         if (sysConfig.GPSEnabled)
         {
@@ -365,10 +373,16 @@ void initPins()
  **/
 void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bool btEnabled = true)
 {
+#ifdef SERIAL_CONSOLE_ENABLED
   consoleSerial.begin(baud, SERIAL_8N1, configPins.ConsoleRx, configPins.ConsoleTx);
   console.enableSerialOut(serialEnabled);
-  console.enableBTOut(btEnabled);
+
   console.registerCallback(handleConsoleCommand);
+#else
+  console.enableSerialOut(false);
+#endif
+
+  console.enableBTOut(btEnabled);
 }
 
 void sendStatusUpdate(String currentState, String nextAction, String title = "Commo Starting", int afterDelay = 0)
@@ -387,7 +401,7 @@ void reconnect()
 {
   console.println("connection=lost;");
   console.println("connection=reconnecting;");
-
+  ledManager.setOnlineFlashRate(1);
   connect(true);
 
   console.println("connection=reestablished;");
@@ -439,6 +453,9 @@ void ping()
 {
   if (__nextPing < millis())
   {
+    console.print("[pingtime] on core: ");
+    console.println(String(xPortGetCoreID()));
+
     __nextPing = millis() + sysConfig.PingRateSecond * 1000;
 
     if (!cellMQTT.ping())
@@ -473,17 +490,35 @@ long __nextGPS = 0;
 
 void sendIOValues()
 {
-  String pathOrTopic = "nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/iovalues";
-
   if (sysConfig.Commissioned && __nextSend < millis())
   {
+    console.print("[sendiotime] on core: ");
+    console.println(String(xPortGetCoreID()));
+
+    String pathOrTopic = "nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/iovalues";
+  
     __nextSend = millis() + sysConfig.SendUpdateRateMS;
 
-    if (sysConfig.WiFiEnabled)
+    if (sysConfig.WiFiEnabled && wifiMgr.isConnected())
     {
       if (sysConfig.SrvrType == "mqtt")
       {
         wifiMQTT.publish(pathOrTopic, ioValues.toString());
+
+#ifdef CAN_ENABLED
+        CANMessage *pMsg = canBus.getMessageHead();
+        while (pMsg != NULL)
+        {
+          if (!pMsg->transmitted)
+          {
+            String topic = "can/" + pMsg->getHEXMessageId() + "/" + sysConfig.DeviceId;
+            wifiMQTT.publish(topic, pMsg->msg, pMsg->msgLen);
+            pMsg->transmitted = true;
+          }
+
+          pMsg = pMsg->pNext;
+        }
+#endif
       }
       else if (sysConfig.SrvrType == "rest")
       {
@@ -494,7 +529,23 @@ void sendIOValues()
     {
       if (sysConfig.SrvrType == "mqtt")
       {
-        cellMQTT.publish(pathOrTopic, ioValues.toString(), QOS0);
+        if (!cellMQTT.publish(pathOrTopic, ioValues.toString(), QOS0))
+        {
+        }
+
+#ifdef CAN_ENABLED
+        CANMessage *pMsg = canBus.getMessageHead();
+        while (pMsg != NULL)
+        {
+          if (!pMsg->transmitted)
+          {
+            String topic = "can/" + pMsg->getHEXMessageId() + "/" + sysConfig.DeviceId;
+            cellMQTT.publish(topic, pMsg->msg, pMsg->msgLen, QOS0);
+            pMsg->transmitted = true;
+          }
+          pMsg = pMsg->pNext;
+        }
+#endif
       }
       else if (sysConfig.SrvrType == "rest")
       {
@@ -505,57 +556,67 @@ void sendIOValues()
   }
 }
 
+void communicationsTask(void *param)
+{
+    if (sysConfig.Commissioned)
+    {
+      if (sysConfig.WiFiEnabled)
+      {
+        wifiMgr.loop();
+        if (sysConfig.SrvrType == "mqtt")
+        {
+          if (wifiMgr.isConnected() && sysConfig.SrvrHostName != NULL && sysConfig.SrvrHostName.length() > 0)
+          {
+            wifiMQTT.loop();
+          }
+        }
+      }
+      else if (sysConfig.CellEnabled)
+      {
+        if (sysConfig.SrvrType == "mqtt")
+        {
+          cellMQTT.loop();
+          ping();
+        }
+      }
+    }
+
+    if (sysConfig.GPSEnabled)
+    {
+      if (__nextGPS < millis())
+      {
+        __nextGPS = millis() + sysConfig.GPSUpdateRateMS;
+
+        GPSData *gps = modem.readGPS();
+        if (gps != NULL)
+        {
+          console.println("gps=valid; // " + gps->toCSV());
+          if (sysConfig.WiFiEnabled)
+          {
+            wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/geo", gps->toCSV());
+          }
+          else if (sysConfig.CellEnabled)
+          {
+            cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/geo", gps->toCSV(), QOS0);
+          }
+        }
+        else
+        {
+          console.println("gps=invalid;");
+        }
+      }
+    }
+
+    
+    sendIOValues(); 
+}
+
+void bleTask(void *param) {
+  BT.update();
+}
+
 void commonLoop()
 {
-  if (sysConfig.Commissioned)
-  {
-    if (sysConfig.WiFiEnabled)
-    {
-      wifiMgr.loop();
-      if (sysConfig.SrvrType == "mqtt")
-      {
-        if (wifiMgr.isConnected() && sysConfig.SrvrHostName != NULL && sysConfig.SrvrHostName.length() > 0)
-        {
-          wifiMQTT.loop();
-        }
-      }
-    }
-    else if (sysConfig.CellEnabled)
-    {
-      if (sysConfig.SrvrType == "mqtt")
-      {
-        cellMQTT.loop();
-        ping();
-      }
-    }
-  }
-
-  if (sysConfig.GPSEnabled)
-  {
-    if (__nextGPS < millis())
-    {
-      __nextGPS = millis() + sysConfig.GPSUpdateRateMS;
-
-      GPSData *gps = modem.readGPS();
-      if (gps != NULL)
-      {
-        console.println("gps=valid; // " + gps->toCSV());
-        if (sysConfig.WiFiEnabled)
-        {
-          wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/geo", gps->toCSV());
-        }
-        else if (sysConfig.CellEnabled)
-        {
-          cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/geo", gps->toCSV(), QOS0);
-        }
-      }
-      else
-      {
-        console.println("gps=invalid;");
-      }
-    }
-  }
-
   if (state.OTAState == 100)
   {
     if (wifiMgr.isConnected())
@@ -563,6 +624,13 @@ void commonLoop()
     else
       ota.downloadWithModem();
   }
+
+  communicationsTask(NULL);
+  bleTask(NULL);
+
+#ifdef CAN_ENABLED
+  canBus.loop();
+#endif
 
   if (__nextLoop < millis())
   {
@@ -572,7 +640,7 @@ void commonLoop()
     state.loop();
     ledManager.loop();
     probes.loop();
-    //adc.loop();
+    // adc.loop();
     onOffDetector.loop();
     pulseCounter.loop();
     powerSensor.loop();
@@ -580,12 +648,12 @@ void commonLoop()
   }
 
   // timing on these is handled in the method for sending.
-  BT.update();
-  sendIOValues();
 
   if (sysConfig.getWriteFlag())
     sysConfig.write();
 }
+
+
 
 void mqttSubscribe(String topic)
 {

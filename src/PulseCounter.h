@@ -7,6 +7,7 @@
 #include "ConfigPins.h"
 #include "AbstractSensor.h"
 #include "MessagePayload.h"
+#include <nvs.h>
 
 #define NUMBER_PULSE_COUNTER_CHANNELS 8
 #define PULSE_COUNTER_AVERAGING_BUFFER_SIZE 6
@@ -18,23 +19,25 @@ class PulseCounter : public AbstractSensor {
         ConfigPins *m_configPins;
         uint32_t m_lastMillis;
         MessagePayload *m_payload;
+        nvs_handle m_nvsHandle;
+        esp_timer_handle_t m_clearCountsTimerHandle;
 
         float m_calibration[NUMBER_PULSE_COUNTER_CHANNELS];
         float m_scalers[NUMBER_PULSE_COUNTER_CHANNELS];
         float m_zero[NUMBER_PULSE_COUNTER_CHANNELS];
+        float m_frequencies[NUMBER_PULSE_COUNTER_CHANNELS];
+        uint64_t m_channelCounts[NUMBER_PULSE_COUNTER_CHANNELS];
 
         float m_rawValues[NUMBER_PULSE_COUNTER_CHANNELS];
-        uint32_t m_channelCounts[NUMBER_PULSE_COUNTER_CHANNELS];
+        
         uint8_t m_portEnabled[NUMBER_PULSE_COUNTER_CHANNELS];
         String m_names[NUMBER_PULSE_COUNTER_CHANNELS];
-        volatile double m_pulsePerSecond[NUMBER_PULSE_COUNTER_CHANNELS];
 
         void applyValues();
 
         double m_pulseBuffer[NUMBER_PULSE_COUNTER_CHANNELS][PULSE_COUNTER_AVERAGING_BUFFER_SIZE];
         
         int m_slotIndex = 0;
-        bool m_firstPassCompleted = false;
 
         void setScaler(uint8_t channel, float scaler)
         {
@@ -53,7 +56,6 @@ class PulseCounter : public AbstractSensor {
 
     public:
         PulseCounter(Console *channel, ConfigPins *configPins, MessagePayload *payload);
-        void toggled(int channel);
         void registerPin(uint8_t idx, String name, uint8_t pin);
         void configure(IOConfig *config);
         void setup(IOConfig *config);

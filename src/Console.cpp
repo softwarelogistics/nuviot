@@ -24,6 +24,9 @@ void Console::printByte(byte ch)
 
 void Console::loop()
 {
+    if(!m_serialEnabled) 
+        return;
+
     int bytesToRead = m_stream->available();
     if (bytesToRead)
     {

@@ -125,25 +125,30 @@ String NuvIoTState::getRemoteProperties()
     Param *pNext = m_pBoolParamHead;
     while (pNext != NULL)
     {
-        state += ",Boolean-" + String(pNext->getKey()) + "=" + getBool(pNext->getKey()) ? "true" : "false";
+        state += (",Boolean-" + String(pNext->getKey()) + "=" + String(getBool(pNext->getKey()) ? "true" : "false"));
         pNext = pNext->pNext;
     }
 
     pNext = m_pIntParamHead;
     while (pNext != NULL)
     {
-        state += ",Integer-" + String(pNext->getKey()) + "=" + getInt(pNext->getKey());
+        state += (",Integer-" + String(pNext->getKey()) + "=" + String(getInt(pNext->getKey())));
         pNext = pNext->pNext;
     }
 
     pNext = m_pFloatParamHead;
     while (pNext != NULL)
     {
-        state += ",Decimal-" + String(pNext->getKey()) + "=" + getFlt(pNext->getKey());
+        state += (",Decimal-" + String(pNext->getKey()) + "=" + String(getFlt(pNext->getKey())));
         pNext = pNext->pNext;
     }
 
     return state;
+}
+
+void NuvIoTState::printRemoteProperties(){
+    m_console->print(F("Remote Properties: "));
+    m_console->println(getRemoteProperties());
 }
 
 String NuvIoTState::getIOConfigSettings()
@@ -537,8 +542,6 @@ void NuvIoTState::handleConsoleCommand(String msg)
 
 void NuvIoTState::updateProperty(String fieldType, String field, String value)
 {
-    m_console->println("-- " + fieldType + " - " + field + " - " + value);
-
     if (fieldType == "Integer" || fieldType == "State")
     {
         int32_t intValue = atol(value.c_str());
@@ -594,7 +597,8 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             }
             else
             {
-                m_console->printError("setint=failed,find," + field + "; // error: could not find field.");
+                registerInt(field.c_str(), intValue);
+                m_console->println("setint=success,added=" + field + ", value" + value);
             }
         }
     }
@@ -626,7 +630,8 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
         }
         else
         {
-            m_console->printError("setdecimal=failed,find" + field + "; // error: could not find field.");
+            registerFloat(field.c_str(), atof(value.c_str()));
+            m_console->println("setdecimal=success,added=" + field + ", value" + value);
         }
     }
     else if (fieldType == "TrueFalse")
@@ -634,7 +639,7 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
         if(field == "gps") {
             m_sysConfig->GPSEnabled = value == "true" || value == "True";
             m_sysConfig->write();
-            m_console->println("setbool=success," + field + ";");
+            m_console->println("gpsenabled," + value+ ";");
         }
         else {
             Param *pParam = findKey(m_pBoolParamHead, field.c_str());
@@ -662,8 +667,9 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
                 }
             }
             else
-            {
-                m_console->printError("setbool=failed,find" + field + "; // error: could not find field.");
+            {                
+                registerBool(field.c_str(), value == "true" || value == "True");
+                m_console->println("setbool=success,added=" + field + ", value=" + value);
             }
         }
     }
@@ -700,9 +706,25 @@ String NuvIoTState::resolveError(esp_err_t err)
 {
     switch (err)
     {
+        case ESP_ERR_NVS_READ_ONLY: 
+        return "readonly";
+        case ESP_ERR_NVS_NOT_ENOUGH_SPACE      : return "nospace";
+        case ESP_ERR_NVS_INVALID_HANDLE:   
+         return "invalidhandle";
+        case ESP_ERR_NVS_REMOVE_FAILED 
+                  : return "removefailed";
+        case ESP_ERR_NVS_PAGE_FULL 
+                      : return "pagefull";
+        case ESP_ERR_NVS_INVALID_STATE            : 
+        return "invalidstate";
+        case ESP_ERR_NVS_VALUE_TOO_LONG          : 
+        return "toolong";
+    case ESP_ERR_NVS_TYPE_MISMATCH:
+        return "typemismatch";
+    case ESP_ERR_NVS_NOT_INITIALIZED:
+        return "notinitialized";
     case ESP_ERR_NVS_NOT_FOUND:
         return "keynotfound";
-    case ESP_ERR_NVS_INVALID_HANDLE:
         return "invalidhandle";
     case ESP_ERR_NVS_INVALID_NAME:
         return "invalidname";
@@ -818,6 +840,7 @@ void NuvIoTState::registerBool(const char *keyName, boolean defaultValue)
     {
         appendValue(m_pBoolParamHead, p);
     }
+
 
     uint8_t tmpValue;
     esp_err_t err = nvs_get_u8(m_nvsHandle, keyName, &tmpValue);

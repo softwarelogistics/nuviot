@@ -55,18 +55,22 @@ void Channel::clearBuffers()
     size_t bufflen = m_stream->available();
     if (bufflen > 0)
     {
-        m_console->println("channel=clearbuffer;  // start");
-        m_console->println("channel=remaining;  // Bytes left in buffer " + String(bufflen));
+        m_console->printError("channel=clearbuffer;  // start");
+        m_console->printError("channel=remaining;  // Bytes left in buffer " + String(bufflen));
         size_t bytes_to_read = bufflen > RX_BUFFER_SIZE ? RX_BUFFER_SIZE : bufflen;
+        bool verbose = m_console->getVerboseLogging();
+        m_console->setVerboseLogging(true);
         while (bufflen > 0)
         {
             m_stream->readBytes(m_rxBuffer, bytes_to_read);
-            m_console->printByteArray(m_rxBuffer, bufflen);
+            
+            m_console->printByteArray("remaining bytes=",m_rxBuffer, bufflen);
             bufflen -= bytes_to_read;
             if (bufflen > 0)
                 bytes_to_read = bufflen > RX_BUFFER_SIZE ? RX_BUFFER_SIZE : bufflen;
         }
-        m_console->println("channel=clearbuffer;  // complete");
+        m_console->setVerboseLogging(verbose);
+        m_console->printError("channel=clearbuffer;  // complete");
     }
     m_txHead = 0;
     m_txTail = 0;
@@ -95,6 +99,11 @@ void Channel::print(String msg)
 void Channel::println(String msg)
 {
     m_stream->println(msg);
+}
+
+void Channel::write(uint8_t byte)
+{
+    m_stream->write(byte);
 }
 
 bool Channel::waitForCH(uint8_t ch)

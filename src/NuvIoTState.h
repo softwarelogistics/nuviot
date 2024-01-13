@@ -152,9 +152,8 @@ public:
     String getFirmwareSKU();
     String getDeviceModelKey();
 
-    String getLibraryVersion() { return "4.2"; }
+    String getLibraryVersion() { return "4.5"; }
 
-    
     WiFiConnectionStates getWiFiState() { return m_isWiFiConnectionState; }
     void setWiFiState(WiFiConnectionStates state) { m_isWiFiConnectionState = state; }
 
@@ -185,6 +184,8 @@ public:
 
     String queryFirmwareVersion();
     String getRemoteProperties();
+    
+    void printRemoteProperties();
     String getIOConfigSettings();
 
     void handleConsoleCommand(String cmd);
@@ -210,7 +211,6 @@ public:
     float getInputVoltage() {return m_inputVoltage;}
 
     
-
     void setExternalPower(bool externalPower) {m_externalPower = externalPower;}
     bool getExternalPower() {return m_externalPower;}
 
