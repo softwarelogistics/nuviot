@@ -22,6 +22,8 @@ class PulseCounter : public AbstractSensor {
         nvs_handle m_nvsHandle;
         esp_timer_handle_t m_clearCountsTimerHandle;
 
+        uint8_t m_initalized = false;
+
         float m_calibration[NUMBER_PULSE_COUNTER_CHANNELS];
         float m_scalers[NUMBER_PULSE_COUNTER_CHANNELS];
         float m_zero[NUMBER_PULSE_COUNTER_CHANNELS];

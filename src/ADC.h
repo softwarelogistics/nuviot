@@ -219,6 +219,11 @@ public:
 
         m_portEnabled[index] = enabled;
         m_names[index] = name;
+
+        if (m_configPins->ADCProvider == ESP32OnBoard && enabled)
+        {
+            pinMode(m_pins[index], INPUT);
+        }
     }
 
     void enableADCAsCT(String name, int index, bool enabled)
@@ -319,8 +324,10 @@ public:
                 float voltage = 0.0;
                 if (m_configPins->ADCProvider == ADS111X)
                     voltage = getVoltageADS1115(m_pins[idx]);
-                else if (m_configPins->ADCProvider == ESP32OnBoard)
-                    voltage = analogRead(m_pins[idx]) * 0.001220703125;
+                else if (m_configPins->ADCProvider == ESP32OnBoard) {
+                    uint16_t raw = analogRead(m_pins[idx]);
+                    voltage = (raw * 3.3f) / 4095.0f;
+                }
 
                 if (m_useFilter)
                 {
@@ -354,20 +361,17 @@ public:
         m_adcConfig[6] = ioConfig->ADC7Config;
         m_adcConfig[7] = ioConfig->ADC8Config;
 
-        if (m_configPins->ADCProvider == ADS111X)
-        {
-            enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC || ioConfig->ADC1Config == ADC_CONFIG_VOLTS || ioConfig->ADC1Config == ADC_CONFIG_THERMISTOR);
-            enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC || ioConfig->ADC2Config == ADC_CONFIG_VOLTS || ioConfig->ADC2Config == ADC_CONFIG_THERMISTOR);
-            enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC || ioConfig->ADC3Config == ADC_CONFIG_VOLTS || ioConfig->ADC3Config == ADC_CONFIG_THERMISTOR);
-            enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config == ADC_CONFIG_ADC || ioConfig->ADC4Config == ADC_CONFIG_VOLTS || ioConfig->ADC4Config == ADC_CONFIG_THERMISTOR);
-            enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config == ADC_CONFIG_ADC || ioConfig->ADC5Config == ADC_CONFIG_VOLTS || ioConfig->ADC5Config == ADC_CONFIG_THERMISTOR);
-            enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config == ADC_CONFIG_ADC || ioConfig->ADC6Config == ADC_CONFIG_VOLTS || ioConfig->ADC6Config == ADC_CONFIG_THERMISTOR);
-            enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config == ADC_CONFIG_ADC || ioConfig->ADC7Config == ADC_CONFIG_VOLTS || ioConfig->ADC7Config == ADC_CONFIG_THERMISTOR);
-            enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config == ADC_CONFIG_ADC || ioConfig->ADC8Config == ADC_CONFIG_VOLTS || ioConfig->ADC8Config == ADC_CONFIG_THERMISTOR);
-        }
-        else
+        enableADC(ioConfig->ADC1Name, 0, ioConfig->ADC1Config == ADC_CONFIG_ADC || ioConfig->ADC1Config == ADC_CONFIG_VOLTS || ioConfig->ADC1Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC2Name, 1, ioConfig->ADC2Config == ADC_CONFIG_ADC || ioConfig->ADC2Config == ADC_CONFIG_VOLTS || ioConfig->ADC2Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC3Name, 2, ioConfig->ADC3Config == ADC_CONFIG_ADC || ioConfig->ADC3Config == ADC_CONFIG_VOLTS || ioConfig->ADC3Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC4Name, 3, ioConfig->ADC4Config == ADC_CONFIG_ADC || ioConfig->ADC4Config == ADC_CONFIG_VOLTS || ioConfig->ADC4Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC5Name, 4, ioConfig->ADC5Config == ADC_CONFIG_ADC || ioConfig->ADC5Config == ADC_CONFIG_VOLTS || ioConfig->ADC5Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC6Name, 5, ioConfig->ADC6Config == ADC_CONFIG_ADC || ioConfig->ADC6Config == ADC_CONFIG_VOLTS || ioConfig->ADC6Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC7Name, 6, ioConfig->ADC7Config == ADC_CONFIG_ADC || ioConfig->ADC7Config == ADC_CONFIG_VOLTS || ioConfig->ADC7Config == ADC_CONFIG_THERMISTOR);
+        enableADC(ioConfig->ADC8Name, 7, ioConfig->ADC8Config == ADC_CONFIG_ADC || ioConfig->ADC8Config == ADC_CONFIG_VOLTS || ioConfig->ADC8Config == ADC_CONFIG_THERMISTOR);
+    
 
-            setScaler(0, ioConfig->ADC1Scaler);
+        setScaler(0, ioConfig->ADC1Scaler);
         setScaler(1, ioConfig->ADC2Scaler);
         setScaler(2, ioConfig->ADC3Scaler);
         setScaler(3, ioConfig->ADC4Scaler);
@@ -454,9 +458,9 @@ public:
      *
      * This method can be called to make an I2C call
      * to the ADC on bank one, if it finds it, the method
-     * will return true otherewise it return false.
+     * will return true otherwise it return false.
      *
-     * \return True if the ADC respondes, false if not.
+     * \return True if the ADC responds, false if not.
      **/
     bool isBankOneOnline()
     {
@@ -473,9 +477,9 @@ public:
      *
      * This method can be called to make an I2C call
      * to the ADC on bank two, if it finds it, the method
-     * will return true otherewise it return false.
+     * will return true otherwise it return false.
      *
-     * \return True if the ADC respondes, false if not.
+     * \return True if the ADC responds, false if not.
      **/
     bool isBankTwoOnline()
     {

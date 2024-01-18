@@ -9,23 +9,21 @@
 PulseCounter *__pulseCounter;
 
 #define PCNT_COUNT_CHANNEL PCNT_CHANNEL_0 // Canal 0 do Contador de pulso PCNT do ESP32
-#define PCNT_H_LIM_VAL overflow         // Limite superior de contagem
+#define PCNT_H_LIM_VAL overflow           // Limite superior de contagem
 
-bool flag = true;          // Indicador de fim de contagem - libera impressão
-uint32_t overflow = 20000; // Maximum value for PCNT counter overflow
-uint32_t count_window        = 1000000;                                  // Tempo de amostragem  de 1 segundo para a contagem de pulsos 999990
+bool flag = true;                // Indicador de fim de contagem - libera impressão
+uint32_t overflow = 20000;       // Maximum value for PCNT counter overflow
+uint32_t count_window = 1000000; // Tempo de amostragem  de 1 segundo para a contagem de pulsos 999990
 
-uint32_t multPulses = 0;   // Number of PCNT counter overflows
-int16_t pulses[8];        // Number of pulses counted
+uint32_t multPulses = 0; // Number of PCNT counter overflows
+int16_t pulses[8];       // Number of pulses counted
 uint64_t pulse_accumulator[8];
 // char            buf[32];                                                  // Buffer para guardar a pontuacao
-
-
 
 portMUX_TYPE pulseCounterTimerMux = portMUX_INITIALIZER_UNLOCKED; // variavel tipo portMUX_TYPE para sincronismo
 
 void readCounts(void *p) // Fim de tempo de leitura de pulsos
-{   
+{
     pcnt_get_counter_value(PCNT_UNIT_0, &pulses[0]);
     pcnt_get_counter_value(PCNT_UNIT_1, &pulses[1]);
     pcnt_get_counter_value(PCNT_UNIT_2, &pulses[2]);
@@ -34,21 +32,21 @@ void readCounts(void *p) // Fim de tempo de leitura de pulsos
     pulse_accumulator[1] += pulses[1] >> 1; // current pulse count
     pulse_accumulator[2] += pulses[2] >> 1; // current pulse count
 
-    flag = true;                      // mark available to load
+    flag = true; // mark available to load
 }
 
-static void IRAM_ATTR pcnt_intr_handler(void *arg) 
+static void IRAM_ATTR pcnt_intr_handler(void *arg)
 {
-    portENTER_CRITICAL_ISR(&pulseCounterTimerMux); 
-/*    pcnt_config_t *prt = (pcnt_config_t*)arg;
+    portENTER_CRITICAL_ISR(&pulseCounterTimerMux);
+    /*    pcnt_config_t *prt = (pcnt_config_t*)arg;
 
-    if(prt->unit == PCNT_UNIT_0) 
-                                         */
+        if(prt->unit == PCNT_UNIT_0)
+                                             */
 
-    multPulses++; 
+    multPulses++;
 
-    PCNT.int_clr.val = BIT(PCNT_UNIT_0);       
-    portEXIT_CRITICAL_ISR(&pulseCounterTimerMux);  
+    PCNT.int_clr.val = BIT(PCNT_UNIT_0);
+    portEXIT_CRITICAL_ISR(&pulseCounterTimerMux);
 }
 
 void initialize_counter(pcnt_unit_t unit, int pin)
@@ -87,7 +85,7 @@ PulseCounter::PulseCounter(Console *console, ConfigPins *configPins, MessagePayl
 
 void PulseCounter::registerPin(uint8_t idx, String name, uint8_t pin)
 {
-    m_names[idx] = name;    
+    m_names[idx] = name;
     m_portEnabled[idx] = 1;
 }
 
@@ -107,7 +105,7 @@ void PulseCounter::applyValues()
     }
 }
 
-esp_timer_create_args_t create_args;   
+esp_timer_create_args_t create_args;
 
 void PulseCounter::setup(IOConfig *ioConfig)
 {
@@ -153,32 +151,38 @@ void PulseCounter::setup(IOConfig *ioConfig)
     pulse_accumulator[2] = m_channelCounts[2];
 
     m_console->println("channel0=" + String(m_channelCounts[0]));
-    
+
     initialize_counter(PCNT_UNIT_0, m_configPins->Gpio1);
     initialize_counter(PCNT_UNIT_1, m_configPins->Gpio2);
     initialize_counter(PCNT_UNIT_2, m_configPins->Gpio3);
 
-    create_args.callback = readCounts;    
+    create_args.callback = readCounts;
     esp_timer_create(&create_args, &m_clearCountsTimerHandle);
 
     configure(ioConfig);
+
+    m_initalized = true;
 }
 
 void PulseCounter::loop()
 {
+    if (!m_initalized)
+        return;
+
     uint32_t millisDelta = millis() - m_lastMillis;
     if (millisDelta > SAMPLE_PERIOD)
-    {   
+    {
         m_lastMillis = millis();
 
-        if (flag == true) 
+        if (flag == true)
         {
             flag = false; // Impede nova impressao
-            for(uint8_t idx = 0; idx < 3; idx++) {
-                m_frequencies[idx] = (pulses[idx] + (multPulses * overflow)) / 2; 
+            for (uint8_t idx = 0; idx < 3; idx++)
+            {
+                m_frequencies[idx] = (pulses[idx] + (multPulses * overflow)) / 2;
                 m_channelCounts[idx] = pulse_accumulator[idx];
             }
-                
+
             ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_set_u64(m_nvsHandle, "channel0", m_channelCounts[0]));
             ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_set_u64(m_nvsHandle, "channel1", m_channelCounts[1]));
             ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_set_u64(m_nvsHandle, "channel2", m_channelCounts[2]));
@@ -190,12 +194,12 @@ void PulseCounter::loop()
 
             multPulses = 0;
 
-            pcnt_counter_clear(PCNT_UNIT_0);                             
-            pcnt_counter_clear(PCNT_UNIT_1);                             
-            pcnt_counter_clear(PCNT_UNIT_2);                             
+            pcnt_counter_clear(PCNT_UNIT_0);
+            pcnt_counter_clear(PCNT_UNIT_1);
+            pcnt_counter_clear(PCNT_UNIT_2);
 
             ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_commit(m_nvsHandle));
-            esp_timer_start_once(m_clearCountsTimerHandle, count_window); 
+            esp_timer_start_once(m_clearCountsTimerHandle, count_window);
             applyValues();
         }
     }
@@ -227,11 +231,17 @@ int PulseCounter::countsPerSecond(uint8_t channel)
 }
 
 void PulseCounter::debugPrint()
-{    
-    for (int idx = 0; idx < NUMBER_PULSE_COUNTER_CHANNELS; ++idx)
+{
+    if (!m_initalized)
+        m_console->println("PulseCounter not initialized");
+    else
     {
-        if (m_portEnabled[idx]) {
-            m_console->printVerbose(m_names[idx] + ": Freq=" + String(m_frequencies[idx]) + ", Total Counts=" + String(m_channelCounts[idx]) + ", Value=" + String(m_rawValues[idx]));
+        for (int idx = 0; idx < NUMBER_PULSE_COUNTER_CHANNELS; ++idx)
+        {
+            if (m_portEnabled[idx])
+            {
+                m_console->printVerbose(m_names[idx] + ": Freq=" + String(m_frequencies[idx]) + ", Total Counts=" + String(m_channelCounts[idx]) + ", Value=" + String(m_rawValues[idx]));
+            }
         }
     }
 }

@@ -640,7 +640,7 @@ void commonLoop()
     state.loop();
     ledManager.loop();
     probes.loop();
-    // adc.loop();
+    adc.loop();
     onOffDetector.loop();
     pulseCounter.loop();
     powerSensor.loop();
