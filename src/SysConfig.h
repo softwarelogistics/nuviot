@@ -129,7 +129,6 @@ public:
         }
     }
 
-
     bool writeFlag = false;
     void setWriteFlag() {
         writeFlag = true;

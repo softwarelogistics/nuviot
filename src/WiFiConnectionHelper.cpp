@@ -76,7 +76,7 @@ void WiFiConnectionHelper::loop()
 
             m_console->println("wifi_ipaddress=" + sIPAddress + ";");
             m_ledManager->setErrFlashRate(0);
-            m_ledManager->setOnlineFlashRate(10);
+            m_ledManager->setOnlineFlashRate(0);
             m_state->setWiFiState(WiFi_Connected);
             m_state->setWiFiIPAddress(sIPAddress);
             m_wifiState = NuvIoTWiFi_Connected;
@@ -89,6 +89,16 @@ void WiFiConnectionHelper::loop()
         return;
     }
 
+    if (m_wifiState == NuvIoTWiFi_Connected)
+    {
+        m_console->println("wifi=lostconnection; // Starting to reconnecting.");
+        connect(true);
+        return;
+    }
+
+    m_ledManager->setErrFlashRate(10);
+    m_ledManager->setOnlineFlashRate(10);
+
     if (m_wifiState == NuvIoTWiFi_NotConnected)
     {
         m_state->setWiFiState(WiFi_Disconnected);
@@ -97,13 +107,7 @@ void WiFiConnectionHelper::loop()
     }
 
     // If we are connected, then that means we have lost our connection.
-    if (m_wifiState == NuvIoTWiFi_Connected)
-    {
-        m_console->println("wifi=lostconnection; // Starting to reconnecting.");
-        connect(true);
-    }
 
-    connect(true);
 
     m_attempt++;
     // m_display->clearBuffer();
@@ -130,7 +134,7 @@ void WiFiConnectionHelper::loop()
     m_console->println("wifi=connecting; // attempt=" + String(m_attempt) + ", status=" + statusMsg);
     delay(250);
 
-    if (m_attempt == 60)
+    if (m_attempt == 10)
     {
         m_hal->restart();
     }

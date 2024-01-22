@@ -318,6 +318,7 @@ void spinWhileNotCommissioned()
 // TODO: Not a lot of value here...
 void connect(bool reconnect = false, unsigned long baud = 115200)
 {
+  uint8_t retryCount = 0;
   if (sysConfig.WiFiEnabled)
   {
     if (!state.getIsConfigurationModeActive() && client.WifiConnect(reconnect))
@@ -327,7 +328,7 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
   }
   else if (sysConfig.CellEnabled)
   {
-    while (state.isValid())
+    while (state.isValid() && retryCount++ < 5)
     {
       if (modem.isModemOnline() && !state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
       {
@@ -492,7 +493,7 @@ void sendIOValues()
 {
   if (sysConfig.Commissioned && __nextSend < millis())
   {
-    console.print("[sendiotime] on core: ");
+    console.print("[sendiotime] on core: >" + sysConfig.SrvrType + "<");
     console.println(String(xPortGetCoreID()));
 
     String pathOrTopic = "nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/iovalues";
@@ -504,6 +505,7 @@ void sendIOValues()
       if (sysConfig.SrvrType == "mqtt")
       {
         wifiMQTT.publish(pathOrTopic, ioValues.toString());
+        console.println("publish it" + pathOrTopic);
 
 #ifdef CAN_ENABLED
         CANMessage *pMsg = canBus.getMessageHead();
@@ -629,14 +631,17 @@ void commonLoop()
   bleTask(NULL);
 
 #ifdef CAN_ENABLED
-  canBus.loop();
+  //canBus.loop();
 #endif
+
+console.loop();
 
   if (__nextLoop < millis())
   {
+    console.println("da loop" + String(sysConfig.LoopUpdateRateMS));
     __nextLoop = millis() + sysConfig.LoopUpdateRateMS;
     hal.loop();
-    console.loop();
+    
     state.loop();
     ledManager.loop();
     probes.loop();

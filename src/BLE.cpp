@@ -1,4 +1,5 @@
 #include "BLE.h"
+#include "esp_efuse.h"
 #include "NuvIoTState.h"
 #include <stdio.h>
 
@@ -213,6 +214,10 @@ void BLE::refreshCharacteristics()
 
   pCharState->setValue((uint8_t *)state.c_str(), state.length());
 
+    uint32_t low     = ESP.getEfuseMac() & 0xFFFFFFFF; 
+    uint32_t high    = ( ESP.getEfuseMac() >> 32 ) % 0xFFFFFFFF;
+    uint64_t fullMAC = word(low,high);
+
   String config =
       pSysConfig->DeviceId + "," +
       pSysConfig->OrgId + "," +
@@ -234,7 +239,8 @@ void BLE::refreshCharacteristics()
       String(pSysConfig->SendUpdateRateMS) + "," +
       (pSysConfig->GPSEnabled ? "1," : "0,") +
       String(pSysConfig->GPSUpdateRateMS) + "," + 
-      String(pSysConfig->LoopUpdateRateMS);
+      String(pSysConfig->LoopUpdateRateMS) + "," + 
+      String(fullMAC);
 
   pCharConfig->setValue(config.c_str());
 
