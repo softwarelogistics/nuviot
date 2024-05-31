@@ -150,7 +150,7 @@ void PulseCounter::setup(IOConfig *ioConfig)
     pulse_accumulator[1] = m_channelCounts[1];
     pulse_accumulator[2] = m_channelCounts[2];
 
-    m_console->println("channel0=" + String(m_channelCounts[0]));
+    m_console->println("channel0=" + String((uint16_t)m_channelCounts[0]));
 
     initialize_counter(PCNT_UNIT_0, m_configPins->Gpio1);
     initialize_counter(PCNT_UNIT_1, m_configPins->Gpio2);
@@ -240,7 +240,7 @@ void PulseCounter::debugPrint()
         {
             if (m_portEnabled[idx])
             {
-                m_console->printVerbose(m_names[idx] + ": Freq=" + String(m_frequencies[idx]) + ", Total Counts=" + String(m_channelCounts[idx]) + ", Value=" + String(m_rawValues[idx]));
+                m_console->printVerbose(m_names[idx] + ": Freq=" + String(m_frequencies[idx]) + ", Total Counts=" + String((uint32_t)m_channelCounts[idx]) + ", Value=" + String(m_rawValues[idx]));
             }
         }
     }

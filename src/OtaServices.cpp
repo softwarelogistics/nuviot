@@ -205,7 +205,7 @@ bool OtaServices::downloadOverWiFi(String url)
     freeHeep = ESP.getFreeHeap();
     m_console->println(String(F("[OtaServices__downloadOverWiFi] free2=")) + String(freeHeep));
 
-    int64_t contentSize = getFileSize(&http, url + "/size");
+    uint64_t contentSize = getFileSize(&http, url + "/size");
     if(contentSize < 0) {        
         m_console->printError(String(F("[OtaServices__downloadOverWifi] Could not download size")));
         markCompleted(&http, url, false);
@@ -224,7 +224,7 @@ bool OtaServices::downloadOverWiFi(String url)
     m_display->clearBuffer();
     m_display->drawStr(("Updating Firmware"));
     m_display->sendBuffer();
-    m_console->println(String(F("[OtaServices__downloadOverWifi] download-size=")) + String(contentSize) + ";");
+    m_console->println(String(F("[OtaServices__downloadOverWifi] download-size=")) + String((uint32_t)contentSize) + ";");
     m_hal->feedHWWatchdog();
     m_hal->enableHWWatchdog(2 * 60);
 
@@ -308,7 +308,7 @@ bool OtaServices::downloadOverWiFi(String url)
     else
     {
 
-        m_console->printError(String(F("[OtaServices__downloadOverWifi] downloadsizemismatch; // downloaded=")) + String(downloaded) + String(F(" total:")) + String(contentSize));
+        m_console->printError(String(F("[OtaServices__downloadOverWifi] downloadsizemismatch; // downloaded=")) + String(downloaded) + String(F(" total:")) + String((uint32_t)contentSize));
 
         m_display->drawStr(("Flashing Failed"), ("Download Error"));
         lastError = ERR_CONTENT_DOWNLOAD_MISMATCH;

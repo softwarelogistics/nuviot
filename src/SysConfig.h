@@ -184,7 +184,7 @@ public:
         DeviceAccessKey = "";
 
         PingRateSecond = 30;
-        SendUpdateRateMS = 250;
+        SendUpdateRateMS = 30000;
         LoopUpdateRateMS = 250;
 
         GPSUpdateRateMS = 1000;        

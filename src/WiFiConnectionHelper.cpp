@@ -60,8 +60,7 @@ void WiFiConnectionHelper::loop()
         m_attempt = 0;
 
         if (m_wifiState != NuvIoTWiFi_Connected)
-        {
-            
+        {            
             // m_display->clearBuffer();
             // m_display->drawString(0, 0, "Connected to:");
             // m_display->drawString(80, 0, m_sysConfig->WiFiSSID.c_str());
@@ -92,7 +91,8 @@ void WiFiConnectionHelper::loop()
     if (m_wifiState == NuvIoTWiFi_Connected)
     {
         m_console->println("wifi=lostconnection; // Starting to reconnecting.");
-        connect(true);
+        if(connect(true))
+            m_attempt++;
         return;
     }
 
@@ -103,13 +103,14 @@ void WiFiConnectionHelper::loop()
     {
         m_state->setWiFiState(WiFi_Disconnected);
         m_console->println("wifi=notconnected; // Starting to connect.");
-        connect(false);
+        if(connect(false)) 
+            m_attempt++;
     }
 
     // If we are connected, then that means we have lost our connection.
 
 
-    m_attempt++;
+    
     // m_display->clearBuffer();
     // m_display->drawString(0, 0, "NuvIoT");
     // m_display->drawString(0, 16, "Connecting WiFi");
@@ -140,20 +141,19 @@ void WiFiConnectionHelper::loop()
     }
 }
 
-void WiFiConnectionHelper::connect(bool isReconnect){
+bool WiFiConnectionHelper::connect(bool isReconnect){
     if((millis() - m_lastReconnect) < 5000) {
-        m_console->println("wifi=pauseconnect;");
-        return;
+        return false;
     }
 
     if(!m_sysConfig->WiFiEnabled) {
         m_console->println("wifi=notenabled;");    
-        return;
+        return false;
     }
 
     if(m_sysConfig->WiFiSSID.length() == 0) {
         m_console->println("wifi=nossid; // WIFi enabled, attempt to connect but no SSID configured.");    
-        return;
+        return false;
     }
 
     m_lastReconnect = millis();
@@ -181,14 +181,15 @@ void WiFiConnectionHelper::connect(bool isReconnect){
         // m_display->drawString(0, 48, "Fail enable STA");
         // m_display->sendBuffer();
         m_ledManager->setErrFlashRate(2);
-        return;
+        return true;
     }
 
     m_console->println("wifi=connecting; // ssid=" + m_sysConfig->WiFiSSID + ", pwd=" + m_sysConfig->WiFiPWD.c_str());
     wl_status_t beginResult = WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
     
-
     m_ledManager->setErrFlashRate(6);
+
+    return true;
 }
 
 uint8_t WiFiConnectionHelper::getRSSI()

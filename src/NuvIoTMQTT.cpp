@@ -66,7 +66,9 @@ void NuvIoTMQTT::connect()
     (WiFi.hostByName(m_sysConfig->SrvrHostName.c_str(), remote_addr));
     m_console->println("wifimqtt=connecting; // host=" + m_sysConfig->SrvrHostName + "; addr=" + remote_addr.toString() + "; deviceid=" + m_sysConfig->DeviceId + "; uid=" + m_sysConfig->SrvrUID + "; pwd=" + m_sysConfig->SrvrPWD);
 
-    m_mqtt->setServer(remote_addr, 1883);
+    uint16_t port = m_sysConfig->Port == 0 ? 1883 : m_sysConfig->Port;
+
+    m_mqtt->setServer(remote_addr, port);
     bool connectResult = m_state->getIsAnonymous() ? m_mqtt->connect(m_sysConfig->DeviceId.c_str()) : m_mqtt->connect(m_sysConfig->DeviceId.c_str(), m_sysConfig->SrvrUID.c_str(), m_sysConfig->SrvrPWD.c_str());
 
     if (connectResult)
@@ -75,7 +77,7 @@ void NuvIoTMQTT::connect()
 
         publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", "firmwareVersion=" + m_state->getFirmwareVersion() + ",firmwareSku=" + m_state->getFirmwareSKU() + ",ipAddress=" + m_wifi->getIPAddress());
 
-        m_console->println("wifimqtt=mqttconnected; // host=" + m_sysConfig->SrvrHostName + ".");
+        m_console->println("wifimqtt=mqttconnected; // host=" + m_sysConfig->SrvrHostName + ":" + String(m_sysConfig->Port) + ".");
         for (int idx = 0; idx < m_subscriptionCount; ++idx)
         {
             if (m_mqtt->subscribe(m_subscriptions[idx].c_str()))

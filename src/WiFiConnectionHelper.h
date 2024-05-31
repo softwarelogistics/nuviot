@@ -25,7 +25,7 @@ class WiFiConnectionHelper {
                              Console *console, SysConfig *sysConfig);
 
         void setup();
-        void connect(bool isReconnecting);
+        bool connect(bool isReconnecting);
         void disconnect();
         void loop();
 

@@ -240,7 +240,7 @@ void BLE::refreshCharacteristics()
       (pSysConfig->GPSEnabled ? "1," : "0,") +
       String(pSysConfig->GPSUpdateRateMS) + "," + 
       String(pSysConfig->LoopUpdateRateMS) + "," + 
-      String(fullMAC);
+      String((uint32_t)fullMAC);
 
   pCharConfig->setValue(config.c_str());
 

@@ -172,6 +172,8 @@ BLE BT(&console, &hal, &state, &ioConfig, &sysConfig, &relayManager, &ota, paylo
 CANBus canBus(&console, &configPins, &BT);
 #endif
 
+bool _i2cConfigure = false;
+
 void configureI2C()
 {
   if (!twoWire.setPins(configPins.Sda1, configPins.Scl1))
@@ -186,6 +188,7 @@ void configureI2C()
   {
     twoWire.begin();
     console.println("i2c=initialized; Pins SDA=" + String(configPins.Sda1) + ", SCL=" + String(configPins.Scl1) + ".");
+    _i2cConfigure = true;
   }
 }
 
@@ -638,14 +641,14 @@ console.loop();
 
   if (__nextLoop < millis())
   {
-    console.println("da loop" + String(sysConfig.LoopUpdateRateMS));
     __nextLoop = millis() + sysConfig.LoopUpdateRateMS;
     hal.loop();
     
     state.loop();
     ledManager.loop();
     probes.loop();
-    adc.loop();
+    if(_i2cConfigure)
+      adc.loop();
     onOffDetector.loop();
     pulseCounter.loop();
     powerSensor.loop();
