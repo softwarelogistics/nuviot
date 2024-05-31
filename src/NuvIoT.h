@@ -68,6 +68,15 @@ TwoWire twoWire(1);
 #define BOARD_CONFIG 7
 #endif
 
+
+#ifdef GENERIC
+#undef DEFAULT_BRD
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+TwoWire twoWire(1);
+#define BOARD_CONFIG 8
+#endif
+
 #ifdef RELAY_BRD_V1
 #undef DEFAULT_BRD
 HardwareSerial gprsPort(1);
@@ -195,7 +204,7 @@ void configureI2C()
 void configureFileSystem()
 {
   if (!SPIFFS.begin(true))
-  {
+  {  
     display.drawStr("Could not initialize SPIFFS.");
     console.println("spiff=fail;");
     while (true)
@@ -634,7 +643,7 @@ void commonLoop()
   bleTask(NULL);
 
 #ifdef CAN_ENABLED
-  //canBus.loop();
+  canBus.loop();
 #endif
 
 console.loop();

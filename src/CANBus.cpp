@@ -36,6 +36,7 @@ bool CANBus::readStatus()
 
   if(status.rx_error_counter > 50 || status.tx_error_counter > 50)
     m_pConsole->printError("STATE_OK Tx err:" + String(status.tx_error_counter) + " Rx err:" + String(status.rx_error_counter));
+
   return true;
 }
 
@@ -50,6 +51,7 @@ void CANBus::setup()
 
   uint32_t alerts_to_enable = TWAI_ALERT_ERR_PASS | TWAI_ALERT_BUS_OFF | TWAI_ALERT_TX_FAILED;
   ESP_ERROR_CHECK(twai_reconfigure_alerts(alerts_to_enable, NULL));
+  m_pConsole->println("canbus=initialized;");
 }
 
 void CANBus::send(uint32_t messageId, uint8_t *data, uint8_t len)

@@ -463,6 +463,17 @@ public:
 
             CANTx = 19;
             CANRx = 5;
+        } else if(boardType == 8) {
+            NumberRelays = 0;
+
+            ConsoleRx = CONSOLE_RX;
+            ConsoleTx = CONSOLE_TX;    
+        
+            ADCProvider = NoADC;
+            HasDisplay = false;
+            HasRelays = false;
+            HasLeds = false;
+            HasI2C = false;
         }
     }
 };
