@@ -156,8 +156,7 @@ public:
     String toJSON()
     {
         // Note the size is the number of elements.
-        const size_t capacity = JSON_OBJECT_SIZE(128);
-        DynamicJsonDocument doc(capacity);
+        JsonDocument doc;
         doc["adc1c"] = ADC1Config;
         doc["adc2c"] = ADC2Config;
         doc["adc3c"] = ADC3Config;
@@ -337,8 +336,7 @@ public:
 
     bool parseJSON(String str)
     {
-        const size_t capacity = JSON_OBJECT_SIZE(512);
-        DynamicJsonDocument doc(capacity);
+        JsonDocument doc;
 
         DeserializationError result = deserializeJson(doc, str.c_str());
         if (result.code() == DeserializationError::Code::Ok)

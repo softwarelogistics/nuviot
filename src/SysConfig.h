@@ -56,9 +56,7 @@ public:
     unsigned long GPRSModemBaudRate;
 
     String toJSON(){
-
-        const size_t capacity = JSON_OBJECT_SIZE(64);
-        DynamicJsonDocument doc(capacity);
+        JsonDocument doc;
         doc["baud"] = GPRSModemBaudRate;        
         doc["tls"] = TLS;
         doc["commissioned"] = Commissioned;
@@ -202,9 +200,7 @@ public:
 
     bool parseJSON(const char *str)
     {
-        const size_t capacity = JSON_OBJECT_SIZE(64);
-        DynamicJsonDocument doc(capacity);
-
+        JsonDocument doc;
         doc.clear();
 
         ArduinoJson::DeserializationError err = deserializeJson(doc, str);

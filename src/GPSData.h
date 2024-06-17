@@ -92,8 +92,7 @@ public:
     {
         if(String(Fixstatus) != "1")
         {
-            const size_t capacity = JSON_OBJECT_SIZE(1);
-            DynamicJsonDocument doc(capacity);
+            JsonDocument doc;
 
             doc["hasFix"] = false;
            
@@ -103,8 +102,7 @@ public:
             return output;
         }
         else {
-            const size_t capacity = JSON_OBJECT_SIZE(12);
-            DynamicJsonDocument doc(capacity);
+            JsonDocument doc;
 
             doc["hasFix"] = true;
             doc["fixType"] = atoi(fixmode);

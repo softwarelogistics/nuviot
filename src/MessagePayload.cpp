@@ -4,8 +4,7 @@
 
 String MessagePayload::getJSON()
 {
-    const size_t capacity = JSON_OBJECT_SIZE(20);
-    DynamicJsonDocument doc(capacity);
+    JsonDocument doc;
 
     doc["status"] = status;
     doc["lastError"] = lastError;

@@ -355,7 +355,7 @@ void BLE::handleReadCharacteristic(BLECharacteristic *characteristic)
 
 void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String value)
 {
-  pConsole->println("ble=read; // char=sysconfig; value=" + value);
+  pConsole->println("ble=write; // char=sysconfig; value=" + value);
 
   m_lastClientActivity = millis();
   unsigned char cstr[characteristic->getValue().size()];
@@ -373,13 +373,18 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
     refreshCharacteristics();
   }
   else if (0 == strcmp(uuid, CHAR_UUID_SYS_CONFIG)) {
-    pConsole->println("ble=read; // char=sysconfig; value=" + input);
+    pConsole->println("ble=write; // char=sysconfig; value=" + input);
     boolean done = false;
     int lastEnd = 0;
     while (!done){
       int equalDelimiter = input.indexOf("=", lastEnd);
       int valueEnd = input.indexOf(",", equalDelimiter);
       int final = input.indexOf(";", equalDelimiter);
+
+      if(equalDelimiter == -1 || valueEnd == -1 || final == -1) {
+        pConsole->println("blewrite=write fail; //Invalid String Pointers: " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
+        return;
+      }
 
       String key = input.substring(lastEnd, equalDelimiter);
       String value = input.substring(equalDelimiter + 1, valueEnd == -1 ? final : valueEnd);
