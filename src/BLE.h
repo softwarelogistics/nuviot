@@ -17,6 +17,7 @@
 #include <NuvIoTState.h>
 #include <MessagePayload.h>
 #include <OtaServices.h>
+#include "WiFiConnectionHelper.h"
 
 #define SOFTWARE_VERSION_MAJOR 0
 #define SOFTWARE_VERSION_MINOR 1
@@ -67,8 +68,9 @@ public:
 class BLE
 {
 public:
-  BLE(Console *console, Hal *hal, NuvIoTState *state, IOConfig *ioConfig, SysConfig *sysConfig, RelayManager *relayManager, OtaServices *ota, MessagePayload *payload)
+  BLE(Console *console, Hal *hal, NuvIoTState *state, IOConfig *ioConfig, WiFiConnectionHelper *wifi, SysConfig *sysConfig, RelayManager *relayManager, OtaServices *ota, MessagePayload *payload)
   {
+    pWifi = wifi;
     pConsole = console;
     pHal = hal;
     pSysConfig = sysConfig;
@@ -88,6 +90,7 @@ public:
   void refreshCharacteristics();
 
   void writeConsoleOutput(String msg);
+  void writeWiFiMessage(String msg);
   void writeCANMessage(uint32_t msgId, uint8_t msg[], uint8_t len);
 
   void handleReadCharacteristic(BLECharacteristic *characteristic);
@@ -123,6 +126,7 @@ private:
   MessagePayload *pPayload;
   OtaServices *pOta;
 
+  WiFiConnectionHelper *pWifi;
   Console *pConsole;
   SysConfig *pSysConfig;
   IOConfig *pIOConfig;
@@ -152,6 +156,7 @@ private:
 
   String m_currentConfigPort = "adc1";
   String local_name;
+  String siteSurvey = "";
 
   BLEServer *pServer = NULL;
 
@@ -168,6 +173,8 @@ private:
   BLECharacteristic *pCharRelay = NULL;  
 
   BLECharacteristic *pCharCAN = NULL;  
+
+  BLECharacteristic *pCharWiFi = NULL;
 };
 
 #endif

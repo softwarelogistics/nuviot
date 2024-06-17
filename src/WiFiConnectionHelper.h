@@ -24,6 +24,7 @@ class WiFiConnectionHelper {
         WiFiConnectionHelper(WiFiClient *client, Display *display, LedManager *ledManager, NuvIoTState *state, Hal *hal, 
                              Console *console, SysConfig *sysConfig);
 
+        String siteSurvey();
         void setup();
         bool connect(bool isReconnecting);
         void disconnect();
@@ -35,7 +36,7 @@ class WiFiConnectionHelper {
         String getIPAddress();
         String getMACAddress();
         String getWiFiStatus();
-        uint8_t getRSSI();
+        int32_t getRSSI();
           
     private:
         Display *m_display;

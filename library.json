@@ -4,7 +4,7 @@
     "description": "A set of libraries that make it easy to work with hardware and connect to NuvIoT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/softwarelogistics/FirmwareExamples"
+        "url": "https://github.com/softwarelogistics/nuviot.git"
     },
     "version": "4.51",
     "exclude": "tests",

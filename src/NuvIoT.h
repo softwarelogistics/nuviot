@@ -175,7 +175,7 @@ OnOffDetector onOffDetector(&console, &configPins, payload);
 
 PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
 
-BLE BT(&console, &hal, &state, &ioConfig, &sysConfig, &relayManager, &ota, payload);
+BLE BT(&console, &hal, &state, &ioConfig, &wifiMgr, &sysConfig, &relayManager, &ota, payload);
 
 #ifdef CAN_ENABLED
 CANBus canBus(&console, &configPins, &BT);
@@ -466,9 +466,6 @@ void ping()
 {
   if (__nextPing < millis())
   {
-    console.print("[pingtime] on core: ");
-    console.println(String(xPortGetCoreID()));
-
     __nextPing = millis() + sysConfig.PingRateSecond * 1000;
 
     if (!cellMQTT.ping())
@@ -505,8 +502,6 @@ void sendIOValues()
 {
   if (sysConfig.Commissioned && __nextSend < millis())
   {
-    console.print("[sendiotime] on core: >" + sysConfig.SrvrType + "<");
-    console.println(String(xPortGetCoreID()));
 
     String pathOrTopic = "nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/iovalues";
   

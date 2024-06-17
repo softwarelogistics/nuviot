@@ -38,6 +38,20 @@ String WiFiConnectionHelper::getWiFiStatus()
     return "?";
 }
 
+String WiFiConnectionHelper::siteSurvey() {
+    uint64_t start = millis();
+    uint8_t availableNetworks = WiFi.scanNetworks();
+    String networks = "";
+    for(int idx = 0; idx < availableNetworks; idx++){
+        networks += WiFi.SSID(idx) + "=" + String(WiFi.RSSI(idx)) + ";";
+        if(networks.length() > 160) {
+            break;
+        }
+    }
+
+    return networks;
+}
+
 void WiFiConnectionHelper::loop()
 {
     // If WiFi isn't enabled, to bother trying to connect.
@@ -192,9 +206,9 @@ bool WiFiConnectionHelper::connect(bool isReconnect){
     return true;
 }
 
-uint8_t WiFiConnectionHelper::getRSSI()
+int32_t WiFiConnectionHelper::getRSSI()
 {
-    return (uint8_t)WiFi.RSSI();
+    return (int32_t)WiFi.RSSI();
 }
 
 bool WiFiConnectionHelper::isConnected()

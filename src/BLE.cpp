@@ -86,6 +86,15 @@
 
 #define CHAR_UUID_CAN_MSG "d804b639-6ce7-5e88-9f89-ce0f699085eb"
 
+
+/*
+WiFi Status Message
+
+*/
+#define CHAR_UUID_WIFI_MSG "d804b639-6ce7-5e88-9f8a-ce0f699085eb"
+   
+
+
 #define FULL_PACKET 512
 #define CHARPOS_UPDATE_FLAG 5
 
@@ -140,7 +149,6 @@ void BLE::writeConsoleOutput(String msg)
   if(msg.startsWith("[BLE_"))
     return;
 
-
   if (pCharConsole != NULL && m_isConnected)
   {
     const char *str = msg.c_str();
@@ -171,6 +179,11 @@ void BLE::writeConsoleOutput(String msg)
   }
 }
 
+void BLE::writeWiFiMessage(String msg)
+{
+  
+}
+
 void BLE::writeCANMessage(uint32_t msgId, uint8_t msg[], uint8_t len) {
   if (pCharCAN != NULL && m_isConnected)
   {
@@ -194,7 +207,7 @@ void BLE::writeCANMessage(uint32_t msgId, uint8_t msg[], uint8_t len) {
 
 void BLE::refreshCharacteristics()
 {
-  String state =
+  String charValue =
       pState->getFirmwareSKU() + "," +                   // 0
       pState->getDeviceModelKey() + "," +                // 1
       pState->getFirmwareVersion() + "," +               // 2
@@ -212,13 +225,13 @@ void BLE::refreshCharacteristics()
       String(pState->OTAState) + "," +                   // 14
       String(pState->OTAParam);                          // 15
 
-  pCharState->setValue((uint8_t *)state.c_str(), state.length());
+  pCharState->setValue((uint8_t *)charValue.c_str(), charValue.length());
 
     uint32_t low     = ESP.getEfuseMac() & 0xFFFFFFFF; 
     uint32_t high    = ( ESP.getEfuseMac() >> 32 ) % 0xFFFFFFFF;
     uint64_t fullMAC = word(low,high);
 
-  String config =
+  charValue =
       pSysConfig->DeviceId + "," +
       pSysConfig->OrgId + "," +
       pSysConfig->RepoId + "," +
@@ -242,7 +255,19 @@ void BLE::refreshCharacteristics()
       String(pSysConfig->LoopUpdateRateMS) + "," + 
       String((uint32_t)fullMAC);
 
-  pCharConfig->setValue(config.c_str());
+  pCharConfig->setValue(charValue.c_str());
+
+  charValue = 
+    siteSurvey + "," +
+    String(pWifi->isConnected()) + "," +    
+    pWifi->getWiFiStatus() + "," +
+    pSysConfig->WiFiSSID + "," +
+    pSysConfig->WiFiPWD + "," +
+    pWifi->getIPAddress() + "," +
+    pWifi->getMACAddress() + "," +
+    (pWifi->isConnected() ? String(pWifi->getRSSI()) : "-");
+
+  pCharWiFi->setValue((uint8_t *)charValue.c_str(), charValue.length());
 
   String ioConfig = m_currentConfigPort + ',';
 
@@ -330,6 +355,8 @@ void BLE::handleReadCharacteristic(BLECharacteristic *characteristic)
 
 void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String value)
 {
+  pConsole->println("ble=read; // char=sysconfig; value=" + value);
+
   m_lastClientActivity = millis();
   unsigned char cstr[characteristic->getValue().size()];
   memcpy(cstr, characteristic->getValue().data(), characteristic->getValue().size());
@@ -346,11 +373,10 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
     refreshCharacteristics();
   }
   else if (0 == strcmp(uuid, CHAR_UUID_SYS_CONFIG)) {
-  //  pConsole->println("ble=read; // char=sysconfig; value=" + input);
+    pConsole->println("ble=read; // char=sysconfig; value=" + input);
     boolean done = false;
     int lastEnd = 0;
-    while (!done)
-    {
+    while (!done){
       int equalDelimiter = input.indexOf("=", lastEnd);
       int valueEnd = input.indexOf(",", equalDelimiter);
       int final = input.indexOf(";", equalDelimiter);
@@ -358,8 +384,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       String key = input.substring(lastEnd, equalDelimiter);
       String value = input.substring(equalDelimiter + 1, valueEnd == -1 ? final : valueEnd);
 
-      //pConsole->println("blewrite=write; //char=sysconfig; set: " + key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
-      
+      pConsole->println("blewrite=write; //char=sysconfig; set: " + key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
 
       // if we don't have a , that means we are past the final item
       done = valueEnd == -1;
@@ -409,8 +434,9 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
         pSysConfig->Id = value;
       else if (key == "repoid")
         pSysConfig->RepoId = value;
+      else if(key == "siteScan")
+        siteSurvey = pWifi->siteSurvey();
       else if (key == "dfu")  {
-
         //pConsole->println("Starting firmware update process");
         //Note we can't start the download on this thread, so set the OTA STate = 100 to let 
         //a different thread know that we have a URL that can be used to start download process.
@@ -465,7 +491,6 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
         valueStart = valueEnd + 1;
         valueEnd = input.indexOf(",", valueStart);
         float zero = atof(input.substring(valueStart, valueEnd).c_str());
-
 
         if(channel == "adc1"){  pIOConfig->ADC1Name = name; pIOConfig->ADC1Config = config; pIOConfig->ADC1Scaler = scaler; pIOConfig->ADC1Calibration = calibration;  pIOConfig->ADC1Zero = zero;}
         if(channel == "adc2"){  pIOConfig->ADC2Name = name; pIOConfig->ADC2Config = config; pIOConfig->ADC2Scaler = scaler; pIOConfig->ADC2Calibration = calibration;  pIOConfig->ADC2Zero = zero;}
@@ -556,6 +581,10 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
   pCharCAN->setCallbacks(_characteristicCallback);
   pCharCAN->addDescriptor(new BLE2902());
 
+  pCharWiFi = pService->createCharacteristic(CHAR_UUID_WIFI_MSG, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
+  pCharWiFi->setCallbacks(_characteristicCallback);
+  pCharWiFi->addDescriptor(new BLE2902());
+
   BLEAdvertising *pAdvertising = pServer->getAdvertising();
 
   pAdvertising->addServiceUUID(SVC_UUID_NUVIOT);
@@ -595,6 +624,7 @@ void BLE::update()
         pCharState->notify(true);
         pCharIOValue->notify(true);
         pCharRelay->notify(true);
+        pCharWiFi->notify(true);
         pConsole->println(F("[BLE__update]"));
       }
 
