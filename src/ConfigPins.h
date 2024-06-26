@@ -474,6 +474,17 @@ public:
             HasRelays = false;
             HasLeds = false;
             HasI2C = false;
+          } else if(boardType == 9) {
+            NumberRelays = 0;
+
+            ConsoleRx = 20;
+            ConsoleTx = 21;    
+        
+            ADCProvider = NoADC;
+            HasDisplay = false;
+            HasRelays = false;
+            HasLeds = false;
+            HasI2C = false;
         }
     }
 };

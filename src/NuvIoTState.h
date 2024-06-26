@@ -34,13 +34,13 @@ class Param
 {
 private:
     int m_iIndex;
-    int m_intDefault;
+    int32_t m_intDefault;
     float m_fltDefault;
     bool m_boolDefault;
     const char *m_key;
 
 public:
-    Param(const char *key, int value)
+    Param(const char *key, int32_t value)
     {
         m_key = key;
         m_intDefault = value;

@@ -87,7 +87,7 @@ public:
 
   bool begin(const char *localName, const char *deviceModelId);
 
-  void refreshCharacteristics();
+  void refreshCharacteristics(bool notifyOnly);
 
   void writeConsoleOutput(String msg);
   void writeWiFiMessage(String msg);
@@ -101,7 +101,7 @@ public:
   {
     m_connectionId = connectionId;
     pConsole->println("ble=connected; // Connection Id: " + String(connectionId));
-    refreshCharacteristics();
+    refreshCharacteristics(false);
     m_lastClientActivity = millis();
     m_isConnected = true;    
   }

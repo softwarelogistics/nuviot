@@ -2,9 +2,11 @@
 
 #include <Arduino.h>
 #include "driver/pcnt.h" // Biblioteca ESP32 PCNT
-#include "soc/pcnt_struct.h"
+//#include "soc/pcnt_struct.h"
 
 #include <nvs.h>
+
+#define EXCLUDE_PCNT
 
 PulseCounter *__pulseCounter;
 
@@ -24,6 +26,7 @@ portMUX_TYPE pulseCounterTimerMux = portMUX_INITIALIZER_UNLOCKED; // variavel ti
 
 void readCounts(void *p) // Fim de tempo de leitura de pulsos
 {
+#ifndef EXCLUDE_PCNT
     pcnt_get_counter_value(PCNT_UNIT_0, &pulses[0]);
     pcnt_get_counter_value(PCNT_UNIT_1, &pulses[1]);
     pcnt_get_counter_value(PCNT_UNIT_2, &pulses[2]);
@@ -33,10 +36,12 @@ void readCounts(void *p) // Fim de tempo de leitura de pulsos
     pulse_accumulator[2] += pulses[2] >> 1; // current pulse count
 
     flag = true; // mark available to load
+#endif
 }
 
 static void IRAM_ATTR pcnt_intr_handler(void *arg)
 {
+#ifndef EXCLUDE_PCNT
     portENTER_CRITICAL_ISR(&pulseCounterTimerMux);
     /*    pcnt_config_t *prt = (pcnt_config_t*)arg;
 
@@ -47,10 +52,12 @@ static void IRAM_ATTR pcnt_intr_handler(void *arg)
 
     PCNT.int_clr.val = BIT(PCNT_UNIT_0);
     portEXIT_CRITICAL_ISR(&pulseCounterTimerMux);
+#endif
 }
 
 void initialize_counter(pcnt_unit_t unit, int pin)
 {
+#ifndef EXCLUDE_PCNT    
     pcnt_config_t pcnt_config = {};
 
     pcnt_config.pulse_gpio_num = pin;
@@ -71,6 +78,7 @@ void initialize_counter(pcnt_unit_t unit, int pin)
     pcnt_intr_enable(unit);
 
     pcnt_counter_resume(unit);
+#endif
 }
 
 PulseCounter::PulseCounter(Console *console, ConfigPins *configPins, MessagePayload *payload)
@@ -193,11 +201,11 @@ void PulseCounter::loop()
             ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_set_u64(m_nvsHandle, "channel7", m_channelCounts[7]));
 
             multPulses = 0;
-
+#ifndef EXCLUDE_PCNT
             pcnt_counter_clear(PCNT_UNIT_0);
             pcnt_counter_clear(PCNT_UNIT_1);
             pcnt_counter_clear(PCNT_UNIT_2);
-
+#endif
             ESP_ERROR_CHECK_WITHOUT_ABORT(nvs_commit(m_nvsHandle));
             esp_timer_start_once(m_clearCountsTimerHandle, count_window);
             applyValues();

@@ -205,7 +205,7 @@ void BLE::writeCANMessage(uint32_t msgId, uint8_t msg[], uint8_t len) {
   }
 }
 
-void BLE::refreshCharacteristics()
+void BLE::refreshCharacteristics(bool notifyOnly)
 {
   String charValue =
       pState->getFirmwareSKU() + "," +                   // 0
@@ -225,117 +225,7 @@ void BLE::refreshCharacteristics()
       String(pState->OTAState) + "," +                   // 14
       String(pState->OTAParam);                          // 15
 
-  pCharState->setValue((uint8_t *)charValue.c_str(), charValue.length());
-
-    uint32_t low     = ESP.getEfuseMac() & 0xFFFFFFFF; 
-    uint32_t high    = ( ESP.getEfuseMac() >> 32 ) % 0xFFFFFFFF;
-    uint64_t fullMAC = word(low,high);
-
-  charValue =
-      pSysConfig->DeviceId + "," +
-      pSysConfig->OrgId + "," +
-      pSysConfig->RepoId + "," +
-      pSysConfig->Id + "," +
-      String(_deviceModelId) + "," +
-      pSysConfig->SrvrHostName + "," +      
-      pSysConfig->SrvrUID + "," +      
-      pSysConfig->SrvrPWD + "," +      
-      String(pSysConfig->Port) + "," +
-      pSysConfig->SrvrType + "," +
-      pSysConfig->DeviceAccessKey + "," +
-      (pSysConfig->Commissioned ? "1," : "0,") +
-      (pSysConfig->CellEnabled ? "1," : "0,") +
-      (pSysConfig->WiFiEnabled ? "1," : "0,") +
-      pSysConfig->WiFiSSID + "," +
-      pSysConfig->WiFiPWD + "," +
-      String(pSysConfig->PingRateSecond) + "," +
-      String(pSysConfig->SendUpdateRateMS) + "," +
-      (pSysConfig->GPSEnabled ? "1," : "0,") +
-      String(pSysConfig->GPSUpdateRateMS) + "," + 
-      String(pSysConfig->LoopUpdateRateMS) + "," + 
-      String((uint32_t)fullMAC);
-
-  pCharConfig->setValue(charValue.c_str());
-
-  charValue = 
-    siteSurvey + "," +
-    String(pWifi->isConnected()) + "," +    
-    pWifi->getWiFiStatus() + "," +
-    pSysConfig->WiFiSSID + "," +
-    pSysConfig->WiFiPWD + "," +
-    pWifi->getIPAddress() + "," +
-    pWifi->getMACAddress() + "," +
-    (pWifi->isConnected() ? String(pWifi->getRSSI()) : "-");
-
-  pCharWiFi->setValue((uint8_t *)charValue.c_str(), charValue.length());
-
-  String ioConfig = m_currentConfigPort + ',';
-
-  if (m_currentConfigPort == "adcall")
-    ioConfig += String(pIOConfig->ADC1Config) + "," + String(pIOConfig->ADC1Name) + "," + String(pIOConfig->ADC2Config) + "," + String(pIOConfig->ADC2Name) + "," +
-                String(pIOConfig->ADC3Config) + "," + String(pIOConfig->ADC3Name) + "," + String(pIOConfig->ADC4Config) + "," + String(pIOConfig->ADC4Name) + "," +
-                String(pIOConfig->ADC5Config) + "," + String(pIOConfig->ADC5Name) + "," + String(pIOConfig->ADC6Config) + "," + String(pIOConfig->ADC6Name) + "," +
-                String(pIOConfig->ADC7Config) + "," + String(pIOConfig->ADC7Name) + "," + String(pIOConfig->ADC8Config) + "," + String(pIOConfig->ADC8Name) + ",";
-
-  else if (m_currentConfigPort == "ioall")
-    ioConfig += String(pIOConfig->GPIO1Config) + "," + String(pIOConfig->GPIO1Name) + "," + String(pIOConfig->GPIO2Config) + "," + String(pIOConfig->GPIO2Name) + "," +
-                String(pIOConfig->GPIO3Config) + "," + String(pIOConfig->GPIO3Name) + "," + String(pIOConfig->GPIO4Config) + "," + String(pIOConfig->GPIO4Name) + "," +
-                String(pIOConfig->GPIO5Config) + "," + String(pIOConfig->GPIO5Name) + "," + String(pIOConfig->GPIO6Config) + "," + String(pIOConfig->GPIO6Name) + "," +
-                String(pIOConfig->GPIO7Config) + "," + String(pIOConfig->GPIO7Name) + "," + String(pIOConfig->GPIO8Config) + "," + String(pIOConfig->GPIO8Name) + ",";
-
-  else if (m_currentConfigPort == "relayall")
-    ioConfig += pIOConfig->Relay1Name + "," + pIOConfig->Relay2Name + "," + pIOConfig->Relay3Name + "," + pIOConfig->Relay4Name + "," +
-                pIOConfig->Relay5Name + "," + pIOConfig->Relay6Name + "," + pIOConfig->Relay7Name + "," + pIOConfig->Relay8Name;
-
-  else if (m_currentConfigPort == "adc1")
-    ioConfig += String(pIOConfig->ADC1Name) + "," + String(pIOConfig->ADC1Config) + "," + String(pIOConfig->ADC1Scaler) + "," + String(pIOConfig->ADC1Calibration) + "," + String(pIOConfig->ADC1Zero) + ",";
-
-  else if (m_currentConfigPort == "adc2")
-    ioConfig += String(pIOConfig->ADC2Name) + "," + String(pIOConfig->ADC2Config) + "," + String(pIOConfig->ADC2Scaler) + "," + String(pIOConfig->ADC2Calibration) + "," + String(pIOConfig->ADC2Zero) + ",";
-
-  else if (m_currentConfigPort == "adc3")
-    ioConfig += String(pIOConfig->ADC3Name) + "," + String(pIOConfig->ADC3Config) + "," + String(pIOConfig->ADC3Scaler) + "," + String(pIOConfig->ADC3Calibration) + "," + String(pIOConfig->ADC3Zero) + ",";
-
-  else if (m_currentConfigPort == "adc4")
-    ioConfig += String(pIOConfig->ADC4Name) + "," + String(pIOConfig->ADC4Config) + "," + String(pIOConfig->ADC4Scaler) + "," + String(pIOConfig->ADC4Calibration) + "," + String(pIOConfig->ADC4Zero) + ",";
-
-  else if (m_currentConfigPort == "adc5")
-    ioConfig += String(pIOConfig->ADC5Name) + "," + String(pIOConfig->ADC5Config) + "," + String(pIOConfig->ADC5Scaler) + "," + String(pIOConfig->ADC5Calibration) + "," + String(pIOConfig->ADC5Zero) + ",";
-
-  else if (m_currentConfigPort == "adc6")
-    ioConfig += String(pIOConfig->ADC6Name) + "," + String(pIOConfig->ADC6Config) + "," + String(pIOConfig->ADC6Scaler) + "," + String(pIOConfig->ADC6Calibration) + "," + String(pIOConfig->ADC6Zero) + ",";
-
-  else if (m_currentConfigPort == "adc7")
-    ioConfig += String(pIOConfig->ADC7Name) + "," + String(pIOConfig->ADC7Config) + "," + String(pIOConfig->ADC7Scaler) + "," + String(pIOConfig->ADC7Calibration) + "," + String(pIOConfig->ADC7Zero) + ",";
-
-  else if (m_currentConfigPort == "adc8")
-    ioConfig += String(pIOConfig->ADC8Name) + "," + String(pIOConfig->ADC8Config) + "," + String(pIOConfig->ADC8Scaler) + "," + String(pIOConfig->ADC8Calibration) + "," + String(pIOConfig->ADC8Zero) + ",";
-
-  else if (m_currentConfigPort == "io1")
-    ioConfig += String(pIOConfig->GPIO1Name) + "," + String(pIOConfig->GPIO1Config) + "," + String(pIOConfig->GPIO1Calibration) + "," + String(pIOConfig->GPIO1Scaler) + "," + String(pIOConfig->GPIO1Zero) + ",";
-
-  else if (m_currentConfigPort == "io2")
-    ioConfig += String(pIOConfig->GPIO2Name) + "," + String(pIOConfig->GPIO2Config) + "," + String(pIOConfig->GPIO2Calibration) + "," + String(pIOConfig->GPIO2Scaler) + "," + String(pIOConfig->GPIO2Zero) + ",";
-
-  else if (m_currentConfigPort == "io3")
-    ioConfig += String(pIOConfig->GPIO3Name) + "," + String(pIOConfig->GPIO3Config) + "," + String(pIOConfig->GPIO3Calibration) + "," + String(pIOConfig->GPIO3Scaler) + "," + String(pIOConfig->GPIO3Zero) + ",";
-
-  else if (m_currentConfigPort == "io4")
-    ioConfig += String(pIOConfig->GPIO4Name) + "," + String(pIOConfig->GPIO4Config) + "," + String(pIOConfig->GPIO4Calibration) + "," + String(pIOConfig->GPIO4Scaler) + "," + String(pIOConfig->GPIO4Zero) + ",";
-
-  else if (m_currentConfigPort == "io5")
-    ioConfig += String(pIOConfig->GPIO5Name) + "," + String(pIOConfig->GPIO5Config) + "," + String(pIOConfig->GPIO5Calibration) + "," + String(pIOConfig->GPIO5Scaler) + "," + String(pIOConfig->GPIO5Zero) + ",";
-
-  else if (m_currentConfigPort == "io6")
-    ioConfig += String(pIOConfig->GPIO6Name) + "," + String(pIOConfig->GPIO6Config) + "," + String(pIOConfig->GPIO6Calibration) + "," + String(pIOConfig->GPIO6Scaler) + "," + String(pIOConfig->GPIO6Zero) + ",";
-
-  else if (m_currentConfigPort == "io7")
-    ioConfig += String(pIOConfig->GPIO7Name) + "," + String(pIOConfig->GPIO7Config) + "," + String(pIOConfig->GPIO7Calibration) + "," + String(pIOConfig->GPIO7Scaler) + "," + String(pIOConfig->GPIO7Zero) + ",";
-
-  else if (m_currentConfigPort == "io8")
-    ioConfig += String(pIOConfig->GPIO8Name) + "," + String(pIOConfig->GPIO8Config) + "," + String(pIOConfig->GPIO8Calibration) + "," + String(pIOConfig->GPIO8Scaler) + "," + String(pIOConfig->GPIO8Zero) + ",";
-
-  pCharIOConfig->setValue(ioConfig.c_str());
+  pCharState->setValue(charValue.c_str());
 
   String relay =
       String(pRelayManager->getRelayState(0) ? "1," : "0,") +
@@ -345,21 +235,132 @@ void BLE::refreshCharacteristics()
       String(pRelayManager->getRelayState(4) ? "1" : "0");
 
   pCharRelay->setValue(relay.c_str());  
-  pCharIOValue->setValue(pPayload->ioValues->toString().c_str());
+  pCharIOValue->setValue(pPayload->ioValues->toString().c_str());    
+
+    String wifiCharValue = 
+      siteSurvey + "," +
+      String(pWifi->isConnected()) + "," +    
+      pWifi->getWiFiStatus() + "," +
+      pSysConfig->WiFiSSID + "," +
+      pSysConfig->WiFiPWD + "," +
+      pWifi->getIPAddress() + "," +
+      pWifi->getMACAddress() + "," +
+      (pWifi->isConnected() ? String(pWifi->getRSSI()) : "-");
+
+  pCharWiFi->setValue(wifiCharValue.c_str());
+
+  if(!notifyOnly) {    
+    uint32_t low     = ESP.getEfuseMac() & 0xFFFFFFFF; 
+    uint32_t high    = ( ESP.getEfuseMac() >> 32 ) % 0xFFFFFFFF;
+    uint64_t fullMAC = word(low,high);
+
+    String sysConfigValue =
+        pSysConfig->DeviceId + "," +
+        pSysConfig->OrgId + "," +
+        pSysConfig->RepoId + "," +
+        pSysConfig->Id + "," +
+        String(_deviceModelId) + "," +
+        pSysConfig->SrvrHostName + "," +      
+        pSysConfig->SrvrUID + "," +      
+        pSysConfig->SrvrPWD + "," +      
+        String(pSysConfig->Port) + "," +
+        pSysConfig->SrvrType + "," +
+        pSysConfig->DeviceAccessKey + "," +
+        (pSysConfig->Commissioned ? "1," : "0,") +
+        (pSysConfig->CellEnabled ? "1," : "0,") +
+        (pSysConfig->WiFiEnabled ? "1," : "0,") +
+        pSysConfig->WiFiSSID + "," +
+        pSysConfig->WiFiPWD + "," +
+        String(pSysConfig->PingRateSecond) + "," +
+        String(pSysConfig->SendUpdateRateMS) + "," +
+        (pSysConfig->GPSEnabled ? "1," : "0,") +
+        String(pSysConfig->GPSUpdateRateMS) + "," + 
+        String(pSysConfig->LoopUpdateRateMS) + "," + 
+        String((uint32_t)fullMAC);
+
+    pCharConfig->setValue(sysConfigValue.c_str());
+
+    String ioConfig = m_currentConfigPort + ',';
+
+    if (m_currentConfigPort == "adcall")
+      ioConfig += String(pIOConfig->ADC1Config) + "," + String(pIOConfig->ADC1Name) + "," + String(pIOConfig->ADC2Config) + "," + String(pIOConfig->ADC2Name) + "," +
+                  String(pIOConfig->ADC3Config) + "," + String(pIOConfig->ADC3Name) + "," + String(pIOConfig->ADC4Config) + "," + String(pIOConfig->ADC4Name) + "," +
+                  String(pIOConfig->ADC5Config) + "," + String(pIOConfig->ADC5Name) + "," + String(pIOConfig->ADC6Config) + "," + String(pIOConfig->ADC6Name) + "," +
+                  String(pIOConfig->ADC7Config) + "," + String(pIOConfig->ADC7Name) + "," + String(pIOConfig->ADC8Config) + "," + String(pIOConfig->ADC8Name) + ",";
+
+    else if (m_currentConfigPort == "ioall")
+      ioConfig += String(pIOConfig->GPIO1Config) + "," + String(pIOConfig->GPIO1Name) + "," + String(pIOConfig->GPIO2Config) + "," + String(pIOConfig->GPIO2Name) + "," +
+                  String(pIOConfig->GPIO3Config) + "," + String(pIOConfig->GPIO3Name) + "," + String(pIOConfig->GPIO4Config) + "," + String(pIOConfig->GPIO4Name) + "," +
+                  String(pIOConfig->GPIO5Config) + "," + String(pIOConfig->GPIO5Name) + "," + String(pIOConfig->GPIO6Config) + "," + String(pIOConfig->GPIO6Name) + "," +
+                  String(pIOConfig->GPIO7Config) + "," + String(pIOConfig->GPIO7Name) + "," + String(pIOConfig->GPIO8Config) + "," + String(pIOConfig->GPIO8Name) + ",";
+
+    else if (m_currentConfigPort == "relayall")
+      ioConfig += pIOConfig->Relay1Name + "," + pIOConfig->Relay2Name + "," + pIOConfig->Relay3Name + "," + pIOConfig->Relay4Name + "," +
+                  pIOConfig->Relay5Name + "," + pIOConfig->Relay6Name + "," + pIOConfig->Relay7Name + "," + pIOConfig->Relay8Name;
+
+    else if (m_currentConfigPort == "adc1")
+      ioConfig += String(pIOConfig->ADC1Name) + "," + String(pIOConfig->ADC1Config) + "," + String(pIOConfig->ADC1Scaler) + "," + String(pIOConfig->ADC1Calibration) + "," + String(pIOConfig->ADC1Zero) + ",";
+
+    else if (m_currentConfigPort == "adc2")
+      ioConfig += String(pIOConfig->ADC2Name) + "," + String(pIOConfig->ADC2Config) + "," + String(pIOConfig->ADC2Scaler) + "," + String(pIOConfig->ADC2Calibration) + "," + String(pIOConfig->ADC2Zero) + ",";
+
+    else if (m_currentConfigPort == "adc3")
+      ioConfig += String(pIOConfig->ADC3Name) + "," + String(pIOConfig->ADC3Config) + "," + String(pIOConfig->ADC3Scaler) + "," + String(pIOConfig->ADC3Calibration) + "," + String(pIOConfig->ADC3Zero) + ",";
+
+    else if (m_currentConfigPort == "adc4")
+      ioConfig += String(pIOConfig->ADC4Name) + "," + String(pIOConfig->ADC4Config) + "," + String(pIOConfig->ADC4Scaler) + "," + String(pIOConfig->ADC4Calibration) + "," + String(pIOConfig->ADC4Zero) + ",";
+
+    else if (m_currentConfigPort == "adc5")
+      ioConfig += String(pIOConfig->ADC5Name) + "," + String(pIOConfig->ADC5Config) + "," + String(pIOConfig->ADC5Scaler) + "," + String(pIOConfig->ADC5Calibration) + "," + String(pIOConfig->ADC5Zero) + ",";
+
+    else if (m_currentConfigPort == "adc6")
+      ioConfig += String(pIOConfig->ADC6Name) + "," + String(pIOConfig->ADC6Config) + "," + String(pIOConfig->ADC6Scaler) + "," + String(pIOConfig->ADC6Calibration) + "," + String(pIOConfig->ADC6Zero) + ",";
+
+    else if (m_currentConfigPort == "adc7")
+      ioConfig += String(pIOConfig->ADC7Name) + "," + String(pIOConfig->ADC7Config) + "," + String(pIOConfig->ADC7Scaler) + "," + String(pIOConfig->ADC7Calibration) + "," + String(pIOConfig->ADC7Zero) + ",";
+
+    else if (m_currentConfigPort == "adc8")
+      ioConfig += String(pIOConfig->ADC8Name) + "," + String(pIOConfig->ADC8Config) + "," + String(pIOConfig->ADC8Scaler) + "," + String(pIOConfig->ADC8Calibration) + "," + String(pIOConfig->ADC8Zero) + ",";
+
+    else if (m_currentConfigPort == "io1")
+      ioConfig += String(pIOConfig->GPIO1Name) + "," + String(pIOConfig->GPIO1Config) + "," + String(pIOConfig->GPIO1Calibration) + "," + String(pIOConfig->GPIO1Scaler) + "," + String(pIOConfig->GPIO1Zero) + ",";
+
+    else if (m_currentConfigPort == "io2")
+      ioConfig += String(pIOConfig->GPIO2Name) + "," + String(pIOConfig->GPIO2Config) + "," + String(pIOConfig->GPIO2Calibration) + "," + String(pIOConfig->GPIO2Scaler) + "," + String(pIOConfig->GPIO2Zero) + ",";
+
+    else if (m_currentConfigPort == "io3")
+      ioConfig += String(pIOConfig->GPIO3Name) + "," + String(pIOConfig->GPIO3Config) + "," + String(pIOConfig->GPIO3Calibration) + "," + String(pIOConfig->GPIO3Scaler) + "," + String(pIOConfig->GPIO3Zero) + ",";
+
+    else if (m_currentConfigPort == "io4")
+      ioConfig += String(pIOConfig->GPIO4Name) + "," + String(pIOConfig->GPIO4Config) + "," + String(pIOConfig->GPIO4Calibration) + "," + String(pIOConfig->GPIO4Scaler) + "," + String(pIOConfig->GPIO4Zero) + ",";
+
+    else if (m_currentConfigPort == "io5")
+      ioConfig += String(pIOConfig->GPIO5Name) + "," + String(pIOConfig->GPIO5Config) + "," + String(pIOConfig->GPIO5Calibration) + "," + String(pIOConfig->GPIO5Scaler) + "," + String(pIOConfig->GPIO5Zero) + ",";
+
+    else if (m_currentConfigPort == "io6")
+      ioConfig += String(pIOConfig->GPIO6Name) + "," + String(pIOConfig->GPIO6Config) + "," + String(pIOConfig->GPIO6Calibration) + "," + String(pIOConfig->GPIO6Scaler) + "," + String(pIOConfig->GPIO6Zero) + ",";
+
+    else if (m_currentConfigPort == "io7")
+      ioConfig += String(pIOConfig->GPIO7Name) + "," + String(pIOConfig->GPIO7Config) + "," + String(pIOConfig->GPIO7Calibration) + "," + String(pIOConfig->GPIO7Scaler) + "," + String(pIOConfig->GPIO7Zero) + ",";
+
+    else if (m_currentConfigPort == "io8")
+      ioConfig += String(pIOConfig->GPIO8Name) + "," + String(pIOConfig->GPIO8Config) + "," + String(pIOConfig->GPIO8Calibration) + "," + String(pIOConfig->GPIO8Scaler) + "," + String(pIOConfig->GPIO8Zero) + ",";
+
+    pCharIOConfig->setValue(ioConfig.c_str());
+  }
 }
 
 void BLE::handleReadCharacteristic(BLECharacteristic *characteristic)
 {
-  refreshCharacteristics();
+  refreshCharacteristics(false);
 }
 
 void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String value)
 {
-  pConsole->println("ble=write; // char=sysconfig; value=" + value);
 
   m_lastClientActivity = millis();
-  unsigned char cstr[characteristic->getValue().size()];
-  memcpy(cstr, characteristic->getValue().data(), characteristic->getValue().size());
+  //unsigned char cstr[characteristic->getValue().size()];
+  //memcpy(cstr, characteristic->getValue().data(), characteristic->getValue().size());
 
   String input = value;
 
@@ -367,10 +368,12 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
 
   if (0 == strcmp(uuid, CHAR_UUID_STATE))
   {
+    pConsole->println("ble=write; // char=state; value=" + value);
+
     //pConsole->println("ble=read; // char=sysstate; value=" + input + ";");
     //pSysConfig->Commissioned = characteristic->getData()[0] == '1';
 
-    refreshCharacteristics();
+    refreshCharacteristics(false);
   }
   else if (0 == strcmp(uuid, CHAR_UUID_SYS_CONFIG)) {
     pConsole->println("ble=write; // char=sysconfig; value=" + input);
@@ -381,15 +384,15 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       int valueEnd = input.indexOf(",", equalDelimiter);
       int final = input.indexOf(";", equalDelimiter);
 
-      if(equalDelimiter == -1 || valueEnd == -1 || final == -1) {
-        pConsole->println("blewrite=write fail; //Invalid String Pointers: " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
+      if(equalDelimiter == -1 || (valueEnd == -1 && final == -1)) {
+        pConsole->println("ble=write fail; //Invalid String Pointers: " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
         return;
       }
 
       String key = input.substring(lastEnd, equalDelimiter);
       String value = input.substring(equalDelimiter + 1, valueEnd == -1 ? final : valueEnd);
 
-      pConsole->println("blewrite=write; //char=sysconfig; set: " + key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
+      pConsole->println("ble=write; // char=sysconfig; set: " + key + "=" + value + " => " + String(equalDelimiter) + " " + String(valueEnd) + " " + String(final) + ";");
 
       // if we don't have a , that means we are past the final item
       done = valueEnd == -1;
@@ -459,7 +462,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
         pHal->queueRestart(1000);
       }
       else {
-        pConsole->printError("UKNOWN KEY TYPE: " + key);
+        pConsole->printError("UNKNOWN KEY TYPE: " + key);
       }
     }
 
@@ -476,7 +479,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       if(cmd == "setioview") {
         m_currentConfigPort = input.substring(equalDelimiter + 1);
         pConsole->println("blewrite=setioview; // set io port: " + m_currentConfigPort);
-        refreshCharacteristics();
+        refreshCharacteristics(false);
       }
       else if(cmd == "setioconfig") {
         int keyEnd = input.indexOf(",", equalDelimiter);
@@ -607,7 +610,7 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
   pConsole->println(String(F("ble=allocated; // allocated for BLE: ")) + String(bleBytes) + "KB; free: " + String(freeBytes) + "KB");
   pConsole->println(String(F("bleaddress=")) + pHal->getBLEAddress() + String(F("; // Address of BLE interface (may not be same as iOS)")) );
-  refreshCharacteristics();
+  refreshCharacteristics(false);
 
   pConsole->println(F("bluetooth=started;"));
   pConsole->println("bluetoothname=" + String(localName) + ";");
@@ -619,7 +622,7 @@ void BLE::update()
 {
   if(pService != NULL)
   {
-    this->refreshCharacteristics();
+    this->refreshCharacteristics(true);
 
     if (m_isConnected)
     {

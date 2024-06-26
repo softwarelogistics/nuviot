@@ -125,6 +125,15 @@ TwoWire twoWire(1);
 #define BOARD_CONFIG 5
 #endif
 
+#ifdef ESP32C3_MINI
+#undef DEFAULT_BRD
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+TwoWire twoWire(1);
+#define BOARD_CONFIG 9
+
+#endif
+
 #ifdef DEFAULT_BRD
 HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
@@ -370,8 +379,7 @@ GPSData *readGPS()
 }
 
 #ifdef BOARD_CONFIG
-void initPins()
-{
+void initPins(){
   configPins.init(BOARD_CONFIG);
 }
 #endif
