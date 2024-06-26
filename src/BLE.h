@@ -65,6 +65,8 @@ public:
   void onNotify(BLECharacteristic *pCharacteristic);
 };
 
+#define NUVIOT_BLE_FLAGS_SITE_SCAN 0x01
+
 class BLE
 {
 public:
@@ -85,6 +87,7 @@ public:
   }
   ~BLE(void);
 
+ 
   bool begin(const char *localName, const char *deviceModelId);
 
   void refreshCharacteristics(bool notifyOnly);
@@ -120,7 +123,9 @@ public:
   void stop();
 
 private:
-  BLEAdvertising *m_pAdvertising;
+  uint8_t m_flags = 0;
+
+   BLEAdvertising *m_pAdvertising;
   otaCallback *_characteristicCallback;
   String outBuffer;
   MessagePayload *pPayload;
@@ -151,6 +156,8 @@ private:
   char adcNamesOut[1];
   char adcScalerOut[1];
   char adcZeroOut[1];
+
+  void scanWiFiNetworks();
 
   bool m_isConnected = false;
 

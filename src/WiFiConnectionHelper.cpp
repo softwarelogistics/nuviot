@@ -18,36 +18,57 @@ String WiFiConnectionHelper::getWiFiStatus()
     switch (WiFi.status())
     {
     case WL_IDLE_STATUS:
-        return "Idle";
+        return "Idle - Retry: " + String(m_attempt);
     case WL_NO_SHIELD:
-        return "No Shield";
+        return "No Shield - Retry: " + String(m_attempt);
     case WL_NO_SSID_AVAIL:
-        return "No SSID Available";
+        return "No SSID Available - Retry: " + String(m_attempt);
     case WL_SCAN_COMPLETED:
-        return "Scan Completed";
+        return "Scan Completed - Retry: " + String(m_attempt);
     case WL_CONNECTED:
         return "Connected";
     case WL_CONNECT_FAILED:
-        return "Connection Failed";
+        return "Connection Failed - Retry: " + String(m_attempt);
     case WL_CONNECTION_LOST:
-        return "Connection Lost";
+        return "Connection Lost - Retry: " + String(m_attempt);
     case WL_DISCONNECTED:
-        return "Disconnected";
+        return "Disconnected - Retry: " + String(m_attempt);
     }
 
-    return "?";
+    return "? - " + String(WiFi.status()) + " Retry: " + String(m_attempt);
 }
 
 String WiFiConnectionHelper::siteSurvey() {
+    if(m_wifiState == NuvIoTWiFi_Connecting){
+        m_console->println("wifi=scan; // currently connecting, attempting to disconnect.");
+        WiFi.disconnect();
+        m_console->println("wifi=scan; // currently connecting, disconnected.");
+    }
+
     uint64_t start = millis();
-    uint8_t availableNetworks = WiFi.scanNetworks();
+    int16_t availableNetworks = WiFi.scanNetworks();
+    m_console->println("wifi=scan; // time=" + String((uint16_t)(millis() - start)) + "ms, networks=" + String(availableNetworks));
+
+    if(availableNetworks == WIFI_SCAN_RUNNING){
+        m_console->println("wifi=scan failed; // already running.");
+        return "Already Running=-1;";
+    }
+
+    if(availableNetworks == WIFI_SCAN_FAILED){
+        m_console->println("wifi=scan failed; // scan failed.");
+        return "Scan Failed=-1;";
+    }
+
     String networks = "";
     for(int idx = 0; idx < availableNetworks; idx++){
         networks += WiFi.SSID(idx) + "=" + String(WiFi.RSSI(idx)) + ";";
+        m_console->println("wifi=scanresult; // ssid=" + WiFi.SSID(idx) + ", rssi=" + String(WiFi.RSSI(idx)));
         if(networks.length() > 160) {
             break;
         }
     }
+
+    m_console->println("wifi=scanresult; // " + networks + ";");
 
     return networks;
 }
@@ -79,7 +100,7 @@ void WiFiConnectionHelper::loop()
             // m_display->drawString(0, 0, "Connected to:");
             // m_display->drawString(80, 0, m_sysConfig->WiFiSSID.c_str());
             // m_display->sendBuffer();
-            m_console->println("wifi=connected;");
+            m_console->println("wifi=connected; // wifi state transitioned to connected.");
 
             IPAddress ip = WiFi.localIP();
 
@@ -102,6 +123,10 @@ void WiFiConnectionHelper::loop()
         return;
     }
 
+    if((millis() - m_lastReconnect) < 5000) {
+        return;
+    }
+
     if (m_wifiState == NuvIoTWiFi_Connected)
     {
         m_console->println("wifi=lostconnection; // Starting to reconnecting.");
@@ -118,6 +143,12 @@ void WiFiConnectionHelper::loop()
         m_state->setWiFiState(WiFi_Disconnected);
         m_console->println("wifi=notconnected; // Starting to connect.");
         if(connect(false)) 
+            m_attempt++;
+    }
+    else if(m_wifiState == NuvIoTWiFi_Connecting)
+    {
+        m_console->println("wifi=connecting; // attempt=" + String(m_attempt) + ", status=" + getWiFiStatus());
+        if(connect(false))
             m_attempt++;
     }
 

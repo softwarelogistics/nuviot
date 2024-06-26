@@ -443,7 +443,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       else if (key == "repoid")
         pSysConfig->RepoId = value;
       else if(key == "siteScan")
-        siteSurvey = pWifi->siteSurvey();
+        m_flags |= NUVIOT_BLE_FLAGS_SITE_SCAN; // don't run site survey in BLE thread.
       else if (key == "dfu")  {
         //pConsole->println("Starting firmware update process");
         //Note we can't start the download on this thread, so set the OTA STate = 100 to let 
@@ -525,6 +525,11 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
   }
 
   pState->loop();
+}
+
+// need to call this from the main thread.
+void BLE::scanWiFiNetworks() { 
+  siteSurvey = pWifi->siteSurvey();
 }
 
 void BLE::handleNotifyCharacteristic(BLECharacteristic *characteristic)
@@ -620,6 +625,11 @@ bool BLE::begin(const char *localName, const char *deviceModelId)
 
 void BLE::update()
 {
+  if(m_flags & NUVIOT_BLE_FLAGS_SITE_SCAN) {
+    m_flags &= ~NUVIOT_BLE_FLAGS_SITE_SCAN;
+    scanWiFiNetworks();
+  }
+
   if(pService != NULL)
   {
     this->refreshCharacteristics(true);

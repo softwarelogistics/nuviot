@@ -26,12 +26,12 @@ class WiFiConnectionHelper {
 
         String siteSurvey();
         void setup();
-        bool connect(bool isReconnecting);
         void disconnect();
         void loop();
 
         void post(String addr, uint16_t port, String path, String body);
-
+        bool connect(bool isReconnecting);
+     
         bool isConnected();
         String getIPAddress();
         String getMACAddress();
