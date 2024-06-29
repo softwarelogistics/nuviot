@@ -520,7 +520,7 @@ void sendIOValues()
       if (sysConfig.SrvrType == "mqtt")
       {
         wifiMQTT.publish(pathOrTopic, ioValues.toString());
-        console.println("publish it" + pathOrTopic);
+        console.println("wifimqtt=publish; //" + pathOrTopic);
 
 #ifdef CAN_ENABLED
         CANMessage *pMsg = canBus.getMessageHead();
