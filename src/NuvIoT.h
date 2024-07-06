@@ -234,17 +234,31 @@ void handleConsoleCommand(String cmd)
   state.handleConsoleCommand(cmd);
 }
 
+bool __isModemConfigured = false;
+
 void configureModem(unsigned long baudRate = 115200)
 {
+  if(__isModemConfigured)
+    return;
+
   console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX" + String(configPins.SimTx));
 
-  console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32000)));
+  console.setVerboseLogging(true);
+
+  console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32*1024)));
 
   gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
-  if (modem.isModemOnline())
+
+  delay(1500);
+
+  modem.alloc();
+
+  if (modem.isModemOnline()) 
     modem.init();
 
-  delay(500);
+  __isModemConfigured = true;
+
+  delay(1500);
 }
 
 void welcome(String firmwareSKU, String version)
@@ -590,6 +604,9 @@ void communicationsTask(void *param)
       }
       else if (sysConfig.CellEnabled)
       {
+        if(!__isModemConfigured)
+          configureModem();
+
         if (sysConfig.SrvrType == "mqtt")
         {
           cellMQTT.loop();
@@ -598,7 +615,7 @@ void communicationsTask(void *param)
       }
     }
 
-    if (sysConfig.GPSEnabled)
+    if (sysConfig.GPSEnabled && sysConfig.CellEnabled)
     {
       if (__nextGPS < millis())
       {
@@ -623,7 +640,6 @@ void communicationsTask(void *param)
         }
       }
     }
-
     
     sendIOValues(); 
 }
@@ -632,8 +648,11 @@ void bleTask(void *param) {
   BT.update();
 }
 
-void commonLoop()
-{
+void commonLoop(){
+  // timing on these is handled in the method for sending.
+  if (sysConfig.getWriteFlag())
+    sysConfig.write();
+
   if (state.OTAState == 100)
   {
     if (wifiMgr.isConnected())
@@ -649,7 +668,7 @@ void commonLoop()
   canBus.loop();
 #endif
 
-console.loop();
+  console.loop();
 
   if (__nextLoop < millis())
   {
@@ -666,14 +685,7 @@ console.loop();
     powerSensor.loop();
     relayManager.loop();
   }
-
-  // timing on these is handled in the method for sending.
-
-  if (sysConfig.getWriteFlag())
-    sysConfig.write();
 }
-
-
 
 void mqttSubscribe(String topic)
 {

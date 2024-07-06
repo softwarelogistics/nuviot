@@ -289,6 +289,8 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
 {
     bool transparentMode = false;
 
+    isReconnect = false;
+
     if (!m_modem->isServiceConnected() || !isReconnect)
     {
         m_state->setIsCellConnected(false);

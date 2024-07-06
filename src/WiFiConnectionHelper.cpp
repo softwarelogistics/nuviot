@@ -206,7 +206,6 @@ bool WiFiConnectionHelper::connect(bool isReconnect){
     m_isReconnect = isReconnect;
     m_wifiState = NuvIoTWiFi_Connecting;
     m_console->println("wifi=connect;");
-
     int status = WiFi.status();
 
     m_ledManager->setOnlineFlashRate(2);

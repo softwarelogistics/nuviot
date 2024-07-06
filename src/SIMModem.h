@@ -34,6 +34,8 @@ public:
     SIMModem(Display *display, Channel *channel, Console *console, Hal *hal, ConfigPins *pins);
     SIMModem(Channel *channel, Console *console, Hal *hal, ConfigPins *pins);
 
+    void alloc();
+
     bool init();
     bool isServiceConnected();
     bool isModemOnline();

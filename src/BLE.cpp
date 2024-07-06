@@ -466,8 +466,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       }
     }
 
-    pSysConfig->setWriteFlag();
-    
+    pSysConfig->setWriteFlag();    
   }
   else if (0 == strcmp(uuid, CHAR_UUID_IOCONFIG)) {
       int equalDelimiter = input.indexOf("=", 0);

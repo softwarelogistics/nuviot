@@ -6,7 +6,7 @@
         "type": "git",
         "url": "https://github.com/softwarelogistics/nuviot.git"
     },
-    "version": "4.51",
+    "version": "4.60",
     "exclude": "tests",
     "exclude": ".git",
     "exclude": ".vscode",

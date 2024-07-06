@@ -825,9 +825,10 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
 {
     int start = millis();
     String returnValue = S_OK;
-    m_console->printVerbose("Sending Command ==>" + cmd);
+    m_console->printVerbose("sendcommand=sending; cmd=" + cmd);
+    
     m_channel->transmit(cmd + "\r\n");
-
+    delay(100);
     if (delay > 0)
     {
         delay(delayMS);
@@ -846,7 +847,8 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
         {
             String msg = m_channel->readStringUntil('\n', timeout);
             msg.trim();
-            m_console->printVerbose(msg);
+
+            m_console->printVerbose("sendcommand=response; msg=" + msg);
 
             if (msg.length() > 0)
             {
@@ -920,6 +922,9 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
         else
         {
             delay(1);
+            m_console->print("channel found record ->" + cmd);
+            delay(50);
+
         }
     }
 
@@ -1210,14 +1215,16 @@ bool SIMModem::getCGREG()
     return success;
 }
 
-bool SIMModem::init()
-{
+void SIMModem::alloc(){
    if(m_rxBuffer == NULL)
         m_rxBuffer = (byte*)malloc(DOWNLOAD_BUFFER_SIZE);
 
     if(m_tempBuffer == NULL)
         m_tempBuffer = (byte*)malloc(TEMP_BUFFER_SIZE);
+}
 
+bool SIMModem::init()
+{
     m_console->printVerbose("Initialization of SIM Modem Started.");
 
     if (!setBand())
@@ -1407,8 +1414,7 @@ void SIMModem::stopGPS()
     }
 }
 
-GPSData *SIMModem::readGPS()
-{
+GPSData *SIMModem::readGPS(){
     m_channel->print("AT+CGNSINF\r");
     String echo = m_channel->readStringUntil('\r', 100);
     m_channel->waitForCRLF();
