@@ -34,7 +34,9 @@ class NuvIoTClient {
         bool m_cellularConnection = false;
         bool m_wifiConnection = false;
 
-        void (*messageReceivedCallback)(String topic, unsigned char buffer[], size_t length) = NULL;
+        void (*m_commandHandler)(String topic, byte *buffer, size_t len) = NULL;
+
+        void (*m_messageReceivedCallback)(String topic, unsigned char buffer[], size_t length) = NULL;
 
         void handleError(String errorCode, String message);
         void handleWarning(String errorCode, String message, int retryCount);
@@ -49,7 +51,11 @@ class NuvIoTClient {
         void messagePublished(String topic, unsigned char *payload, size_t length);
 
         void setMessageReceivedCallback(void (*callback)(String topic, byte buffer[], size_t buffer_length)) {
-            messageReceivedCallback = callback;
+            m_messageReceivedCallback = callback;
+        }
+
+        void setCommandHandlerCallback(void (*callback)(String topic, byte *buffer, size_t len)){
+            m_commandHandler = callback;
         }
 
         void enableGPS(bool enabled);

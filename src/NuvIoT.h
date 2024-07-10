@@ -731,6 +731,10 @@ void mqttPublish(String topic)
   mqttPublish(topic, "");
 }
 
+void setCommandHandler(void (*callback)(String topic, byte *buffer, size_t len)){
+  client.setCommandHandlerCallback(callback);
+}
+
 void writeConfigPins()
 {
   console.println("Has Display :" + configPins.HasDisplay ? "Yes" : "No");

@@ -21,9 +21,9 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String hardwa
 {
     m_firmwareSku = firmwareSku;
     m_firmwareVersion = firmwareVersion;
-    m_hardwareRevision = hardwareRevision;    
+    m_hardwareRevision = hardwareRevision;
     m_deviceModelKey = deviceModelKey;
-    
+
     esp_err_t openStat = nvs_open_from_partition("nvs", "kvp", NVS_READWRITE, &m_nvsHandle);
     if (openStat != ESP_OK)
     {
@@ -55,7 +55,8 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String hardwa
 
     int countDown = 5000;
     m_console->println("pauseforbt=start;  // pause on startup.");
-    while(countDown-- > 0) {
+    while (countDown-- > 0)
+    {
         loop();
         delay(1);
     }
@@ -146,7 +147,8 @@ String NuvIoTState::getRemoteProperties()
     return state;
 }
 
-void NuvIoTState::printRemoteProperties(){
+void NuvIoTState::printRemoteProperties()
+{
     m_console->print(F("Remote Properties: "));
     m_console->println(getRemoteProperties());
 }
@@ -172,7 +174,6 @@ String NuvIoTState::getIOConfigSettings()
 }
 
 int _lstSend = 0;
-
 
 bool NuvIoTState::getIsConfigurationModeActive()
 {
@@ -294,7 +295,7 @@ float NuvIoTState::getFlt(String key)
     }
 }
 
-void NuvIoTState::setADCConfig(int idx, uint8_t config,  float zero, float scaler, float calibration)
+void NuvIoTState::setADCConfig(int idx, uint8_t config, float zero, float scaler, float calibration)
 {
     m_console->println("setadc=true; // index=" + String(idx) + ", " + String(config) + ", " + String(zero) + ", " + String(scaler) + ", " + String(calibration) + ";");
 
@@ -353,7 +354,7 @@ void NuvIoTState::setADCConfig(int idx, uint8_t config,  float zero, float scale
     m_ioConfig->write();
 }
 
-void NuvIoTState::setIOCConfig(int idx, uint8_t config,  float zero, float scaler, float calibration)
+void NuvIoTState::setIOCConfig(int idx, uint8_t config, float zero, float scaler, float calibration)
 {
     m_console->println("setioconfig=true; // index=" + String(idx) + ", " + String(config) + ", " + String(zero) + ", " + String(scaler) + ", " + String(calibration) + ";");
 
@@ -636,12 +637,14 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
     }
     else if (fieldType == "TrueFalse")
     {
-        if(field == "gps") {
+        if (field == "gps")
+        {
             m_sysConfig->GPSEnabled = value == "true" || value == "True";
             m_sysConfig->write();
-            m_console->println("gpsenabled," + value+ ";");
+            m_console->println("gpsenabled," + value + ";");
         }
-        else {
+        else
+        {
             Param *pParam = findKey(m_pBoolParamHead, field.c_str());
             if (pParam != NULL)
             {
@@ -667,7 +670,7 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
                 }
             }
             else
-            {                
+            {
                 registerBool(field.c_str(), value == "true" || value == "True");
                 m_console->println("setbool=success,added=" + field + ", value=" + value);
             }
@@ -706,18 +709,19 @@ String NuvIoTState::resolveError(esp_err_t err)
 {
     switch (err)
     {
-        case ESP_ERR_NVS_READ_ONLY: 
+    case ESP_ERR_NVS_READ_ONLY:
         return "readonly";
-        case ESP_ERR_NVS_NOT_ENOUGH_SPACE      : return "nospace";
-        case ESP_ERR_NVS_INVALID_HANDLE:   
-         return "invalidhandle";
-        case ESP_ERR_NVS_REMOVE_FAILED 
-                  : return "removefailed";
-        case ESP_ERR_NVS_PAGE_FULL 
-                      : return "pagefull";
-        case ESP_ERR_NVS_INVALID_STATE            : 
+    case ESP_ERR_NVS_NOT_ENOUGH_SPACE:
+        return "nospace";
+    case ESP_ERR_NVS_INVALID_HANDLE:
+        return "invalidhandle";
+    case ESP_ERR_NVS_REMOVE_FAILED:
+        return "removefailed";
+    case ESP_ERR_NVS_PAGE_FULL:
+        return "pagefull";
+    case ESP_ERR_NVS_INVALID_STATE:
         return "invalidstate";
-        case ESP_ERR_NVS_VALUE_TOO_LONG          : 
+    case ESP_ERR_NVS_VALUE_TOO_LONG:
         return "toolong";
     case ESP_ERR_NVS_TYPE_MISMATCH:
         return "typemismatch";
@@ -841,7 +845,6 @@ void NuvIoTState::registerBool(const char *keyName, boolean defaultValue)
         appendValue(m_pBoolParamHead, p);
     }
 
-
     uint8_t tmpValue;
     esp_err_t err = nvs_get_u8(m_nvsHandle, keyName, &tmpValue);
     if (err == ESP_OK)
@@ -857,7 +860,7 @@ void NuvIoTState::registerBool(const char *keyName, boolean defaultValue)
             err = nvs_commit(m_nvsHandle);
             if (err == ESP_OK)
             {
-                m_console->println("keyreg=added,bool," + String(keyName) + "; // default value: " + String(tmpValue) + ", 255 = true 0 = false");
+                m_console->println("keyreg=added,bool," + String(keyName) + "; // default value: " + String(defaultValue) + ", 255 = true 0 = false");
             }
             else
             {
@@ -875,7 +878,70 @@ void NuvIoTState::registerBool(const char *keyName, boolean defaultValue)
     }
 }
 
+void NuvIoTState::setBool(String keyName, bool value)
+{
+    esp_err_t  err = nvs_set_u8(m_nvsHandle, keyName.c_str(), value ? 255 : 0);
+    if (err == ESP_OK)
+    {
+        err = nvs_commit(m_nvsHandle);
+        if (err == ESP_OK)
+        {
+            m_console->println("keyreg=added,bool," + String(keyName) + "; // default value: " + String(value) + ", 255 = true 0 = false");
+        }
+        else
+        {
+            m_console->repeatFatalError("keyreg=failed,commit,bool," + String(keyName) + "; // " + resolveError(err));
+        }
+    }
+    else
+    {
+        m_console->repeatFatalError("keyreg=failed,write,bool," + String(keyName) + "; // " + resolveError(err));
+    }
+}
+
+void NuvIoTState::setInt(String keyName, int32_t value)
+{
+    esp_err_t err = nvs_set_i32(m_nvsHandle, keyName.c_str(), (int32_t)(value));
+    if (err == ESP_OK)
+    {
+        err = nvs_commit(m_nvsHandle);
+        if (err == ESP_OK)
+        {
+            m_console->println("keyreg=added,int," + String(keyName) + "; // default value: " + String(value));
+        }
+        else
+        {
+            m_console->repeatFatalError("keyreg=failed,commit,int," + String(keyName) + "; // " + resolveError(err));
+        }
+    }
+    else
+    {
+        m_console->repeatFatalError("keyreg=failed,write,int," + String(keyName) + "; // " + resolveError(err));
+    }
+}
+
+void NuvIoTState::setFlt(String keyName, float value)
+{
+    esp_err_t err = nvs_set_i32(m_nvsHandle, keyName.c_str(), (int32_t)(value * FLOAT_DECIMAL_SCALER));
+    if (err == ESP_OK)
+    {
+        err = nvs_commit(m_nvsHandle);
+        if (err == ESP_OK)
+        {
+            m_console->println("keyset=added,decimal," + String(keyName) + "; // default value: " + String(value));
+        }
+        else
+        {
+            m_console->repeatFatalError("keyset=failed,commit,decimal," + String(keyName) + "; // " + resolveError(err));
+        }
+    }
+    else
+    {
+        m_console->repeatFatalError("keyset=failed,write,decimal," + String(keyName) + "; // " + resolveError(err));
+    }
+}
+
 String NuvIoTState::getHardwareRevision() { return m_hardwareRevision; }
 String NuvIoTState::getFirmwareVersion() { return m_firmwareVersion; }
 String NuvIoTState::getFirmwareSKU() { return m_firmwareSku; }
-String NuvIoTState::getDeviceModelKey() {return m_deviceModelKey; }
+String NuvIoTState::getDeviceModelKey() { return m_deviceModelKey; }

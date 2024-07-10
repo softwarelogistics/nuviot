@@ -207,6 +207,10 @@ public:
     int32_t getInt(String key);
     float getFlt(String key);
 
+    void setBool(String key, bool value);
+    void setInt(String key, int32_t value);
+    void setFlt(String key, float value);
+
     void setInputVoltage(float volts) {m_inputVoltage = volts;}
     float getInputVoltage() {return m_inputVoltage;}
 

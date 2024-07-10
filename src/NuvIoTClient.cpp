@@ -404,9 +404,9 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
 {
     m_console->println("mqttrecv=" + topic + "; // length=" + String(length));
 
-    if (messageReceivedCallback != NULL)
+    if (m_messageReceivedCallback != NULL)
     {
-        messageReceivedCallback(topic, payload, length);
+        m_messageReceivedCallback(topic, payload, length);
     }
 
     String parts[10];
@@ -547,7 +547,7 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
 
                     m_state->persistConfig();
                 }
-            }
+            }            
             else if (action == "properties")
             {
                 if (parts[4] == "query")
@@ -582,6 +582,12 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                     m_ota->start(url);
                 }
             }
+              else if(action == "command") {
+                    if(partIdx >= 5) {
+                        String command = parts[4];                                    
+                        m_commandHandler(command, payload, length);
+                    }
+                }
         }
     }
 }
