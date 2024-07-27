@@ -37,6 +37,8 @@ private:
     int32_t m_intDefault;
     float m_fltDefault;
     bool m_boolDefault;
+
+    const char * m_strDefault;
     const char *m_key;
 
 public:
@@ -45,6 +47,12 @@ public:
         m_key = key;
         m_intDefault = value;
     }
+    Param(const char *key, const char *value)
+    {
+        m_key = key;
+        m_strDefault = value;
+    }
+
     Param(const char *key, float value)
     {
         m_key = key;
@@ -62,6 +70,7 @@ public:
     int getIntDefault() { return m_intDefault; }
     bool getBoolDefault() { return m_boolDefault; }
     float getFltDefault() { return m_fltDefault; }
+    const char *getStrDefault() { return m_strDefault; }
 
     Param *pNext = NULL;
 };
@@ -129,6 +138,7 @@ private:
     Param *m_pBoolParamHead = NULL;
     Param *m_pIntParamHead = NULL;
     Param *m_pFloatParamHead = NULL;
+    Param *m_pStringParamHead = NULL;
     Param *appendValue(Param *pHead, Param *pNode);
 
     Param *findKey(Param *pHead, const char *key);
@@ -152,7 +162,7 @@ public:
     String getFirmwareSKU();
     String getDeviceModelKey();
 
-    String getLibraryVersion() { return "4.60"; }
+    String getLibraryVersion() { return "4.70"; }
 
     WiFiConnectionStates getWiFiState() { return m_isWiFiConnectionState; }
     void setWiFiState(WiFiConnectionStates state) { m_isWiFiConnectionState = state; }
@@ -202,14 +212,17 @@ public:
     void registerInt(const char *key, int32_t defaultValue);
     void registerFloat(const char *key, float defaultValue);
     void registerBool(const char *key, bool defaultValue);
+    void registerString(const char *key, String defaultValue);
 
     bool getBool(String key);
     int32_t getInt(String key);
     float getFlt(String key);
+    String getString(String key);
 
     void setBool(String key, bool value);
     void setInt(String key, int32_t value);
     void setFlt(String key, float value);
+    void setString(String key, String value);
 
     void setInputVoltage(float volts) {m_inputVoltage = volts;}
     float getInputVoltage() {return m_inputVoltage;}

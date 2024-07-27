@@ -554,7 +554,8 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                 {
                     String payload = m_state->getRemoteProperties();
                     String topic = "nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/state";
-                    m_console->println(payload);
+                    m_console->println("[State__SendProperties] topic=" + topic + ";");
+                    m_console->println("[State__SendProperties] payload=" + payload + ";");
 
                     if(m_sysConfig->CellEnabled) {
                         m_cellMqtt->publish(topic, payload, QOS0);

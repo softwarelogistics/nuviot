@@ -144,6 +144,13 @@ String NuvIoTState::getRemoteProperties()
         pNext = pNext->pNext;
     }
 
+    pNext = m_pStringParamHead;
+    while (pNext != NULL)
+    {
+        state += (",String-" + String(pNext->getKey()) + "=" + String(getString(pNext->getKey())));
+        pNext = pNext->pNext;
+    }
+
     return state;
 }
 
@@ -267,6 +274,37 @@ int32_t NuvIoTState::getInt(String key)
 
         m_console->printWarning("getint=failed; // returning default, err: " + errMsg + " key: " + String(key));
         return pParam->getIntDefault();
+    }
+}
+
+
+String NuvIoTState::getString(String keyName)
+{
+    size_t required_size;
+    esp_err_t err = nvs_get_str(m_nvsHandle, keyName.c_str(), NULL, &required_size);
+    if (err == ESP_OK)
+    {
+        char *tmpStr = (char *)malloc(required_size);
+        esp_err_t err = nvs_get_str(m_nvsHandle, keyName.c_str(), tmpStr, &required_size);
+        // key exists and we read it.
+        m_console->println("keyreg=existing,String," + String(keyName) + "; // existing value: " + String(tmpStr));
+        
+        String str = String(tmpStr);
+        delete tmpStr;
+        return str;
+    }
+    else
+    {
+        String errMsg = resolveError(err);
+        Param *pParam = findKey(m_pIntParamHead, keyName.c_str());
+        if (pParam == NULL)
+        {
+            m_console->printWarning("getint=failed; // err: not found and not registered, key: " + keyName + ";");
+            return "";
+        }
+
+        m_console->printWarning("getint=failed; // returning default, err: " + errMsg + " key: " + keyName);
+        return pParam->getStrDefault();
     }
 }
 
@@ -635,6 +673,37 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             m_console->println("setdecimal=success,added=" + field + ", value" + value);
         }
     }
+    else if (fieldType == "String")
+    {
+        Param *pParam = findKey(m_pStringParamHead, field.c_str());
+        if (pParam != NULL)
+        {
+            esp_err_t err = nvs_set_str(m_nvsHandle, field.c_str(), value.c_str());
+            if (err == ESP_OK)
+            {
+                err = nvs_commit(m_nvsHandle);
+                if (err == ESP_OK)
+                {
+                    m_console->println("setstring=success," + field + "=" + value + ";");
+                }
+                else
+                {
+                    String errMsg = resolveError(err);
+                    m_console->printError("setstring=failed,commit," + field + "; // error: " + errMsg);
+                }
+            }
+            else
+            {
+                String errMsg = resolveError(err);
+                m_console->printError("setstring=failed,write," + field + "; // error: " + errMsg);
+            }
+        }
+        else
+        {
+            registerString(field.c_str(), value);
+            m_console->println("setstring=success,added=" + field + ", value" + value);
+        }
+    }    
     else if (fieldType == "TrueFalse")
     {
         if (field == "gps")
@@ -878,6 +947,59 @@ void NuvIoTState::registerBool(const char *keyName, boolean defaultValue)
     }
 }
 
+void NuvIoTState::registerString(const char *keyName, String defaultValue)
+{
+    Param *p = new Param(keyName, defaultValue.c_str());
+
+    if (m_pStringParamHead == NULL)
+    {
+        p->setIndex(0);
+        m_pStringParamHead = p;
+    }
+    else
+    {
+        appendValue(m_pStringParamHead, p);
+    }
+
+    uint8_t tmpValue;
+
+    size_t required_size;
+    esp_err_t err = nvs_get_str(m_nvsHandle, keyName, NULL, &required_size);
+    if (err == ESP_OK)
+    {
+        char *tmpStr = (char *)malloc(required_size);
+        esp_err_t err = nvs_get_str(m_nvsHandle, keyName, tmpStr, &required_size);
+        // key exists and we read it.
+        m_console->println("keyreg=existing,String," + String(keyName) + "; // existing value: " + String(tmpStr));
+        delete tmpStr;
+    }
+    else if (err == ESP_ERR_NVS_NOT_FOUND)
+    {
+
+        err = nvs_set_str(m_nvsHandle, keyName, defaultValue.c_str());
+        if (err == ESP_OK)
+        {
+            err = nvs_commit(m_nvsHandle);
+            if (err == ESP_OK)
+            {
+                m_console->println("keyreg=added,String," + String(keyName) + "; // default value: " + String(defaultValue) + ", 255 = true 0 = false");
+            }
+            else
+            {
+                m_console->repeatFatalError("keyreg=failed,commit,String," + String(keyName) + "; // " + resolveError(err));
+            }
+        }
+        else
+        {
+            m_console->repeatFatalError("keyreg=failed,write,String," + String(keyName) + "; // " + resolveError(err));
+        }
+    }
+    else
+    {
+        m_console->repeatFatalError("keyreg=failed,read,String," + String(keyName) + "; // " + resolveError(err));
+    }
+}
+
 void NuvIoTState::setBool(String keyName, bool value)
 {
     esp_err_t  err = nvs_set_u8(m_nvsHandle, keyName.c_str(), value ? 255 : 0);
@@ -896,6 +1018,27 @@ void NuvIoTState::setBool(String keyName, bool value)
     else
     {
         m_console->repeatFatalError("keyreg=failed,write,bool," + String(keyName) + "; // " + resolveError(err));
+    }
+}
+
+void NuvIoTState::setString(String keyName, String value)
+{
+    esp_err_t  err = nvs_set_str(m_nvsHandle, keyName.c_str(), value.c_str());
+    if (err == ESP_OK)
+    {
+        err = nvs_commit(m_nvsHandle);
+        if (err == ESP_OK)
+        {
+            m_console->println("keyreg=added,String," + String(keyName) + "; // default value: " + value + ", 255 = true 0 = false");
+        }
+        else
+        {
+            m_console->repeatFatalError("keyreg=failed,commit,String," + String(keyName) + "; // " + resolveError(err));
+        }
+    }
+    else
+    {
+        m_console->repeatFatalError("keyreg=failed,write,String," + String(keyName) + "; // " + resolveError(err));
     }
 }
 
