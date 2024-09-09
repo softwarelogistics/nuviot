@@ -131,7 +131,14 @@ HardwareSerial gprsPort(1);
 HardwareSerial consoleSerial(0);
 TwoWire twoWire(1);
 #define BOARD_CONFIG 9
+#endif
 
+#ifdef HARSH_ENV_V1
+#undef DEFAULT_BRD
+HardwareSerial gprsPort(1);
+HardwareSerial consoleSerial(0);
+#define BOARD_CONFIG 10
+TwoWire twoWire(1);
 #endif
 
 #ifdef DEFAULT_BRD
@@ -241,12 +248,8 @@ void configureModem(unsigned long baudRate = 115200)
   if(__isModemConfigured)
     return;
 
-  console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX" + String(configPins.SimTx));
-
-  console.setVerboseLogging(true);
-
+  console.println("modem=configuring; // initial baud rate: " + String(baudRate) + ", RX: " + String(configPins.SimRx) + ", TX: " + String(configPins.SimTx));
   console.println("channel:resizebuffer; // " + String(gprsPort.setRxBufferSize(32*1024)));
-
   gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
 
   delay(1500);
@@ -365,9 +368,7 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
   {
     while (state.isValid() && retryCount++ < 5)
     {
-      if (modem.isModemOnline() && !state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud))
-      {
-
+      if (modem.isModemOnline() && !state.getIsConfigurationModeActive() && client.CellularConnect(reconnect, baud)){
         ledManager.setOnlineFlashRate(-1);
         ledManager.setErrFlashRate(0);
         console.println("cellconnection=established;");
@@ -375,10 +376,11 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
         {
           console.println("cellconnection=startinggps;");
           modem.startGPS();
-        }
-
+        }    
         return;
       }
+      else 
+          delay(500);
     }
   }
   else if (sysConfig.GPSEnabled) // GPS Only

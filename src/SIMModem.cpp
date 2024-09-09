@@ -922,7 +922,7 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
         else
         {
             delay(1);
-            m_console->print("channel found record ->" + cmd);
+            m_console->printVerbose("sendcommand=waiting; expecting response: " + expectedReply);
             delay(50);
 
         }

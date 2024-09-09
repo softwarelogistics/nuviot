@@ -485,6 +485,25 @@ public:
             HasRelays = false;
             HasLeds = false;
             HasI2C = false;
+        } else if(boardType == 10) {
+            HasI2C = false;
+            SimRx = 10;
+            SimTx = 11;
+
+            HasRelays = false;
+            HasDisplay = false;
+            HasI2C = false;
+
+            GpioChannels = 3;
+            Gpio1 = 25;
+            Gpio2 = 26;
+            Gpio3 = 27;
+
+            ADCProvider = ESP32OnBoard;
+            ADCChannels = 3;
+            ADCChannel1 = 34;
+            ADCChannel2 = 35;
+            ADCChannel3 = 32;
         }
     }
 };
