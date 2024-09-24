@@ -44,19 +44,19 @@ private:
         if (config->GPIO1Config == GPIO_CONFIG_INPUT)
             registerOnOffDetector(config->GPIO1Name, m_configPins->Gpio1, m_configPins->InvertGpio1, 1);
         if (config->GPIO2Config == GPIO_CONFIG_INPUT)
-            registerOnOffDetector(config->GPIO2Name, m_configPins->Gpio2, m_configPins->InvertGpio1, 2);
+            registerOnOffDetector(config->GPIO2Name, m_configPins->Gpio2, m_configPins->InvertGpio2, 2);
         if (config->GPIO3Config == GPIO_CONFIG_INPUT)
-            registerOnOffDetector(config->GPIO3Name, m_configPins->Gpio3, m_configPins->InvertGpio1, 3);
+            registerOnOffDetector(config->GPIO3Name, m_configPins->Gpio3, m_configPins->InvertGpio3, 3);
         if (config->GPIO4Config == GPIO_CONFIG_INPUT)
-            registerOnOffDetector(config->GPIO4Name, m_configPins->Gpio4, m_configPins->InvertGpio1, 4);
+            registerOnOffDetector(config->GPIO4Name, m_configPins->Gpio4, m_configPins->InvertGpio4, 4);
         if (config->GPIO5Config == GPIO_CONFIG_INPUT)
-            registerOnOffDetector(config->GPIO5Name, m_configPins->Gpio5, m_configPins->InvertGpio1, 5);
+            registerOnOffDetector(config->GPIO5Name, m_configPins->Gpio5, m_configPins->InvertGpio5, 5);
         if (config->GPIO6Config == GPIO_CONFIG_INPUT)
-            registerOnOffDetector(config->GPIO6Name, m_configPins->Gpio6, m_configPins->InvertGpio1, 6);
+            registerOnOffDetector(config->GPIO6Name, m_configPins->Gpio6, m_configPins->InvertGpio6, 6);
         if (config->GPIO7Config == GPIO_CONFIG_INPUT)
-            registerOnOffDetector(config->GPIO7Name, m_configPins->Gpio7, m_configPins->InvertGpio1, 7);
+            registerOnOffDetector(config->GPIO7Name, m_configPins->Gpio7, m_configPins->InvertGpio6, 7);
         if (config->GPIO8Config == GPIO_CONFIG_INPUT)
-            registerOnOffDetector(config->GPIO8Name, m_configPins->Gpio8, m_configPins->InvertGpio1, 8);
+            registerOnOffDetector(config->GPIO8Name, m_configPins->Gpio8, m_configPins->InvertGpio8, 8);
     }
 
 public:

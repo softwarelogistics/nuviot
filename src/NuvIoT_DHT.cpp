@@ -230,12 +230,12 @@ bool NuvIoT_DHT::read(bool force) {
     // First expect a low signal for ~80 microseconds followed by a high signal
     // for ~80 microseconds again.
     if (expectPulse(LOW) == TIMEOUT) {
-      _console->printError(F("DHT timeout waiting for start signal low pulse."));
+      _console->printError("DHT timeout waiting for start signal low pulse on pin" + String(_pin));
       _lastresult = false;
       return _lastresult;
     }
     if (expectPulse(HIGH) == TIMEOUT) {
-      _console->printError(F("DHT timeout waiting for start signal high pulse."));
+      _console->printError("DHT timeout waiting for start signal high pulse. on pin" + String(_pin));      
       _lastresult = false;
       return _lastresult;
     }
@@ -260,7 +260,7 @@ bool NuvIoT_DHT::read(bool force) {
     uint32_t lowCycles = cycles[2 * i];
     uint32_t highCycles = cycles[2 * i + 1];
     if ((lowCycles == TIMEOUT) || (highCycles == TIMEOUT)) {
-      _console->printError(F("DHT timeout waiting for pulse."));
+      _console->printError("DHT timeout waiting for pulse on pin" + String(_pin));
       _lastresult = false;
       return _lastresult;
     }

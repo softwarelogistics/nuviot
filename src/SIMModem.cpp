@@ -65,7 +65,9 @@ bool SIMModem::enableTransparentMode()
 
 bool SIMModem::disableTransparentMode()
 {
-    return sendCommand("AT+CIPMODE=0") == S_OK;
+    //return sendCommand("AT+CIPMODE=0") == S_OK;
+
+    return true;
 }
 
 bool SIMModem::exitDataMode()
@@ -922,8 +924,8 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
         else
         {
             delay(1);
-            m_console->printVerbose("sendcommand=waiting; expecting response: " + expectedReply);
-            delay(50);
+            //m_console->printVerbose("sendcommand=waiting; expecting response: " + expectedReply);
+            //delay(50);
 
         }
     }
@@ -1064,7 +1066,7 @@ bool SIMModem::resetModem()
         }
         return false;
     }
-    else if (response == S_OK)
+    else if (response == S_OK || response == S_RDY)
     {
         return true;
     }
@@ -1081,7 +1083,7 @@ bool SIMModem::setPDPContext()
     uint8_t retryCount = 0;
     while (retryCount < 5)
     {
-        String str = "AT+CGDCONT=1,\"IP\",\"hologram\",\"0.0.0.0\",0,0,0,0";
+        String str = "AT+CGDCONT=1,\"IP\",\"hologram\"";//,\"0.0.0.0\",0,0,0,0";
         //String str = "AT+CGDCONT=1,\"IP\",,,0,0,0,0";
         if (sendCommand(str) == S_OK)
         {

@@ -25,7 +25,7 @@ void determineSensorConfiguration(IOConfig *ioConfig, Console *console, byte io1
     float temp = dht->readTemperature(true,true);
     if (!isnan(temp)){
       hasDHT22 = true;
-      console->println("Found DHT22");
+      console->println("Found DHT22 on " + String(io1Pin) + ", current temperature: " + String(temp));
     }
     else {
       console->println("Attempt " + String(retryCount));
@@ -114,6 +114,10 @@ void determineSensorConfiguration(IOConfig *ioConfig, Console *console, byte io1
     ioConfig->ADC1Scaler = 100;
     ioConfig->ADC1Zero = 32;
     ioConfig->ADC1Calibration = 1;    
+  }
+  else {
+    delete dht;
+    dht = NULL;
   }
 }
 

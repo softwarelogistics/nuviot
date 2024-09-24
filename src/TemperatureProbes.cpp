@@ -99,7 +99,10 @@ void TemperatureProbes::readTemperatures()
                     }
                 }
                 else 
+                {
+                    m_console->printError("ERR DHT- " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
                    delay(2000);
+                }
             }
 
             if (success){
