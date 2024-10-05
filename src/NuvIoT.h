@@ -33,6 +33,7 @@
 #include "LedManager.h"
 #include "NuvIoTMQTT.h"
 #include "Rest.h"
+#include "Pir.h"
 #include <PubSubClient.h>
 
 #define DEFAULT_BRD
@@ -192,6 +193,8 @@ OnOffDetector onOffDetector(&console, &configPins, payload);
 PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
 
 BLE BT(&console, &hal, &state, &ioConfig, &wifiMgr, &sysConfig, &relayManager, &ota, payload);
+
+PIRSensor pir(&adc, &console, &configPins, payload);
 
 #ifdef CAN_ENABLED
 CANBus canBus(&console, &configPins, &BT);
@@ -586,6 +589,11 @@ void sendIOValues()
         httpPost(url, ioValues.toString());
       }
     }
+
+    // we may do something to automatically send a message when motion in the future
+    // until then we will clear the motion state once it's sent to the server.
+    // this will indicate the device saw motion in the interval between messages.
+    pir.clearMotion();
   }
 }
 
@@ -686,6 +694,7 @@ void commonLoop(){
     pulseCounter.loop();
     powerSensor.loop();
     relayManager.loop();
+    pir.loop();
   }
 }
 

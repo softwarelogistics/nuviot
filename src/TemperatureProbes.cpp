@@ -86,21 +86,27 @@ void TemperatureProbes::readTemperatures()
         case Dht22:
             bool success = false;
             int retryCount = 0;
-            while(!success && retryCount++ < 2){
-                if(m_dhts[idx]->read(true)) {
+            while(!success && retryCount < 2){
+                if(m_dhts[idx]->read(false)) {
                     humidity = m_dhts[idx]->readHumidity();
                     temperature = 32.0f + round(m_dhts[idx]->readTemperature() * 18.0f) / 10.0f;
                     if(isnan(humidity) || isnan(temperature)){                     
-                        m_console->printError("ERR DHT- " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
+                        m_console->printError("[Probes__ReadTemperature_DHT22] " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
+                        retryCount++;
                     }
                     else {
                         success = true;
+                        if(retryCount > 0)
+                            m_console->printWarning("[Probes__ReadTemperature_DHT22] Success after failure - " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
+
                         m_payload->ioValues->setValue(idx, temperature);                    
+
                     }
                 }
                 else 
                 {
-                    m_console->printError("ERR DHT- " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
+                    m_console->printError("[Probes__ReadTemperature_DHT22] Read Error - " + String(idx) + " " + String(m_pins[idx]) + " Attempt: " + String(retryCount));
+                    retryCount++;
                    delay(2000);
                 }
             }
@@ -113,7 +119,7 @@ void TemperatureProbes::readTemperatures()
                 humidity = NAN;
                 setIsErrorState(true);
             }
-
+       
             break;
         }
 
@@ -261,7 +267,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
     switch (config)
     {
     case None:
-        m_console->println("Probe pin: " + String(pin) + " not configured as probe.");
+        m_console->printVerbose("Probe pin: " + String(pin) + " not configured as probe.");
         if (m_dhts[idx] != NULL)
         {
             delete m_dhts[idx];
@@ -282,7 +288,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
 
         break;
     case Dht11:
-        m_console->println("Probe pin: " + String(pin) + " configured as DHT11.");
+        m_console->printVerbose("Probe pin: " + String(pin) + " configured as DHT11.");
         if (m_probes[idx] != NULL)
         {
             delete m_probes[idx];
@@ -301,7 +307,7 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
         }
         break;
     case Dht22:
-        m_console->println("Probe pin: " + String(pin) + " configured as DHT22.");
+        m_console->printVerbose("Probe pin: " + String(pin) + " configured as DHT22.");
         if (m_probes[idx] != NULL)
         {
             delete m_probes[idx];
@@ -317,10 +323,11 @@ void TemperatureProbes::configureProbe(uint8_t idx, String name, uint8_t setting
         if (m_dhts[idx] == NULL)
         {            
             m_dhts[idx] = new NuvIoT_DHT(pin, DHT22, 6, m_console);
+            m_dhts[idx]->begin();
         }
         break;
     case DS18B20:
-        m_console->println("Probe pin: " + String(pin) + " configured as DS1820B.");
+        m_console->printVerbose("Probe pin: " + String(pin) + " configured as DS1820B.");
         if (m_dhts[idx] != NULL)
         {
             delete m_dhts[idx];
