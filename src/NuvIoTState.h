@@ -162,7 +162,7 @@ public:
     String getFirmwareSKU();
     String getDeviceModelKey();
 
-    String getLibraryVersion() { return "4.70"; }
+    String getLibraryVersion() { return "4.80"; }
 
     WiFiConnectionStates getWiFiState() { return m_isWiFiConnectionState; }
     void setWiFiState(WiFiConnectionStates state) { m_isWiFiConnectionState = state; }
