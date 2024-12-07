@@ -74,8 +74,8 @@ void NuvIoTMQTT::connect()
     if (connectResult)
     {
         m_mqtt->loop();
-
-        publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", "firmwareVersion=" + m_state->getFirmwareVersion() + ",firmwareSku=" + m_state->getFirmwareSKU() + ",ipAddress=" + m_wifi->getIPAddress());
+        
+        publish("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/online", "firmwareVersion=" + m_state->getFirmwareVersion() + ",firmwareSku=" + m_state->getFirmwareSKU() + ",ipAddress=" + m_wifi->getIPAddress() + ",rssi=" + m_wifi->getRSSI());
 
         m_console->println("wifimqtt=mqttconnected; // host=" + m_sysConfig->SrvrHostName + ":" + String(m_sysConfig->Port) + ".");
         for (int idx = 0; idx < m_subscriptionCount; ++idx)
@@ -106,9 +106,13 @@ void NuvIoTMQTT::connect()
     }
     else
     {
-        m_console->printError("wifimqtt=failedmqttconnected; // host=" + m_sysConfig->SrvrHostName + ".");
+        m_console->printError("wifimqtt=failedmqttconnected; // host=" + m_sysConfig->SrvrHostName + ", attempt " + String(m_connectAttempt) + ".");
         m_lastConnectAttempt = millis();
         ++m_connectAttempt;
+        if(m_connectAttempt > 10)
+             m_hal->restart();
+
+        delay(1500);
     }
 }
 

@@ -21,9 +21,14 @@ private:
     uint8_t m_channelIndex[MAX_ON_OFF_CHANNELS];
     uint8_t m_channels[MAX_ON_OFF_CHANNELS];
 
+    uint32_t m_pinStateChangeTime[MAX_ON_OFF_CHANNELS];
+
     bool m_pinStates[MAX_ON_OFF_CHANNELS];
     ConfigPins *m_configPins;
     MessagePayload *m_payload;
+
+    void (*m_handler)(uint8_t, bool) = NULL;
+    
 
     void registerOnOffDetector(String name, uint8_t pin, bool invert, uint8_t idx)
     {
@@ -80,9 +85,26 @@ public:
             if (m_invert[idx])
                 state = !state;
 
-            m_pinStates[idx] = state;
-            m_payload->ioValues->setValue((m_channelIndex[idx] - 1), m_pinStates[idx]);
+            if(state != m_pinStates[idx])
+            {
+                if(millis() - m_pinStateChangeTime[idx] > 250)
+                {
+                    m_pinStateChangeTime[idx] = millis();
+                    m_pinStates[idx] = state;
+                    m_payload->ioValues->setValue((m_channelIndex[idx] - 1), m_pinStates[idx]);
+                    if(m_handler != NULL)
+                    {
+                        m_handler(m_channelIndex[idx], m_pinStates[idx]);
+                    }
+                }
+            }
+
         }
+    }
+
+    void setStateChangeHandler(void (*handler)(uint8_t, bool))
+    {
+        m_handler = handler;     
     }
 
     bool getPinState(int idx)
