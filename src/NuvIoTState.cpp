@@ -458,14 +458,15 @@ void NuvIoTState::persistConfig()
 
 void NuvIoTState::handleConsoleCommand(String msg)
 {
-    m_console->println("HANDLING MESSAGE [" + msg + "]");
-
     if (msg == "HELLO")
     {
-        m_display->clearBuffer();
-        m_display->println("Welcome");
-        m_display->println("Configuration Mode");
-        m_display->sendBuffer();
+        if(m_display != NULL)
+        {
+            m_display->clearBuffer();
+            m_display->println("Welcome");
+            m_display->println("Configuration Mode");
+            m_display->sendBuffer();
+        }
         m_configurationMode = true;
         m_paused = true;
     }
@@ -480,11 +481,14 @@ void NuvIoTState::handleConsoleCommand(String msg)
         m_paused = false;
         m_configurationMode = false;
 
-        m_display->clearBuffer();
-        m_display->println("Completed");
-        m_display->println("Leaving Config Mode");
-        m_display->sendBuffer();
-        m_console->enableBTOut(true);
+        if(m_display != NULL)
+        {
+            m_display->clearBuffer();
+            m_display->println("Completed");
+            m_display->println("Leaving Config Mode");
+            m_display->sendBuffer();
+            m_console->enableBTOut(true);
+        }
     }
     else if (msg == "REBOOT")
     {
@@ -522,6 +526,16 @@ void NuvIoTState::handleConsoleCommand(String msg)
             delay(2000);
             m_hal->restart();
         }
+    }
+    else if (msg == "DEVICEID-SEND")
+    {
+        String deviceId = msg.substring(3);
+        if(m_sysConfig->DeviceId == NULL || m_sysConfig->DeviceId.length() == 0){
+            m_console->println("[NO DEVICE ID SET]");
+        }
+        else {
+            m_console->println(m_sysConfig->DeviceId);
+        }    
     }
     else if (msg.substring(0, 3) == "ID=")
     {

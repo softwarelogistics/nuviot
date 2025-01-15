@@ -240,7 +240,6 @@ void configureFileSystem()
 
 void handleConsoleCommand(String cmd)
 {
-  console.println("SENDING OFF COMMAND [" + cmd + "]");
   state.handleConsoleCommand(cmd);
 }
 
