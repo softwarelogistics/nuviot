@@ -616,6 +616,21 @@ void NuvIoTState::updateProperty(String fieldType, String field, String value)
             m_sysConfig->write();
             m_console->println("setint=success," + field + ";");
         }
+        else if(field == "orgid") {
+            m_sysConfig->OrgId = value;
+            m_sysConfig->write();
+        }
+        else if(field == "repoid") {
+            m_sysConfig->RepoId = value;
+        }
+        else if(field == "id") {
+            m_sysConfig->Id = value;
+            m_sysConfig->write();
+        }
+        else if(field == "deviceid") {
+            m_sysConfig->Id = value;
+            m_sysConfig->write();
+        }
         else if (field == "pingrate")
         {
             m_sysConfig->PingRateSecond = intValue;
