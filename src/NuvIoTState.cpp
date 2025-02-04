@@ -494,6 +494,10 @@ void NuvIoTState::handleConsoleCommand(String msg)
     {
         m_hal->restart();
     }
+    else if (msg == "SITESCAN")
+    {
+        
+    }
     else if (msg == "PROPERTIES")
     {
         m_console->println(getRemoteProperties());
