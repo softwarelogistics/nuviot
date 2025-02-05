@@ -603,10 +603,8 @@ void communicationsTask(void *param)
       if (sysConfig.WiFiEnabled)
       {
         wifiMgr.loop();
-        if (sysConfig.SrvrType == "mqtt")
-        {
-          if (wifiMgr.isConnected() && sysConfig.SrvrHostName != NULL && sysConfig.SrvrHostName.length() > 0)
-          {
+        if (sysConfig.SrvrType == "mqtt"){
+          if (wifiMgr.isConnected() && sysConfig.SrvrHostName != NULL && sysConfig.SrvrHostName.length() > 0){
             wifiMQTT.loop();
           }
         }
@@ -616,8 +614,7 @@ void communicationsTask(void *param)
         if(!__isModemConfigured)
           configureModem();
 
-        if (sysConfig.SrvrType == "mqtt")
-        {
+        if (sysConfig.SrvrType == "mqtt"){
           cellMQTT.loop();
           ping();
         }
@@ -631,20 +628,16 @@ void communicationsTask(void *param)
         __nextGPS = millis() + sysConfig.GPSUpdateRateMS;
 
         GPSData *gps = modem.readGPS();
-        if (gps != NULL)
-        {
+        if (gps != NULL){
           console.println("gps=valid; // " + gps->toCSV());
-          if (sysConfig.WiFiEnabled)
-          {
+          if (sysConfig.WiFiEnabled){
             wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/geo", gps->toCSV());
           }
-          else if (sysConfig.CellEnabled)
-          {
+          else if (sysConfig.CellEnabled){
             cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/geo", gps->toCSV(), QOS0);
           }
         }
-        else
-        {
+        else{
           console.println("gps=invalid;");
         }
       }
@@ -659,8 +652,10 @@ void bleTask(void *param) {
 
 void commonLoop(){
   // timing on these is handled in the method for sending.
-  if (sysConfig.getWriteFlag())
+  if (sysConfig.getWriteTime() != -1 && 
+      millis() > sysConfig.getWriteTime()){
     sysConfig.write();
+  }
 
   if (state.OTAState == 100)
   {

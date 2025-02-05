@@ -22,8 +22,7 @@ void Console::printByte(byte ch)
     }
 }
 
-void Console::loop()
-{
+void Console::loop(){
     if(!m_serialEnabled) 
         return;
 
@@ -33,9 +32,11 @@ void Console::loop()
         for (int idx = 0; idx < bytesToRead; ++idx)
         {
             int ch = m_stream->read();
+            
             if (ch == '\n')
             {
                 String cmd = String(m_consoleInBuffer);
+                println(cmd);
                 newline();
 
                 if (m_callback != NULL)
