@@ -456,7 +456,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
         pHal->queueRestart(8000);
       } else if(key == "factoryreset" && value == "1") {
         pSysConfig->setDefaults();
-        pSysConfig->write();
+        pSysConfig->setWriteTime(millis() + 3);
         pIOConfig->setDefaults();
         pIOConfig->write();
         pHal->queueRestart(5000);
