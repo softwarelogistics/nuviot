@@ -429,8 +429,8 @@ public:
             ErrorLED = 33;
             OnlineLED = 32;
          } else if(boardType == 7) {
-            ConsoleRx = 3;
-            ConsoleTx = 1;    
+            ConsoleRx = 44;
+            ConsoleTx = 43;    
 
             GpioChannels = 3;
             Gpio1 = 25;

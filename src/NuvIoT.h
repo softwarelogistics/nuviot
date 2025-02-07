@@ -208,7 +208,7 @@ void configureI2C()
   {
     while (true)
     {
-      console.println("ic2=initfail; Pins SDA=" + String(configPins.Sda1) + ", SCL=" + String(configPins.Scl1) + ".");
+      console.println("i2c=initfail; Pins SDA=" + String(configPins.Sda1) + ", SCL=" + String(configPins.Scl1) + ".");
       delay(1000);
     }
   }
