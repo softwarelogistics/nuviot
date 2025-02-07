@@ -111,8 +111,9 @@ bool NuvIoTState::getSecureTransport()
 String NuvIoTState::queryFirmwareVersion()
 {
     String state =
-        "firmwareSku=" + m_firmwareSku + ", " +
-        "firmwareVersion=" + m_firmwareVersion + ";";
+        "firmwareSku=" + m_firmwareSku + "," +
+        "firmwareVersion=" + m_firmwareVersion + "," + 
+        "libVersion=" + getLibraryVersion() + ";";
 
     return state;
 }
@@ -506,6 +507,7 @@ void NuvIoTState::handleConsoleCommand(String msg)
         String type = setCommand.substring(0, dashIdx);
         String key = setCommand.substring(dashIdx + 1, equalsIdx);
         String value = setCommand.substring(equalsIdx + 1);
+       
         updateProperty(type, key, value);
         m_console->println("set-ack:" + key);
     }
