@@ -453,10 +453,10 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
         pState->OTAState = 100;
         // give it about one second for the client to finalize the connection;
       } else if(key == "reboot" && value == "1") {
-        pHal->queueRestart(5000);
+        pHal->queueRestart(8000);
       } else if(key == "factoryreset" && value == "1") {
         pSysConfig->setDefaults();
-        pSysConfig->write();
+        pSysConfig->setWriteTime(millis() + 3);
         pIOConfig->setDefaults();
         pIOConfig->write();
         pHal->queueRestart(5000);
@@ -466,7 +466,7 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
       }
     }
 
-    pSysConfig->setWriteFlag();    
+    pSysConfig->setWriteTime(millis() + 5000);    
   }
   else if (0 == strcmp(uuid, CHAR_UUID_IOCONFIG)) {
       int equalDelimiter = input.indexOf("=", 0);

@@ -459,14 +459,15 @@ void NuvIoTState::persistConfig()
 
 void NuvIoTState::handleConsoleCommand(String msg)
 {
-    m_console->println("HANDLING MESSAGE [" + msg + "]");
-
     if (msg == "HELLO")
     {
-        m_display->clearBuffer();
-        m_display->println("Welcome");
-        m_display->println("Configuration Mode");
-        m_display->sendBuffer();
+        if(m_display != NULL)
+        {
+            m_display->clearBuffer();
+            m_display->println("Welcome");
+            m_display->println("Configuration Mode");
+            m_display->sendBuffer();
+        }
         m_configurationMode = true;
         m_paused = true;
     }
@@ -481,15 +482,22 @@ void NuvIoTState::handleConsoleCommand(String msg)
         m_paused = false;
         m_configurationMode = false;
 
-        m_display->clearBuffer();
-        m_display->println("Completed");
-        m_display->println("Leaving Config Mode");
-        m_display->sendBuffer();
-        m_console->enableBTOut(true);
+        if(m_display != NULL)
+        {
+            m_display->clearBuffer();
+            m_display->println("Completed");
+            m_display->println("Leaving Config Mode");
+            m_display->sendBuffer();
+            m_console->enableBTOut(true);
+        }
     }
     else if (msg == "REBOOT")
     {
         m_hal->restart();
+    }
+    else if (msg == "SITESCAN")
+    {
+        
     }
     else if (msg == "PROPERTIES")
     {
@@ -498,6 +506,67 @@ void NuvIoTState::handleConsoleCommand(String msg)
     else if (msg == "VERSION")
     {
         m_console->println(queryFirmwareVersion());
+    }
+    else if(msg == "write-sysconfig"){
+        m_sysConfig->write();
+    }
+    else if (msg.substring(0, 3) == "sys") {
+        String setCommand = msg.substring(4);
+        int dashIdx = setCommand.indexOf('.');
+        int equalsIdx = setCommand.indexOf("=");
+        String value = setCommand.substring(equalsIdx + 1);
+        String key = setCommand.substring(dashIdx + 1, equalsIdx);
+        
+        if (key == "host")
+            m_sysConfig->SrvrHostName = value;
+        else if (key == "port")
+            m_sysConfig->Port = atoi(value.c_str());
+        else if (key == "srvrtype")
+            m_sysConfig->SrvrType = value;
+        else if (key == "anonymous")
+            m_sysConfig->Anonymous = value != "0";
+        else if (key == "uid")
+            m_sysConfig->SrvrUID = value;
+        else if (key == "pwd")
+            m_sysConfig->SrvrPWD = value;
+        else if (key == "wifissid")
+            m_sysConfig->WiFiSSID = value;
+        else if (key == "wifipwd")
+            m_sysConfig->WiFiPWD = value;
+        else if (key == "verboselog")
+            m_sysConfig->VerboseLogging = value != "0";
+        else if (key == "gps")
+            m_sysConfig->GPSEnabled = value != "0";
+        else if (key == "cell")
+            m_sysConfig->CellEnabled = value != "0";
+        else if (key == "wifi")
+            m_sysConfig->WiFiEnabled = value != "0";
+        else if (key == "deviceid")
+            m_sysConfig->DeviceId = value.c_str();
+        else if (key == "key")
+            m_sysConfig->DeviceAccessKey = value;
+        else if (key == "gpsrate")
+            m_sysConfig->GPSUpdateRateMS = atoi(value.c_str());
+        else if (key == "pingrate")
+            m_sysConfig->PingRateSecond = atoi(value.c_str());
+        else if (key == "sendrate")
+            m_sysConfig->SendUpdateRateMS = atoi(value.c_str());
+        else if (key == "looprate")
+            m_sysConfig->LoopUpdateRateMS = atoi(value.c_str());
+        else if (key == "commissioned")
+            m_sysConfig->Commissioned = value != "0";
+        else if (key == "orgid")
+            m_sysConfig->OrgId = value;
+        else if (key == "id")
+            m_sysConfig->Id = value;
+        else if (key == "repoid")
+            m_sysConfig->RepoId = value;
+        else {
+            m_console->println("error-unknownkey:" + key + ";");
+            return;
+        }
+        
+        m_console->println("set-ack:" + key);
     }
     else if (msg.substring(0, 3) == "SET")
     {
@@ -524,6 +593,16 @@ void NuvIoTState::handleConsoleCommand(String msg)
             delay(2000);
             m_hal->restart();
         }
+    }
+    else if (msg == "DEVICEID-SEND")
+    {
+        String deviceId = msg.substring(3);
+        if(m_sysConfig->DeviceId == NULL || m_sysConfig->DeviceId.length() == 0){
+            m_console->println("[NO DEVICE ID SET]");
+        }
+        else {
+            m_console->println(m_sysConfig->DeviceId);
+        }    
     }
     else if (msg.substring(0, 3) == "ID=")
     {

@@ -127,13 +127,20 @@ public:
         }
     }
 
-    bool writeFlag = false;
-    void setWriteFlag() {
-        writeFlag = true;
+    /*
+     * Set a time into the future when the values should be written to storage.
+    */
+    long _writeTime = -1;
+    void setWriteTime(long writeTime) {
+        _writeTime = writeTime;
     }
 
-    bool getWriteFlag() {
-        return writeFlag;
+    void clearWriteTime() {
+        _writeTime = -1;
+    }
+
+    ulong getWriteTime() {
+        return _writeTime;
     }
 
     void write()
@@ -160,7 +167,7 @@ public:
             }
         }
 
-        writeFlag = false;
+        clearWriteTime();
     }
 
     void setDefaults(){

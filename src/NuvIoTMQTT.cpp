@@ -21,7 +21,7 @@ NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, Console *console, W
     m_hal = hal;
     m_ota = ota;
     m_mqtt->disconnect();
-
+    m_mqtt->setBufferSize(1024);
     mqttInstance = this;
 }
 
