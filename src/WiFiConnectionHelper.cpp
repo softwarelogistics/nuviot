@@ -62,13 +62,12 @@ String WiFiConnectionHelper::siteSurvey() {
     String networks = "";
     for(int idx = 0; idx < availableNetworks; idx++){
         networks += WiFi.SSID(idx) + "=" + String(WiFi.RSSI(idx)) + ";";
-        m_console->println("wifi=scanresult; // ssid=" + WiFi.SSID(idx) + ", rssi=" + String(WiFi.RSSI(idx)));
         if(networks.length() > 160) {
             break;
         }
     }
 
-    m_console->println("wifi=scanresult; // " + networks + ";");
+    m_console->println("wifi=scanresult; // " + networks);
 
     return networks;
 }

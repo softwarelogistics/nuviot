@@ -509,6 +509,8 @@ void NuvIoTState::handleConsoleCommand(String msg)
     }
     else if(msg == "write-sysconfig"){
         m_sysConfig->write();
+        m_console->println("write-ack;");
+  
     }
     else if (msg.substring(0, 3) == "sys") {
         String setCommand = msg.substring(4);
@@ -533,6 +535,10 @@ void NuvIoTState::handleConsoleCommand(String msg)
             m_sysConfig->WiFiSSID = value;
         else if (key == "wifipwd")
             m_sysConfig->WiFiPWD = value;
+        else if (key == "wifissid2")
+            m_sysConfig->WiFiSSID2 = value;
+        else if (key == "wifipwd2")
+            m_sysConfig->WiFiPWD2 = value;
         else if (key == "verboselog")
             m_sysConfig->VerboseLogging = value != "0";
         else if (key == "gps")
@@ -566,7 +572,7 @@ void NuvIoTState::handleConsoleCommand(String msg)
             return;
         }
         
-        m_console->println("set-ack:" + key);
+        m_console->println("set-ack:" + key + ";");
     }
     else if (msg.substring(0, 3) == "SET")
     {
@@ -618,37 +624,41 @@ void NuvIoTState::handleConsoleCommand(String msg)
             m_hal->restart();
         }
     }
-    else if (msg == "IOCONFIG-SEND")
-    {
+    else if (msg == "IOCONFIG-SEND"){
         String json = m_ioConfig->toJSON();
         uint16_t remaining = json.length();
         uint16_t chunkSize = 100;
         uint16_t chunkIndex = 0;
+
+        m_console->print("ioconfig=");
+
         while (remaining > 0)
         {
             int start = chunkIndex * 100;
             int end = min((uint16_t)(start + chunkSize), (uint16_t)json.length());
             remaining = json.length() - end;
             m_console->print(json.substring(chunkIndex * 100, end));
-            delay(100);
+            delay(50);
             chunkIndex++;
         }
 
         m_console->println("");
     }
-    else if (msg == "SYSCONFIG-SEND")
-    {
+    else if (msg == "SYSCONFIG-SEND"){
         String json = m_sysConfig->toJSON();
         uint16_t remaining = json.length();
         uint16_t chunkSize = 100;
         uint16_t chunkIndex = 0;
+
+        m_console->print("sysconfig=");
+
         while (remaining > 0)
         {
             int start = chunkIndex * 100;
             int end = min((uint16_t)(start + chunkSize), (uint16_t)json.length());
             remaining = json.length() - end;
             m_console->print(json.substring(chunkIndex * 100, end));
-            delay(100);
+            delay(50);
             chunkIndex++;
         }
 

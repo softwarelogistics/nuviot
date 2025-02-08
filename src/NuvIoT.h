@@ -238,9 +238,38 @@ void configureFileSystem()
   }
 }
 
+void writeCurrentState() {
+    String charValue =
+      "currentstate=" + 
+      state.getFirmwareSKU() + "," +                   // 0
+      state.getDeviceModelKey() + "," +                // 1
+      state.getFirmwareVersion() + "," +               // 2
+      state.getHardwareRevision() + "," +              // 3
+      (sysConfig.Commissioned ? "1," : "0,") +         // 4
+      String(state.getWiFiState()) + "," +             // 5
+      String(state.getWiFiRSSI()) + "," +              // 6
+      state.getWiFiIPAddress()+  "," +                 // 7
+      (state.getIsCellConnected() ? "1," : "0,") +     // 8
+      String(state.getCellRSSI()) + "," +              // 9
+      state.getCellIPAddress()+  "," +                 // 10
+      (state.getIsCloudConnected() ? "1," : "0,") +    // 11
+      String(state.getInputVoltage()) + "," +          // 12
+      (state.getExternalPower() ? "1," : "0,") +       // 13
+      String(state.OTAState) + "," +                   // 14
+      String(state.OTAParam) + ";";                          // 15
+      console.println(charValue);
+}
+
 void handleConsoleCommand(String cmd)
 {
-  state.handleConsoleCommand(cmd);
+  if(cmd=="wifi-survey")
+    wifiMgr.siteSurvey();
+  else if(cmd == "send-state")
+    writeCurrentState();
+  else if(cmd == "send-iovalues") 
+    console.println("iovalues=" + payload->ioValues->toString() + ";");
+  else
+    state.handleConsoleCommand(cmd);
 }
 
 bool __isModemConfigured = false;

@@ -28,6 +28,9 @@ public:
 
     String WiFiSSID;
     String WiFiPWD;
+    
+    String WiFiSSID2;
+    String WiFiPWD2;
 
     String SrvrHostName;
     int Port;
@@ -63,6 +66,8 @@ public:
         doc["deviceId"] = DeviceId;
         doc["wifissid"] = WiFiSSID;
         doc["wifipwd"] = WiFiPWD;
+        doc["wifissid2"] = WiFiSSID2;
+        doc["wifipwd2"] = WiFiPWD2;
         doc["srvrHostName"] = SrvrHostName;
         doc["port"] = Port;
         doc["srvrType"] = SrvrType;
@@ -180,6 +185,8 @@ public:
         TLS = false;
         WiFiSSID = "";
         WiFiPWD = "";
+        WiFiSSID2 = "";
+        WiFiPWD2 = "";
         SrvrHostName = "";
         Port = 80;
         SrvrType = "";
@@ -222,6 +229,8 @@ public:
             DeviceId = doc["deviceId"].as<String>();
             WiFiSSID = doc["wifissid"].as<String>();
             WiFiPWD = doc["wifipwd"].as<String>();
+            WiFiSSID2 = doc["wifissid2"].as<String>();
+            WiFiPWD2 = doc["wifipwd2"].as<String>();
             SrvrHostName = doc["srvrHostName"].as<String>();
             Port = doc["port"].as<uint16_t>();
             SrvrType = doc["srvrType"].as<String>();
@@ -241,6 +250,9 @@ public:
             OrgId = doc["orgId"].as<String>();
             RepoId = doc["repoId"].as<String>();
             Id = doc["id"].as<String>();
+
+            if(WiFiSSID2 == "null") WiFiSSID2 = "";
+            if(WiFiPWD2 == "null") WiFiPWD2 = "";
 
             if(OrgId == "null") OrgId = "";
             if(RepoId == "null") RepoId = "";
@@ -264,19 +276,21 @@ public:
     }
 
     void print() {
-        m_pConsole->println("DEID: " + DeviceId);
-        m_pConsole->println("COMM: " + String(Commissioned));
-        m_pConsole->println("CELL: " + String(CellEnabled));
-        m_pConsole->println("WIFI: " + String(WiFiEnabled));
-        m_pConsole->println("SRTY: " + String(SrvrType));
-        m_pConsole->println("HOST: " + SrvrHostName);
-        m_pConsole->println("ORG : " + OrgId);
-        m_pConsole->println("REP : " + RepoId);
-        m_pConsole->println("ID  : " + Id);
-        m_pConsole->println("PNGR: " + String(PingRateSecond));
-        m_pConsole->println("SNDR: " + String(SendUpdateRateMS));
-        m_pConsole->println("LOPR: " + String(LoopUpdateRateMS));
-        m_pConsole->println("GPSR: " + String(GPSUpdateRateMS));
+        m_pConsole->println("DEID : " + DeviceId);
+        m_pConsole->println("COMM : " + String(Commissioned));
+        m_pConsole->println("CELL : " + String(CellEnabled));
+        m_pConsole->println("WIFI : " + String(WiFiEnabled));
+        m_pConsole->println("SSID : " + String(WiFiSSID));
+        m_pConsole->println("SSID2: " + String(WiFiSSID));
+        m_pConsole->println("SRTY : " + String(SrvrType));
+        m_pConsole->println("HOST : " + SrvrHostName);
+        m_pConsole->println("ORG  : " + OrgId);
+        m_pConsole->println("REP  : " + RepoId);
+        m_pConsole->println("ID   : " + Id);
+        m_pConsole->println("PNGR : " + String(PingRateSecond));
+        m_pConsole->println("SNDR : " + String(SendUpdateRateMS));
+        m_pConsole->println("LOPR : " + String(LoopUpdateRateMS));
+        m_pConsole->println("GPSR : " + String(GPSUpdateRateMS));
     }
 
 };
