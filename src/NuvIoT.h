@@ -331,11 +331,12 @@ void welcome(String firmwareSKU, String version)
     console.println("Device Id        : " + String(sysConfig.DeviceId));
   else
     console.println("Device Id        : Not Configured");
-
+  console.println("Config Level     : " + String(sysConfig.ConfigurationLevel));
   console.println("Cellular Enabled : " + String(sysConfig.CellEnabled));
   console.println("WiFi Enabled     : " + String(sysConfig.WiFiEnabled));
   console.println("Commissioned     : " + String(sysConfig.Commissioned));
   console.println("GPS Enabled      : " + String(sysConfig.GPSEnabled));
+  
   if (sysConfig.SrvrType != NULL && sysConfig.SrvrType.length() > 0)
     console.println("Server Type     : " + String(sysConfig.SrvrType));
   else

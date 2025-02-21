@@ -34,6 +34,7 @@ public:
 
     String SrvrHostName;
     int Port;
+    int ConfigurationLevel = -1;
     
     bool TLS;
     bool Anonymous;
@@ -82,6 +83,7 @@ public:
         doc["gpsEnabled"] = GPSEnabled;
         doc["wifiEnabled"] = WiFiEnabled;
         doc["cellEnabled"] = CellEnabled;
+        doc["configLevel"] = ConfigurationLevel;
         doc["orgId"] = OrgId;
         doc["id"] = Id;
         doc["repoId"] = RepoId;
@@ -195,6 +197,8 @@ public:
         SrvrPWD = "";
         DeviceAccessKey = "";
 
+        ConfigurationLevel = -1;
+
         PingRateSecond = 30;
         SendUpdateRateMS = 30000;
         LoopUpdateRateMS = 250;
@@ -242,6 +246,7 @@ public:
             SendUpdateRateMS = doc["sendUpdateRate"].as<uint32_t>();
             LoopUpdateRateMS = doc["loopUpdateRate"].as<uint32_t>();
             GPSUpdateRateMS = doc["gpsUpdateRate"].as<uint32_t>();
+            ConfigurationLevel = doc["configLevel"].as<int>();
             GPRSModemBaudRate = doc["baud"].as<unsigned long>();
 
             if(LoopUpdateRateMS == 0) LoopUpdateRateMS = 250;            
