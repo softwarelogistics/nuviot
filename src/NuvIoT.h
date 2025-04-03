@@ -266,6 +266,8 @@ void handleConsoleCommand(String cmd)
     wifiMgr.siteSurvey();
   else if(cmd == "send-state")
     writeCurrentState();
+  else if(cmd == "send-sysconfig")
+    sysConfig.print();
   else if(cmd == "send-iovalues") 
     console.println("iovalues=" + payload->ioValues->toString() + ";");
   else

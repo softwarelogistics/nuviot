@@ -2,6 +2,9 @@
 #include "esp_bt_device.h"
 #include "math.h"
 #include <Update.h>
+#include "soc/efuse_reg.h"
+#include "esp_system.h"
+#include "esp_efuse.h"
 
 #include <nvs.h>
 
@@ -512,12 +515,18 @@ void NuvIoTState::handleConsoleCommand(String msg)
         m_console->println("write-ack;");
   
     }
+    else if(msg == "SN" || msg == "sn") {
+        uint32_t reg = esp_efuse_read_reg(EFUSE_BLK4, 0);
+        char buffer[50];
+        sprintf(buffer, "SN=%08x\r\n", reg);
+        m_console->println(buffer);
+    }
     else if (msg.substring(0, 3) == "sys") {
         String setCommand = msg.substring(4);
-        int dashIdx = setCommand.indexOf('.');
-        int equalsIdx = setCommand.indexOf("=");
-        String value = setCommand.substring(equalsIdx + 1);
-        String key = setCommand.substring(dashIdx + 1, equalsIdx);
+        int dashIdx = msg.indexOf('.');
+        int equalsIdx = msg.indexOf("=");
+        String value = msg.substring(equalsIdx + 1);
+        String key = msg.substring(dashIdx + 1, equalsIdx);
         
         if (key == "host")
             m_sysConfig->SrvrHostName = value;
@@ -563,6 +572,8 @@ void NuvIoTState::handleConsoleCommand(String msg)
             m_sysConfig->Commissioned = value != "0";
         else if (key == "orgid")
             m_sysConfig->OrgId = value;
+        else if (key == "customerid")
+            m_sysConfig->CustomerId = value;
         else if (key == "id")
             m_sysConfig->Id = value;
         else if (key == "repoid")

@@ -259,7 +259,9 @@ void BLE::refreshCharacteristics(bool notifyOnly)
         pSysConfig->OrgId + "," +
         pSysConfig->RepoId + "," +
         pSysConfig->Id + "," +
+        pSysConfig->CustomerId + "," +
         String(_deviceModelId) + "," +
+        String(pSysConfig->ConfigurationLevel) + "," +
         pSysConfig->SrvrHostName + "," +      
         pSysConfig->SrvrUID + "," +      
         pSysConfig->SrvrPWD + "," +      
@@ -276,7 +278,7 @@ void BLE::refreshCharacteristics(bool notifyOnly)
         (pSysConfig->GPSEnabled ? "1," : "0,") +
         String(pSysConfig->GPSUpdateRateMS) + "," + 
         String(pSysConfig->LoopUpdateRateMS) + "," + 
-        String((uint32_t)fullMAC);
+        String((uint32_t)fullMAC);        
 
     pCharConfig->setValue(sysConfigValue.c_str());
 
@@ -438,6 +440,8 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
         pSysConfig->Commissioned = value != "0";
       else if (key == "orgid")
         pSysConfig->OrgId = value;
+      else if (key == "custid")
+        pSysConfig->CustomerId = value;
       else if (key == "id")
         pSysConfig->Id = value;
       else if (key == "repoid")

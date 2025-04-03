@@ -45,6 +45,7 @@ public:
     String OrgId;
     String Id;
     String RepoId;
+    String CustomerId;
 
     String DeviceAccessKey;
 
@@ -87,7 +88,7 @@ public:
         doc["orgId"] = OrgId;
         doc["id"] = Id;
         doc["repoId"] = RepoId;
-
+        doc["customerId"] = CustomerId;
         String output;
         serializeJson(doc, output);
 
@@ -209,6 +210,7 @@ public:
         OrgId = "";
         Id = "";
         RepoId = "";
+        CustomerId = "";
     }
 
     bool parseJSON(String json)
@@ -255,6 +257,7 @@ public:
             OrgId = doc["orgId"].as<String>();
             RepoId = doc["repoId"].as<String>();
             Id = doc["id"].as<String>();
+            CustomerId = doc["customerId"].as<String>();
 
             if(WiFiSSID2 == "null") WiFiSSID2 = "";
             if(WiFiPWD2 == "null") WiFiPWD2 = "";
@@ -262,6 +265,7 @@ public:
             if(OrgId == "null") OrgId = "";
             if(RepoId == "null") RepoId = "";
             if(Id == "null") Id = "";
+            if(CustomerId == "null") CustomerId = "";
 
             if (doc.containsKey("deviceAccessKey"))
             {
@@ -292,6 +296,7 @@ public:
         m_pConsole->println("ORG  : " + OrgId);
         m_pConsole->println("REP  : " + RepoId);
         m_pConsole->println("ID   : " + Id);
+        m_pConsole->println("CSTID: " + CustomerId);
         m_pConsole->println("PNGR : " + String(PingRateSecond));
         m_pConsole->println("SNDR : " + String(SendUpdateRateMS));
         m_pConsole->println("LOPR : " + String(LoopUpdateRateMS));
