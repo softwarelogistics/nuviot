@@ -831,7 +831,7 @@ String SIMModem::sendCommand(String cmd, String expectedReply, unsigned long del
     
     m_channel->transmit(cmd + "\r\n");
     delay(100);
-    if (delay > 0)
+    if (delayMS > 0)
     {
         delay(delayMS);
     }
