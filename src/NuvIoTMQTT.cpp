@@ -10,6 +10,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
     mqttInstance->handleMqttCallback(topic, payload, length);
 }
 
+#ifdef LCD_DISPLAY
 NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, Console *console, WiFiClient *client, Display *display, OtaServices *ota, Hal *hal, NuvIoTState *state, SysConfig *sysConfig)
 {
     m_console = console;
@@ -17,6 +18,21 @@ NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, Console *console, W
     m_mqtt = new PubSubClient(*client);
     m_wifi = wifiConnection;
     m_display = display;
+    m_state = state;
+    m_hal = hal;
+    m_ota = ota;
+    m_mqtt->disconnect();
+    m_mqtt->setBufferSize(1024);
+    mqttInstance = this;
+}
+#endif
+
+NuvIoTMQTT::NuvIoTMQTT(WiFiConnectionHelper *wifiConnection, Console *console, WiFiClient *client,  OtaServices *ota, Hal *hal, NuvIoTState *state, SysConfig *sysConfig)
+{
+    m_console = console;
+    m_sysConfig = sysConfig;
+    m_mqtt = new PubSubClient(*client);
+    m_wifi = wifiConnection;
     m_state = state;
     m_hal = hal;
     m_ota = ota;
@@ -64,9 +80,9 @@ void NuvIoTMQTT::connect()
 
     IPAddress remote_addr;
     (WiFi.hostByName(m_sysConfig->SrvrHostName.c_str(), remote_addr));
-    m_console->println("wifimqtt=connecting; // host=" + m_sysConfig->SrvrHostName + "; addr=" + remote_addr.toString() + "; deviceid=" + m_sysConfig->DeviceId + "; uid=" + m_sysConfig->SrvrUID + "; pwd=" + m_sysConfig->SrvrPWD);
 
     uint16_t port = m_sysConfig->Port == 0 ? 1883 : m_sysConfig->Port;
+    m_console->println("wifimqtt=connecting; // host=" + m_sysConfig->SrvrHostName + "; addr=" + remote_addr.toString() + "; deviceid=" + m_sysConfig->DeviceId + "; uid=" + m_sysConfig->SrvrUID + "; pwd=" + m_sysConfig->SrvrPWD + "; port=" + String(port) + ";");
 
     m_mqtt->setServer(remote_addr, port);
     bool connectResult = m_state->getIsAnonymous() ? m_mqtt->connect(m_sysConfig->DeviceId.c_str()) : m_mqtt->connect(m_sysConfig->DeviceId.c_str(), m_sysConfig->SrvrUID.c_str(), m_sysConfig->SrvrPWD.c_str());

@@ -9,7 +9,10 @@
 #include "NuvIoTState.h"
 #include "OtaServices.h"
 #include "Hal.h"
+#ifdef LCD_DISPLAY
 #include "Display.h"
+#endif
+
 #include "Console.h"
 #include "SysConfig.h"
 #include "IOValues.h"
@@ -26,11 +29,14 @@ class NuvIoTMQTT {
         int m_spinnerIndex = 0;
         int m_connectAttempt = 0;
 
+        #ifdef LCD_DISPLAY
+        Display *m_display = NULL;
+        #endif  
+
         SysConfig *m_sysConfig = NULL;
         Console *m_console = NULL;
         NuvIoTState *m_state = NULL;
         PubSubClient *m_mqtt = NULL;
-        Display *m_display = NULL;
         OtaServices *m_ota = NULL;
         Hal *m_hal = NULL;
         WiFiConnectionHelper *m_wifi;
@@ -43,8 +49,11 @@ class NuvIoTMQTT {
         String resolveConnectFail();        
 
     public:
+#ifdef LCD_DISPLAY    
         NuvIoTMQTT(WiFiConnectionHelper *wifiHelper, Console *console,  WiFiClient *client, Display *u8g2, OtaServices *ota, Hal *hal, NuvIoTState *state, SysConfig *sysConfig);
-        
+#endif        
+        NuvIoTMQTT(WiFiConnectionHelper *wifiHelper, Console *console,  WiFiClient *client, OtaServices *ota, Hal *hal, NuvIoTState *state, SysConfig *sysConfig);
+
         void setup();
         void connect();
         void disconnect();

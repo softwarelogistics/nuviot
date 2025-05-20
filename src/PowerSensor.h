@@ -6,7 +6,6 @@
 #include "ADC.h"
 #include "AbstractSensor.h"
 #include "Console.h"
-#include "Display.h"
 #include "IOConfig.h"
 #include "ConfigPins.h"
 
@@ -15,7 +14,7 @@
 
 class PowerSensor: public AbstractSensor {
     public:
-        PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, Display *display, MessagePayload *payload, NuvIoTState *state);
+        PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, MessagePayload *payload, NuvIoTState *state);
         void loop();
         void debugPrint();
 
@@ -60,7 +59,6 @@ class PowerSensor: public AbstractSensor {
         Console *m_console;
         NuvIoTState *m_state;
         MessagePayload *m_payload;    
-        Display *m_display;
 };
 
 #endif

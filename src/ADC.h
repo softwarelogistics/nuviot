@@ -7,7 +7,6 @@
 #include "AbstractSensor.h"
 #include "Console.h"
 #include "NuvIoTState.h"
-#include "Display.h"
 #include "IOConfig.h"
 #include "ConfigPins.h"
 #include "MedianFilter.h"
@@ -21,7 +20,6 @@ private:
     ADS1115 *_bank1;
     ADS1115 *_bank2;
     Console *m_console;
-    Display *m_display;
     ConfigPins *m_configPins;
     NuvIoTState *m_state;
     MessagePayload *m_payload;
@@ -44,11 +42,10 @@ private:
     uint8_t m_throwAway = 2;
 
 public:
-    ADC(TwoWire *wire, NuvIoTState *state, ConfigPins *configPins, Console *console, Display *display, MessagePayload *payload)
+    ADC(TwoWire *wire, NuvIoTState *state, ConfigPins *configPins, Console *console, MessagePayload *payload)
     {
         m_console = console;
-        m_display = display;
-        m_state = state;
+       m_state = state;
         m_payload = payload;
         m_configPins = configPins;
 
@@ -162,14 +159,7 @@ public:
                 bool toggle = false;
                 while (1)
                 {
-                    m_display->clearBuffer();
-                    m_display->setTextSize(2);
                     toggle = !toggle;
-                    if (toggle)
-                        m_display->drawStr("ERROR", "ADC BANK2", "NOT ENABLED", "!!!!");
-                    else
-                        m_display->drawStr("ERROR", "ADC BANK2", "NOT ENABLED");
-                    m_display->sendBuffer();
                     m_console->printError("adcbank1=notenabled; // Call to read voltage on disabled bank 2 channel " + String(channel));
                     m_state->loop();
                     delay(1000);
@@ -187,14 +177,7 @@ public:
                 bool toggle = false;
                 while (1)
                 {
-                    m_display->clearBuffer();
-                    m_display->setTextSize(2);
                     toggle = !toggle;
-                    if (toggle)
-                        m_display->drawStr("ERROR", "ADC BANK1", "NOT ENABLED", "!!!!");
-                    else
-                        m_display->drawStr("ERROR", "ADC BANK1", "NOT ENABLED");
-                    m_display->sendBuffer();
                     m_console->printError("adcbank1=notready; // Call to read voltage on disabled bank 1 channel " + String(channel));
                     m_state->loop();
                     delay(1000);

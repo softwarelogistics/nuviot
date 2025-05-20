@@ -1,7 +1,10 @@
 #ifndef NUVIOTCLIENT_H
 #define NUVIOTCLIENT_H
 
+#ifdef LCD_DISPLAY
 #include "Display.h"
+#endif
+
 #include "Console.h"
 #include "Hal.h"
 #include "SIMModem.h"
@@ -15,11 +18,17 @@
 class NuvIoTClient {
     private:
         NuvIoTMQTT *m_nuviotMqtt = NULL;
-        MQTT *m_cellMqtt = NULL;
         WiFiConnectionHelper *m_wifiConnectionHelper;
+#ifdef LCD_DISPLAY
         Display *m_display;
+#endif
         Hal *m_hal;
+
+#ifdef CELLULAR_ENABLED
         SIMModem *m_modem;
+        MQTT *m_cellMqtt = NULL;      
+#endif
+
         Console *m_console;
         NuvIoTState* m_state;
         String m_lastMsg;
@@ -43,11 +52,27 @@ class NuvIoTClient {
         void delayAndCheckState(long ms);
 
     public:
+    #ifdef LCD_DISPLAY
+        #ifdef CELLULAR_ENABLED
         NuvIoTClient(SIMModem *modem, WiFiConnectionHelper *wifiConnectionHelper, MQTT *cellMqtt, NuvIoTMQTT *wifiMqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal);
+        #else
+        NuvIoTClient(WiFiConnectionHelper *wifiConnectionHelper, NuvIoTMQTT *wifiMqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal);
+        #endif
+    #endif
+ 
+    #ifdef CELLULAR_ENABLED
+        NuvIoTClient(SIMModem *modem, WiFiConnectionHelper *wifiConnectionHelper, MQTT *cellMqtt, NuvIoTMQTT *wifiMqtt, Console *console, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal);
+    #else
+        NuvIoTClient(WiFiConnectionHelper *wifiConnectionHelper, NuvIoTMQTT *wifiMqtt, Console *console, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal);
+    #endif
+
+    #ifdef CELLULAR_ENABLED
         bool connectToAPN(bool transparentMode, bool connectToAPN, unsigned long baudRate);
         bool disconnectFromAPN();
         bool CellularConnect(bool isReconnect, unsigned long baudRate);
-        bool WifiConnect(bool isReconnect);
+    #endif
+    
+    bool WifiConnect(bool isReconnect);
         void messagePublished(String topic, unsigned char *payload, size_t length);
 
         void setMessageReceivedCallback(void (*callback)(String topic, byte buffer[], size_t buffer_length)) {
@@ -58,7 +83,9 @@ class NuvIoTClient {
             m_commandHandler = callback;
         }
 
+#ifdef CELLULAR_ENABLED        
         void enableGPS(bool enabled);
+#endif
 
         void commonDisplay();
 

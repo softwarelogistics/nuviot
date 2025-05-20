@@ -2,7 +2,11 @@
 #define OBJECTS_H
 
 #include <Arduino.h>
+
+#ifdef LCD_DISPLAY
 #include "Display.h"
+#endif
+
 #include "NuvIoTState.h"
 #include "Hal.h"
 #include "IOConfig.h"
@@ -14,8 +18,12 @@
 #include "BLE.h"
 #include "Console.h"
 #include "Channel.h"
+#ifdef CELLULAR_ENABLED
 #include "MQTT_GPRS.h"
 #include "SIMModem.h"
+#include "Rest.h"
+#endif
+
 #include "NuvIoTClient.h"
 
 #include "ADC.h"
@@ -32,7 +40,7 @@
 
 #include "LedManager.h"
 #include "NuvIoTMQTT.h"
-#include "Rest.h"
+
 #include "Pir.h"
 #include <PubSubClient.h>
 
@@ -161,38 +169,73 @@ ConfigPins configPins;
 
 Hal hal;
 
+#ifdef LCD_DISPLAY
 Display display(DISPLAY_U8G);
+#endif
+
+
+
 LedManager ledManager(&console, &configPins);
+
+#ifdef LCD_DISPLAY
 NuvIoTState state(&display, &ioConfig, &sysConfig, &ledManager, &SPIFFS, &hal, &console);
-
+#else
+NuvIoTState state(&ioConfig, &sysConfig, &ledManager, &SPIFFS, &hal, &console);
+#endif
 MessagePayload *payload = new MessagePayload(&ioValues);
-GPSData *gps = NULL;
-
-Channel channel(&gprsPort, &console);
-SIMModem modem(&display, &channel, &console, &hal, &configPins);
-OtaServices ota(&display, &console, &state, &modem, &hal);
 
 WiFiClient wifiClient;
-WiFiConnectionHelper wifiMgr(&wifiClient, &display, &ledManager, &state, &hal, &console, &sysConfig);
 
+
+#ifdef CELLULAR_ENABLED
+GPSData *gps = NULL;
+Channel channel(&gprsPort, &console);
 MQTT cellMQTT(&channel, &console);
-NuvIoTMQTT wifiMQTT(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
+#endif
 
-NuvIoTClient client(&modem, &wifiMgr, &cellMQTT, &wifiMQTT, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
 
-Rest rest(&client, &display, &modem, &wifiMgr, &sysConfig, &console);
-
-// drivers
 PulseCounter pulseCounter(&console, &configPins, payload);
-ADC adc(&twoWire, &state, &configPins, &console, &display, payload);
 TemperatureProbes probes(&console, &configPins, payload);
-
 RelayManager relayManager(&console, &configPins);
 OnOffDetector onOffDetector(&console, &configPins, payload);
 
-PowerSensor powerSensor(&adc, &configPins, &console, &display, payload, &state);
+#ifdef LCD_DISPLAY
+  #ifdef CELLULAR_ENABLED 
+    SIMModem modem(&display, &channel, &console, &hal, &configPins);
+  #endif    
+    OtaServices ota(&display, &console, &state, &modem, &hal);
+WiFiConnectionHelper wifiMgr(&wifiClient, &display, &ledManager, &state, &hal, &console, &sysConfig);
+NuvIoTMQTT wifiMQTT(&wifiMgr, &console, &wifiClient, &display, &ota, &hal, &state, &sysConfig);
+NuvIoTClient client(&modem, &wifiMgr, &cellMQTT, &wifiMQTT, &console, &display, &ledManager, &state, &sysConfig, &ota, &hal);
+#else
+  #ifdef CELLULAR_ENABLED 
+    SIMModem modem(&channel, &console, &hal, &configPins);
+    OtaServices ota(&console, &state, &modem, &hal);
+  #else
+    OtaServices ota(&console, &state, &hal);
+  #endif
 
+
+WiFiConnectionHelper wifiMgr(&wifiClient, &ledManager, &state, &hal, &console, &sysConfig);
+NuvIoTMQTT wifiMQTT(&wifiMgr, &console, &wifiClient, &ota, &hal, &state, &sysConfig);
+  #ifdef CELLULAR_ENABLED
+    NuvIoTClient client(&modem, &wifiMgr, &cellMQTT, &wifiMQTT, &console, &ledManager, &state, &sysConfig, &ota, &hal);
+  #else
+    NuvIoTClient client(&wifiMgr, &wifiMQTT, &console, &ledManager, &state, &sysConfig, &ota, &hal);
+  #endif
+#endif
+
+#ifdef CELLULAR_ENABLED
+Rest rest(&client, &modem, &wifiMgr, &sysConfig, &console);
+#endif
+
+// drivers
+ADC adc(&twoWire, &state, &configPins, &console, payload);
+PowerSensor powerSensor(&adc, &configPins, &console, payload, &state);
+
+#ifdef BT_ENABLED
 BLE BT(&console, &hal, &state, &ioConfig, &wifiMgr, &sysConfig, &relayManager, &ota, payload);
+#endif
 
 PIRSensor pir(&adc, &console, &configPins, payload);
 
@@ -224,7 +267,9 @@ void configureFileSystem()
 {
   if (!SPIFFS.begin(true))
   {  
+#ifdef LCD_DISPLAY    
     display.drawStr("Could not initialize SPIFFS.");
+#endif
     console.println("spiff=fail;");
     while (true)
     {
@@ -274,6 +319,8 @@ void handleConsoleCommand(String cmd)
     state.handleConsoleCommand(cmd);
 }
 
+
+#ifdef CELLULAR_ENABLED
 bool __isModemConfigured = false;
 
 void configureModem(unsigned long baudRate = 115200)
@@ -286,7 +333,6 @@ void configureModem(unsigned long baudRate = 115200)
   gprsPort.begin(baudRate, SERIAL_8N1, configPins.SimRx, configPins.SimTx);
 
   delay(1500);
-
   modem.alloc();
 
   if (modem.isModemOnline()) 
@@ -296,6 +342,7 @@ void configureModem(unsigned long baudRate = 115200)
 
   delay(1500);
 }
+#endif
 
 void welcome(String firmwareSKU, String version)
 {
@@ -353,6 +400,7 @@ void loadConfigurations()
   sysConfig.load();
 }
 
+#ifdef LCD_DISPLAY
 void initDisplay(String firmwareSKU, String version)
 {
   display.enable(configPins.HasDisplay);
@@ -369,6 +417,7 @@ void initDisplay(String firmwareSKU, String version)
     console.println("headless=true;");
   }
 }
+#endif
 
 void spinWhileNotCommissioned()
 {
@@ -398,6 +447,8 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
       return;
     }
   }
+  
+  #ifdef CELLULAR_ENABLED
   else if (sysConfig.CellEnabled)
   {
     while (state.isValid() && retryCount++ < 5)
@@ -421,12 +472,15 @@ void connect(bool reconnect = false, unsigned long baud = 115200)
   {
     modem.startGPS();
   }
+  #endif
 }
 
+#ifdef CELLULAR_ENABLED
 GPSData *readGPS()
 {
   return modem.readGPS();
 }
+#endif
 
 #ifdef BOARD_CONFIG
 void initPins(){
@@ -458,9 +512,11 @@ void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bo
 
 void sendStatusUpdate(String currentState, String nextAction, String title = "Commo Starting", int afterDelay = 0)
 {
+  #ifdef LCD_DISPLAY
   display.drawStr(title.c_str(), currentState.c_str());
   delay(1000);
   display.drawStr(title.c_str(), nextAction.c_str());
+  #endif
 
   if (afterDelay > 0)
   {
@@ -484,10 +540,12 @@ void handleError(String err, String details)
   {
     wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/raise", details);
   }
+  #ifdef CELLULAR_ENABLED
   else if (sysConfig.CellEnabled)
   {
     cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/raise", details, QOS0);
   }
+  #endif
 }
 
 void clearError(String err, String details)
@@ -496,15 +554,18 @@ void clearError(String err, String details)
   {
     wifiMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/clear", details);
   }
+#ifdef CELLULAR_ENABLED  
   else if (sysConfig.CellEnabled)
   {
     cellMQTT.publish("nuviot/srvr/dvcsrvc/" + sysConfig.DeviceId + "/err/" + err + "/clear", details, QOS0);
   }
+#endif
 }
 
 long __nextPing = 0;
 long __nextLoop = 0;
 
+#ifdef CELLULAR_ENABLED
 bool httpGetNoContent(String url)
 {
   return modem.httpGetNoContent(url);
@@ -519,7 +580,9 @@ String httpPost(String url, String body)
 {
   return modem.httpPost(url, body);
 }
+#endif
 
+#ifdef CELLULAR_ENABLED
 void ping()
 {
   if (__nextPing < millis())
@@ -539,7 +602,7 @@ void ping()
 
     ledManager.setOnlineFlashRate(-1);
   }
-
+ 
   if (cellMQTT.getIsClosed())
   {
     // Reconnect will either return connected or restart the device.
@@ -547,6 +610,7 @@ void ping()
     __nextPing = 0;
   }
 }
+#endif
 
 void mqttCallback(String topic, byte *buffer, size_t len)
 {
@@ -592,6 +656,7 @@ void sendIOValues()
         wifiMgr.post(sysConfig.SrvrHostName, sysConfig.Port, pathOrTopic, ioValues.toString());
       }
     }
+#ifdef  CELLULAR_ENABLED
     else if (sysConfig.CellEnabled)
     {
       if (sysConfig.SrvrType == "mqtt")
@@ -620,6 +685,7 @@ void sendIOValues()
         httpPost(url, ioValues.toString());
       }
     }
+#endif
 
     // we may do something to automatically send a message when motion in the future
     // until then we will clear the motion state once it's sent to the server.
@@ -641,6 +707,13 @@ void communicationsTask(void *param)
           }
         }
       }
+#ifdef CELLULAR_ENABLED
+      else if (sysConfig.CellEnabled)
+      {
+        if (sysConfig.SrvrType == "mqtt"){
+          cellMQTT.loop();
+        }
+      }      
       else if (sysConfig.CellEnabled)
       {
         if(!__isModemConfigured)
@@ -651,8 +724,10 @@ void communicationsTask(void *param)
           ping();
         }
       }
+      #endif
     }
 
+    #ifdef CELLULAR_ENABLED
     if (sysConfig.GPSEnabled && sysConfig.CellEnabled)
     {
       if (__nextGPS < millis())
@@ -674,13 +749,16 @@ void communicationsTask(void *param)
         }
       }
     }
+    #endif
     
     sendIOValues(); 
 }
 
+#ifdef BT_ENABLED
 void bleTask(void *param) {
   BT.update();
 }
+#endif
 
 void commonLoop(){
   // timing on these is handled in the method for sending.
@@ -693,12 +771,16 @@ void commonLoop(){
   {
     if (wifiMgr.isConnected())
       ota.downloadOverWiFi();
-    else
+#ifdef CELLEULAR_ENABLED
       ota.downloadWithModem();
+#endif
   }
 
   communicationsTask(NULL);
+
+  #ifdef BT_ENABLED
   bleTask(NULL);
+#endif
 
 #ifdef CAN_ENABLED
   canBus.loop();
@@ -730,6 +812,11 @@ void mqttSubscribe(String topic)
   {
     wifiMQTT.addSubscriptions(topic);
   }
+#ifdef CELLULAR_ENABLED
+  else if (sysConfig.CellEnabled)
+  {
+    cellMQTT.subscribe(topic, QOS0);
+  }  
   else if (sysConfig.CellEnabled)
   {
     cellMQTT.subscribe(topic, QOS0);
@@ -737,6 +824,7 @@ void mqttSubscribe(String topic)
 
   wifiMQTT.setMessageReceivedCallback(mqttCallback);
   cellMQTT.setMessageReceivedCallback(mqttCallback);
+#endif
 }
 
 void mqttPublish(String topic, String value)
@@ -745,10 +833,12 @@ void mqttPublish(String topic, String value)
   {
     wifiMQTT.publish(topic, value);
   }
+#ifdef  CELLULAR_ENABLED 
   else if (sysConfig.CellEnabled)
   {
     cellMQTT.publish(topic, value, QOS0);
   }
+#endif
 }
 
 void mqttPublish(String topic, byte *buffer, uint16_t size, byte qos)
@@ -757,10 +847,12 @@ void mqttPublish(String topic, byte *buffer, uint16_t size, byte qos)
   {
     wifiMQTT.publish(topic, buffer, size);
   }
+#ifdef  CELLULAR_ENABLED
   else if (sysConfig.CellEnabled)
   {
     cellMQTT.publish(topic, buffer, size, qos);
   }
+#endif
 }
 
 void mqttPublish(String topic)

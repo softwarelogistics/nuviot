@@ -1,9 +1,15 @@
 #ifndef OTASERVICES_H
 #define OTASERVICES_H
 
+#ifdef LCD_DISPLAY
 #include "Display.h"
+#endif
+
 #include "Hal.h"
+#ifdef CELLULAR_ENABLED
 #include "SIMModem.h"
+#endif
+
 #include <HTTPClient.h>
 #include "NuvIoTState.h"
 
@@ -28,9 +34,15 @@ class OtaServices
 {
 private:
     String m_url;
+#ifdef LCD_DISPLAY
     Display *m_display;
+#endif
+
     Hal *m_hal;
+#ifdef CELLULAR_ENABLED
     SIMModem *m_modem;
+#endif
+
     Console *m_console;
     NuvIoTState *m_state;
 
@@ -42,12 +54,23 @@ private:
     void markCompleted(HTTPClient *client, String url, bool success);
 
 public:
+#ifdef LCD_DISPLAY
     OtaServices(Display *display, Console *console, NuvIoTState *state, SIMModem *modem, Hal *hal);
     OtaServices(Display *display, Console *console, NuvIoTState *state, Hal *hal);
-    ~OtaServices();
+ #endif
 
+ #ifdef CELLULAR_ENABLED
+    OtaServices(Console *console, NuvIoTState *state, SIMModem *modem, Hal *hal);
+#endif    
+
+    OtaServices(Console *console, NuvIoTState *state, Hal *hal);
+    
+    ~OtaServices();
+#ifdef CELLULAR_ENABLED   
     bool downloadWithModem(String url);
     bool downloadWithModem();
+#endif
+
     bool downloadOverWiFi();
     bool downloadOverWiFi(String url);
     void setDownloadUrl(String url) {m_url = url;}

@@ -66,6 +66,7 @@ public:
 };
 
 #define NUVIOT_BLE_FLAGS_SITE_SCAN 0x01
+#define NUVIOT_BLE_FLAGS_WIFI_RECONNECT 0x02
 
 class BLE
 {
@@ -96,6 +97,8 @@ public:
   void writeWiFiMessage(String msg);
   void writeCANMessage(uint32_t msgId, uint8_t msg[], uint8_t len);
 
+  void wifiDisconnect();
+
   void handleReadCharacteristic(BLECharacteristic *characteristic);
   void handleWriteCharacteristic(BLECharacteristic *characteristic, String value);
   void handleNotifyCharacteristic(BLECharacteristic *characteristic);
@@ -107,11 +110,13 @@ public:
     refreshCharacteristics(false);
     m_lastClientActivity = millis();
     m_isConnected = true;    
+    pState->setIsBleConnected(true);
   }
 
   void clientDisconnected(int connectionId)
   {
     m_isConnected = false;
+    pState->setIsBleConnected(false);
     pConsole->println("ble=disconnected; // Connection Id: " + String(connectionId));    
   }
 

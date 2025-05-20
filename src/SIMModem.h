@@ -25,13 +25,19 @@
 #include "Hal.h"
 #include "Console.h"
 #include "Channel.h"
+
+#ifdef LCD_DISPLAY
 #include "Display.h"
+#endif
 #include "ConfigPins.h"
 #include "GPSData.h"
 
 class SIMModem {
 public:
+#ifdef LCD_DISPLAY
     SIMModem(Display *display, Channel *channel, Console *console, Hal *hal, ConfigPins *pins);
+#endif
+
     SIMModem(Channel *channel, Console *console, Hal *hal, ConfigPins *pins);
 
     void alloc();
@@ -123,7 +129,9 @@ private:
     
   
     Hal *m_hal;
+#ifdef LCD_DISPLAY    
     Display *m_display;
+#endif    
     Console *m_console;
     Channel *m_channel;
 

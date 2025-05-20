@@ -1,6 +1,7 @@
-#include "Rest.h"
+#include "CellularRest.h"
 
-bool Rest::get(String url) {
+#ifdef CELLULAR_ENABLED
+bool CellularRest::get(String url) {
     m_console->println("GET: " + url) ;
     delay(500);
     
@@ -22,7 +23,7 @@ bool Rest::get(String url) {
     return true;
 }
 
-bool Rest::post(String url, String payload) {
+bool CellularRest::post(String url, String payload) {
     m_console->println("POST: " + url) ;
     m_console->println("DATA: " + payload) ;
     delay(500);
@@ -45,7 +46,8 @@ bool Rest::post(String url, String payload) {
 
     return true;
 }
+#endif
 
-String Rest::getLastError() {
+String CellularRest::getLastError() {
     return m_lastError;   
 }

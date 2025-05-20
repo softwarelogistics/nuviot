@@ -3,7 +3,12 @@
 
 #include <Arduino.h>
 #include "BluetoothServer.h"
+#ifdef LCD_DISPLAY  
 #include "Display.h"
+#endif
+
+
+#include "SIMModem.h"
 #include "LedManager.h"
 #include "Hal.h"
 #include "Console.h"
@@ -78,7 +83,11 @@ public:
 class NuvIoTState
 {
 private:
+#ifdef LCD_DISPLAY
     Display *m_display;
+#endif
+   
+    SIMModem *m_modem;
     LedManager *m_ledManager;
     Hal *m_hal;
     Console *m_console;
@@ -103,6 +112,7 @@ private:
     bool m_isInitialized = false;
     bool m_debugMode = false;
     bool m_verboseLogging = false;
+    bool m_isBleConnected = false;
     FS *m_fs;
 
     char m_jsonBuffer[1024];
@@ -145,7 +155,11 @@ private:
     String resolveError(esp_err_t err);
 
 public:
+#ifdef LCD_DISPLAY
     NuvIoTState(Display *display, IOConfig *ioConfig, SysConfig *sysConfig, LedManager *ledManager, FS *fs, Hal *hal, Console *console);
+#endif      
+    NuvIoTState(IOConfig *ioConfig, SysConfig *sysConfig, LedManager *ledManager, FS *fs, Hal *hal, Console *console);
+
     void init(String firmwareSku, String firmwareVersion, String hardwareRevision, String deviceModelKey, uint16_t deviceConfigVersion);
     bool isValid();
     void loop();
@@ -162,7 +176,7 @@ public:
     String getFirmwareSKU();
     String getDeviceModelKey();
 
-    String getLibraryVersion() { return "5.1"; }
+    String getLibraryVersion() { return "5.2"; }
 
     WiFiConnectionStates getWiFiState() { return m_isWiFiConnectionState; }
     void setWiFiState(WiFiConnectionStates state) { m_isWiFiConnectionState = state; }
@@ -184,6 +198,9 @@ public:
 
     bool getIsCloudConnected() {return m_isCloudConnected;}
     void setIsCloudConnected(bool connected) {m_isCloudConnected = connected;}
+
+    bool getIsBleConnected() {return m_isBleConnected;}
+    void setIsBleConnected(bool connected) {m_isBleConnected = connected;}
 
     bool getVerboseLogging();
     bool getDebugMode();

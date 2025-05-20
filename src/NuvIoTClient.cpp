@@ -11,9 +11,11 @@ NuvIoTClient *nuviotClient;
         if (m_lastMsg != msg)
         {
             Serial.println(msg);
+#ifdef LCD_DISPLAY
             m_display->clearBuffer(0xFFFFFF);
             m_display->println(msg);
             m_display->sendBuffer();
+#endif
         }
     }
 
@@ -25,6 +27,7 @@ void messagePublished_CallBack(String topic, unsigned char *payload, size_t leng
     nuviotClient->messagePublished(topic, payload, length);
 }
 
+#ifdef LCD_DISPLAY
 NuvIoTClient::NuvIoTClient(SIMModem *modem, WiFiConnectionHelper *wifiConnectionHelper, MQTT *cellMqtt, NuvIoTMQTT *wifiMqtt, Console *console, Display *display, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal)
 {
     m_modem = modem;
@@ -43,12 +46,49 @@ NuvIoTClient::NuvIoTClient(SIMModem *modem, WiFiConnectionHelper *wifiConnection
     m_nuviotMqtt->setMessageReceivedCallback(messagePublished_CallBack);
     m_cellMqtt->setMessageReceivedCallback(messagePublished_CallBack);
 }
+#endif
+
+#ifdef CELLULAR_ENABLED
+NuvIoTClient::NuvIoTClient(SIMModem *modem, WiFiConnectionHelper *wifiConnectionHelper, MQTT *cellMqtt, NuvIoTMQTT *wifiMqtt, Console *console, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal)
+{
+    m_modem = modem;
+    m_ledManager = ledManager;
+    m_hal = hal;
+    m_console = console;
+    m_state = state;
+    m_ota = ota;
+    nuviotClient = this;
+    m_sysConfig = sysConfig;
+    m_wifiConnectionHelper = wifiConnectionHelper;
+    m_nuviotMqtt = wifiMqtt;
+    m_cellMqtt = cellMqtt;
+
+    m_nuviotMqtt->setMessageReceivedCallback(messagePublished_CallBack);
+    m_cellMqtt->setMessageReceivedCallback(messagePublished_CallBack);
+}
+#else
+NuvIoTClient::NuvIoTClient( WiFiConnectionHelper *wifiConnectionHelper, NuvIoTMQTT *wifiMqtt, Console *console, LedManager *ledManager, NuvIoTState *state, SysConfig *sysConfig, OtaServices *ota, Hal *hal)
+{
+    m_ledManager = ledManager;
+    m_hal = hal;
+    m_console = console;
+    m_state = state;
+    m_ota = ota;
+    nuviotClient = this;
+    m_sysConfig = sysConfig;
+    m_wifiConnectionHelper = wifiConnectionHelper;
+    m_nuviotMqtt = wifiMqtt;
+    m_nuviotMqtt->setMessageReceivedCallback(messagePublished_CallBack);
+}
+#endif
 
 void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction, String title, int afterDelay)
 {
+#ifdef LCD_DISPLAY
     m_display->drawStr(title.c_str(), currentState.c_str());
     delay(1000);
     m_display->drawStr(title.c_str(), nextAction.c_str());
+#endif
 
     if (afterDelay > 0)
     {
@@ -56,10 +96,14 @@ void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction, Stri
     }
 }
 
+#ifdef CELLULAR_ENABLED
 void NuvIoTClient::enableGPS(bool enabled)
 {
     m_gpsEnabled = enabled;
 }
+#endif
+
+
 
 void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction)
 {
@@ -68,7 +112,9 @@ void NuvIoTClient::sendStatusUpdate(String currentState, String nextAction)
 
 void NuvIoTClient::handleError(String errorCode, String message)
 {
+#ifdef LCD_DISPLAY
     m_display->drawStr("ERROR", errorCode.c_str(), message.c_str());
+#endif
     m_console->printError("err=" + errorCode + "," + message + ",abort");
     m_ledManager->setErrFlashRate(2);
     m_lastError = errorCode;
@@ -78,7 +124,9 @@ void NuvIoTClient::handleError(String errorCode, String message)
 
 void NuvIoTClient::handleWarning(String errorCode, String message, int retryCount)
 {
+#ifdef LCD_DISPLAY
     m_display->drawStr("WARNING", errorCode.c_str(), message.c_str(), ("Retry Count " + String(retryCount)).c_str());
+#endif
     m_console->printWarning("warning=" + errorCode + "," + message + ",retrycount=" + String(retryCount));
     m_ledManager->setErrFlashRate(8);
     m_lastWarning = errorCode;
@@ -103,6 +151,7 @@ bool NuvIoTClient::WifiConnect(bool isReconnect)
     return true;
 }
 
+#ifdef CELLULAR_ENABLED
 bool NuvIoTClient::disconnectFromAPN()
 {
     return m_modem->disconnectGPRS();
@@ -132,7 +181,9 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
     retryCount = 0;
     m_ledManager->setErrFlashRate(0);
+#ifdef LCD_DISPLAY
     m_display->drawStr("Modem Online", "Resetting Modem");
+#endif
     m_console->println("modem=online;");
     m_modem->setBaudRate(baudRate);
     m_modem->enableErrorMessages();
@@ -153,7 +204,9 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     retryCount = 0;
     m_ledManager->setErrFlashRate(0);
     m_console->println("modem=reset;");
+#ifdef LCD_DISPLAY
     m_display->drawStr("Modem Reset", "Getting SIMID");
+#endif
 
     String simId = m_modem->getSIMId();
     if (simId == "")
@@ -164,10 +217,14 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
     }
 
     retryCount = 0;
+#ifdef LCD_DISPLAY
     m_display->drawStr("COMMS", "SIMID", simId.c_str());
+#endif
     m_console->println("sim=" + simId + ";");
     delayAndCheckState(1000);
+#ifdef LCD_DISPLAY
     m_display->drawStr("Got SIMID", "Initialize Modem");
+#endif
     m_ledManager->setErrFlashRate(0);
 
     while (!m_modem->init() && retryCount < 10)
@@ -183,7 +240,9 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
     retryCount = 0;
     m_console->println("modem=initialized;");
+#ifdef LCD_DISPLAY
     m_display->drawStr("COMM5", "Initialize Modem");
+#endif
     delayAndCheckState(1000);
     m_ledManager->setErrFlashRate(0);
 
@@ -203,7 +262,9 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
         retryCount = 0;
         m_console->println("gps=online;");
+#ifdef LCD_DISPLAY
         m_display->drawStr("COMM6", "GPS Read");
+#endif
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
     }
@@ -227,7 +288,9 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
         retryCount = 0;
         m_console->println("transparentmode=enabled;");
+#ifdef LCD_DISPLAY
         m_display->drawStr("COMM7", "Set transparent mode.");
+#endif
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
 
@@ -250,7 +313,9 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
         retryCount = 0;
         m_console->println("transparentmode=disabled;");
 
+#ifdef LCD_DISPLAY
         m_display->drawStr("COMM7", "Disabled transparent mode.");
+#endif
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
 
@@ -275,7 +340,9 @@ bool NuvIoTClient::connectToAPN(bool transparentMode, bool shouldConnectToAPN, u
 
         retryCount = 0;
         m_console->println("apn=connected;");
+#ifdef LCD_DISPLAY
         m_display->drawStr("COMM008", "Connected to APN");
+#endif
         delayAndCheckState(1000);
         m_ledManager->setErrFlashRate(0);
     }
@@ -400,6 +467,7 @@ bool NuvIoTClient::CellularConnect(bool isReconnect, unsigned long baudRate)
 
     return true;
 }
+#endif
 
 void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t length)
 {
@@ -497,10 +565,12 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                     {
                         m_nuviotMqtt->publish(topic, payload);
                     }
+#ifdef CELLULAR_ENABLED                    
                     else if (m_cellMqtt != NULL)
                     {
                         m_cellMqtt->publish(topic, payload, QOS0);
                     }
+#endif                    
                 }
                 else
                 {
@@ -558,9 +628,11 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                     m_console->println("[State__SendProperties] topic=" + topic + ";");
                     m_console->println("[State__SendProperties] payload=" + payload + ";");
 
+                    #ifdef CELLULAR_ENABLED
                     if(m_sysConfig->CellEnabled) {
                         m_cellMqtt->publish(topic, payload, QOS0);
                     }
+                    #endif
 
                     if(m_sysConfig->WiFiEnabled) {
                         m_nuviotMqtt->publish(topic, payload);

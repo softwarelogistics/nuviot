@@ -191,7 +191,7 @@ public:
         WiFiSSID2 = "";
         WiFiPWD2 = "";
         SrvrHostName = "";
-        Port = 80;
+        Port = 1883;
         SrvrType = "";
         Anonymous = false;
         SrvrUID = "";

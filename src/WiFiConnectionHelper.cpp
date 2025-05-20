@@ -1,6 +1,7 @@
 #include "WiFiConnectionHelper.h"
 #include <HTTPClient.h>
 
+#ifdef LCD_DISPLAY
 WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display, LedManager *ledManager,
                                            NuvIoTState *state, Hal *hal, Console *console, SysConfig *sysConfig)
 {
@@ -12,6 +13,19 @@ WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display,
     m_hal = hal;
     m_ledManager = ledManager;
 }
+#endif
+
+WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, LedManager *ledManager,
+                                           NuvIoTState *state, Hal *hal, Console *console, SysConfig *sysConfig)
+{
+    m_sysConfig = sysConfig;
+    m_client = client;
+    m_state = state;
+    m_console = console;
+    m_hal = hal;
+    m_ledManager = ledManager;
+}
+
 
 String WiFiConnectionHelper::getWiFiStatus()
 {
@@ -179,7 +193,12 @@ void WiFiConnectionHelper::loop()
     m_console->println("wifi=connecting; // attempt=" + String(m_attempt) + ", status=" + statusMsg);
     delay(250);
 
-    if (m_attempt == 10)
+    m_state->setWiFiState(WiFi_Disconnected);
+    m_state->setWiFiRSSI(0);
+    m_state->setWiFiIPAddress("");
+    m_state->setIsCloudConnected(false);
+
+    if (m_attempt >= 10 && !m_state->getIsBleConnected())
     {
         m_hal->restart();
     }

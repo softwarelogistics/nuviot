@@ -2,7 +2,11 @@
 #define WiFiConnectionHelper_h
 
 #include <WiFi.h>
+
+#ifdef LCD_DISPLAY
 #include "Display.h"
+#endif
+
 #include "SysConfig.h"
 #include "NuvIoTState.h"
 #include "LedManager.h"
@@ -21,7 +25,12 @@ typedef enum WiFi_Connection_State
 class WiFiConnectionHelper {
     public:
         WiFiConnectionHelper();
+#ifdef LCD_DISPLAY        
         WiFiConnectionHelper(WiFiClient *client, Display *display, LedManager *ledManager, NuvIoTState *state, Hal *hal, 
+                             Console *console, SysConfig *sysConfig);
+#endif
+
+        WiFiConnectionHelper(WiFiClient *client, LedManager *ledManager, NuvIoTState *state, Hal *hal, 
                              Console *console, SysConfig *sysConfig);
 
         String siteSurvey();
@@ -39,7 +48,9 @@ class WiFiConnectionHelper {
         int32_t getRSSI();
           
     private:
+#ifdef LCD_DISPLAY
         Display *m_display;
+#endif
         WiFiClient *m_client;
         NuvIoTState *m_state;
         SysConfig *m_sysConfig;

@@ -1,13 +1,12 @@
 #include "PowerSensor.h"
 
-PowerSensor::PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, Display *display, MessagePayload *payload, NuvIoTState *state)
+PowerSensor::PowerSensor(ADC *adc, ConfigPins *configPins, Console *console, MessagePayload *payload, NuvIoTState *state)
 {
     m_adc = adc;
     m_console = console;
     m_payload = payload;
     m_state = state;
     m_configPins = configPins;
-    m_display = display;
 }
 
 void PowerSensor::setup(IOConfig *config)
@@ -109,14 +108,7 @@ void PowerSensor::configure(IOConfig *config)
         bool toggle = false;
         while (1)
         {
-            m_display->clearBuffer();
-            m_display->setTextSize(2);
             toggle = !toggle;
-            if (toggle)
-                m_display->drawStr("ERROR", "ADC BANK1", "OFFLINE", "!!!!");
-            else
-                m_display->drawStr("ERROR", "ADC BANK1", "OFFLINE");
-            m_display->sendBuffer();
             m_console->printError("adcbank1=notready;");
             m_state->loop();
             delay(1000);
@@ -138,14 +130,7 @@ void PowerSensor::configure(IOConfig *config)
         bool toggle = false;
         while (1)
         {
-            m_display->clearBuffer();
-            m_display->setTextSize(2);
             toggle = !toggle;
-            if (toggle)
-                m_display->drawStr("ERROR", "ADC BANK2", "OFFLINE", "!!!!");
-            else
-                m_display->drawStr("ERROR", "ADC BANK2", "OFFLINE");
-            m_display->sendBuffer();
 
             m_console->printError("adcbank2=notready;");
             m_state->loop();

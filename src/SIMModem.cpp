@@ -5,6 +5,7 @@
 #include <esp_ota_ops.h>
 #include <esp_image_format.h>
 
+#ifdef LCD_DISPLAY
 SIMModem::SIMModem(Display *display, Channel *channel, Console *console, Hal *hal, ConfigPins *configPins)
 {
     m_hal = hal;
@@ -14,13 +15,15 @@ SIMModem::SIMModem(Display *display, Channel *channel, Console *console, Hal *ha
     m_configPins = configPins;
     m_gpsData = new GPSData();
 }
+#endif
 
 SIMModem::SIMModem(Channel *channel, Console *console, Hal *hal, ConfigPins *configPins)
 {
     m_hal = hal;
     m_channel = channel;
     m_console = console;
-    m_display = NULL;
+    #ifndef LCD_DISPLAY
+    #endif
     m_configPins = configPins;
     m_gpsData = new GPSData();
 }
@@ -518,8 +521,9 @@ bool SIMModem::beginDownload(String url)
     m_channel->clearBuffers();
     delay(1000);
 
+#ifdef LCD_DISPLAY    
     m_display->drawStr("Starting firmware", "update process.");
-
+#endif
     m_console->println("fwupdate=start; // url=" + url);
 
     long start = millis();
@@ -614,8 +618,10 @@ bool SIMModem::beginDownload(String url)
             long startMS = millis();
             String downloadQueryString = "?start=" + String(start) + "&length=" + String(downloadChunkSize);
             m_console->println("fwupdate=block; // uri= " + downloadQueryString + " chunk " + String(chunkIndex + 1) + " of " + String(chunks) + " chunks in file size of " + fullFileSize + ".");
-            m_display->drawStr("Downloading firmware", String("Total: " + String(fullFileSize) + " bytes").c_str(), String("Part " + String(chunkIndex) + " of " + String(chunks)).c_str());
+           #ifdef LCD_DISPLAY    
 
+            m_display->drawStr("Downloading firmware", String("Total: " + String(fullFileSize) + " bytes").c_str(), String("Part " + String(chunkIndex) + " of " + String(chunks)).c_str());
+            #endif
             contentSize = configureForDownload(url + downloadQueryString);
             // will return the size of the block from the header, should match how much we are requesting.
             if (contentSize != downloadChunkSize)
@@ -681,7 +687,9 @@ bool SIMModem::beginDownload(String url)
 
         if (Update.end())
         {
+            #ifdef LCD_DISPLAY    
             m_display->drawStr("Success flashing", "Rebooting in 2 seconds.");
+            #endif
             m_console->println("fwupdate=success; // rebooting");
             httpGet(url + "/success");
             m_hal->restart(2000);
@@ -689,7 +697,9 @@ bool SIMModem::beginDownload(String url)
         else
         {
 
+            #ifdef LCD_DISPLAY    
             m_display->drawStr("Error flashing", "Rebooting in 2 seconds.");
+            #endif  
             m_console->printError("fwupdate=failed; // could not end OTA process: " + String(Update.errorString()));
             httpGetSetError(url, String(Update.errorString()));
             m_hal->restart(2000);
@@ -1054,11 +1064,13 @@ bool SIMModem::resetModem()
         bool toggle = false;
         while (true)
         {
+            #ifdef LCD_DISPLAY    
             m_display->drawStr("ERROR", "NO SIM INSERTED");
             if (toggle)
                 m_display->drawStr("ERROR", "NO SIM INSERTED", "!!!!!");
             else
                 m_display->drawStr("ERROR", "NO SIM INSERTED");
+            #endif
 
             m_console->printError("modemreset=error; // NO SIM INSERTED!");
             toggle = !toggle;

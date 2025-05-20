@@ -8,6 +8,7 @@
 
 #define BLOCK_SIZE RCV_BUFFER_SIZE
 
+#ifdef LCD_DISPLAY
 OtaServices::OtaServices(Display *display, Console *console, NuvIoTState *state, SIMModem *modem, Hal *hal)
 {
     m_display = display;
@@ -24,25 +25,49 @@ OtaServices::OtaServices(Display *display, Console *console, NuvIoTState *state,
     m_console = console;
     m_state = state;
 }
+#endif
+
+#ifdef CELLULAR_ENABLED
+OtaServices::OtaServices(Console *console, NuvIoTState *state, SIMModem *modem, Hal *hal)
+{
+    m_hal = hal;
+    m_modem = modem;
+    m_console = console;
+    m_state = state;
+}
+#endif
+
+OtaServices::OtaServices(Console *console, NuvIoTState *state, Hal *hal)
+{
+    m_hal = hal;
+    m_console = console;
+    m_state = state;
+}
+
 
 OtaServices::~OtaServices()
 {
 }
 
+#ifdef CELLULAR_ENABLED
 bool OtaServices::downloadWithModem(String url)
 {
+#ifdef LCD_DISPLAY
     m_display->clearBuffer();
     m_display->drawStr("Updating Firmware");
     m_display->sendBuffer();
+#endif
 
     return m_modem->beginDownload(url);
 }
 
 bool OtaServices::downloadWithModem()
 {
+#if LCD_DISPLAY
     m_display->clearBuffer();
     m_display->drawStr("Updating Firmware");
     m_display->sendBuffer();
+#endif
 
     if (m_url == NULL || m_url.length() == 0)
     {
@@ -55,10 +80,11 @@ bool OtaServices::downloadWithModem()
 
     return m_modem->beginDownload(m_url);
 }
-
+#endif
 
 bool OtaServices::start(String url)
 {
+    #ifdef CELLULAR_ENABLED
     if (m_modem != NULL)
     {
         return downloadWithModem(url);
@@ -67,6 +93,9 @@ bool OtaServices::start(String url)
     {
         return downloadOverWiFi(url);
     }
+    #endif
+    
+    return downloadOverWiFi(url);   
 }
 
 #define ERR_UPDATER_BEGIN_RETURNED_FALSE -0x1
@@ -221,9 +250,11 @@ bool OtaServices::downloadOverWiFi(String url)
 
     char progressBar[110];
 
+#if LCD_DISPLAY
     m_display->clearBuffer();
     m_display->drawStr(("Updating Firmware"));
     m_display->sendBuffer();
+#endif
     m_console->println(String(F("[OtaServices__downloadOverWifi] download-size=")) + String((uint32_t)contentSize) + ";");
     m_hal->feedHWWatchdog();
     m_hal->enableHWWatchdog(2 * 60);
@@ -275,7 +306,9 @@ bool OtaServices::downloadOverWiFi(String url)
     else
     {
         m_console->printError(String(F("[OtaServices__downloadOverWifi] Update.begin=returned-false; // url=")) + url);
+#if LCD_DISPLAY
         m_display->drawStr(("Flashing init ... failed!"));
+#endif
         lastError = ERR_UPDATER_BEGIN_RETURNED_FALSE;
         markCompleted(&http, url, false);
     }
@@ -289,7 +322,9 @@ bool OtaServices::downloadOverWiFi(String url)
 #ifdef MQTT_VERBOSE
             m_console->println("Success flashing, pausing and then restarting.");
 #endif
+#if LCD_DISPLAY
             m_display->drawStr("Success flashing", "Restarting");
+#endif
             delay(2000);
             m_console->println("[OtaServices__downloadOverWifi] success-flashing=restarting;");
             markCompleted(&http, url, true);
@@ -300,7 +335,9 @@ bool OtaServices::downloadOverWiFi(String url)
             m_console->printError(String(F("Could not flash file ")) + url);
             m_console->printError(String(F("[OtaServices__downloadOverWifi] failure-flashing; // Update.end() returned false")));
 
+#if LCD_DISPLAY
             m_display->drawStr(("Flashing Failed"), ("MD5 Error"));
+#endif
             delay(2000);
             markCompleted(&http, url, false);
         }
@@ -310,7 +347,9 @@ bool OtaServices::downloadOverWiFi(String url)
 
         m_console->printError(String(F("[OtaServices__downloadOverWifi] downloadsizemismatch; // downloaded=")) + String(downloaded) + String(F(" total:")) + String((uint32_t)contentSize));
 
+#if LCD_DISPLAY
         m_display->drawStr(("Flashing Failed"), ("Download Error"));
+#endif
         lastError = ERR_CONTENT_DOWNLOAD_MISMATCH;
         markCompleted(&http, url, false);
     }

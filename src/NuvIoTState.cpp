@@ -10,6 +10,7 @@
 
 #define FLOAT_DECIMAL_SCALER 1000.0f
 
+#ifdef LCD_DISPLAY
 NuvIoTState::NuvIoTState(Display *display, IOConfig *config, SysConfig *sysConfig, LedManager *ledManager, FS *fs, Hal *hal, Console *console)
 {
     m_display = display;
@@ -19,6 +20,16 @@ NuvIoTState::NuvIoTState(Display *display, IOConfig *config, SysConfig *sysConfi
     m_sysConfig = sysConfig;
     m_ledManager = ledManager;
 }
+#else
+NuvIoTState::NuvIoTState(IOConfig *config, SysConfig *sysConfig, LedManager *ledManager, FS *fs, Hal *hal, Console *console)
+{
+    m_hal = hal;
+    m_console = console;
+    m_ioConfig = config;
+    m_sysConfig = sysConfig;
+    m_ledManager = ledManager;
+}
+#endif
 
 void NuvIoTState::init(String firmwareSku, String firmwareVersion, String hardwareRevision, String deviceModelKey, uint16_t structureVersion)
 {
@@ -47,8 +58,9 @@ void NuvIoTState::init(String firmwareSku, String firmwareVersion, String hardwa
             err = "Invalid namespace name.";
             break;
         }
-
+#ifdef LCD_DISPLAY
         m_display->drawStr("Could not initialize", "NVS KVP Storage", err.c_str());
+#endif        
         m_console->repeatFatalError("nvskvp=notinitialized; // " + err);
     }
     else
@@ -464,6 +476,7 @@ void NuvIoTState::handleConsoleCommand(String msg)
 {
     if (msg == "HELLO")
     {
+#ifdef LCD_DISPLAY        
         if(m_display != NULL)
         {
             m_display->clearBuffer();
@@ -471,6 +484,7 @@ void NuvIoTState::handleConsoleCommand(String msg)
             m_display->println("Configuration Mode");
             m_display->sendBuffer();
         }
+#endif        
         m_configurationMode = true;
         m_paused = true;
     }
@@ -484,7 +498,7 @@ void NuvIoTState::handleConsoleCommand(String msg)
     {
         m_paused = false;
         m_configurationMode = false;
-
+#ifdef LCD_DISPLAY
         if(m_display != NULL)
         {
             m_display->clearBuffer();
@@ -493,6 +507,7 @@ void NuvIoTState::handleConsoleCommand(String msg)
             m_display->sendBuffer();
             m_console->enableBTOut(true);
         }
+#endif
     }
     else if (msg == "REBOOT")
     {
@@ -516,7 +531,11 @@ void NuvIoTState::handleConsoleCommand(String msg)
   
     }
     else if(msg == "SN" || msg == "sn") {
+#ifdef ESP32
+        uint32_t reg = esp_efuse_read_reg(EFUSE_BLK3, 0);
+#else        
         uint32_t reg = esp_efuse_read_reg(EFUSE_BLK4, 0);
+#endif        
         char buffer[50];
         sprintf(buffer, "SN=%08x\r\n", reg);
         m_console->println(buffer);
