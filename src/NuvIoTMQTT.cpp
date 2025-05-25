@@ -1,3 +1,4 @@
+#include "BLE.h"
 #include "NuvIoTMQTT.h"
 
 #include <WiFi.h>
@@ -135,7 +136,7 @@ void NuvIoTMQTT::connect()
 void NuvIoTMQTT::disconnect()
 {
     m_mqtt->disconnect();
-    m_wifi->disconnect();
+    m_console->println("wifimqtt=disconnected; // host=" + m_sysConfig->SrvrHostName + ".");
 }
 
 void NuvIoTMQTT::setMessageReceivedCallback(void (*callback)(String topic, byte *buffer, size_t len))
@@ -256,6 +257,12 @@ void NuvIoTMQTT::handleMqttCallback(char *topic, byte *payload, unsigned int len
                     publish(String("nuviot/srvr/dvcsrvc/" + m_sysConfig->DeviceId + "/fwupdate/start"), String("{'url':'" + url + "'}"));
 
                     if(m_wifi->isConnected()) {
+                        uint32_t freeHeep = ESP.getFreeHeap();
+                        m_console->println(String(F("[NuvIoTMQTT__Update] Shut Down BT For DFU")));
+                        BLEDevice::deinit(true);
+                        esp_bt_controller_mem_release(ESP_BT_MODE_IDLE);
+                        m_console->println(String(F("[NuvIoTMQTT__Update] Shut Down BT For DFU - Recovered ")) + String(ESP.getFreeHeap() - freeHeep) + " bytes.");
+                    
                         m_ota->downloadOverWiFi(url);
                     }
                     else {                        

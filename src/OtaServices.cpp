@@ -129,9 +129,10 @@ int64_t OtaServices::getFileSize(HTTPClient *client, String url)
     if (responseCode == 200)
     {
         String sizeStr = client->getString();
-        uint32_t contentSize = atol(sizeStr.substring(sizeStr.lastIndexOf(",") + 1).c_str());
+        m_console->println(String(F("[OtaServices__GetFileSize] getstring")) + sizeStr + ";");
         client->end();
 
+        uint32_t contentSize = atol(sizeStr.substring(sizeStr.lastIndexOf(",") + 1).c_str());
         m_console->println(String(F("[OtaServices__GetFileSize] contentSize=")) + String(contentSize) + ";");
         return contentSize;
     }
@@ -142,30 +143,45 @@ int64_t OtaServices::getFileSize(HTTPClient *client, String url)
     }
 }
 
-int64_t OtaServices::downloadContent(Stream *stream, uint32_t contentSize)
-{
+int64_t OtaServices::downloadContent(Stream *stream, size_t contentSize){
     long start = millis();
 
     int loopCount = 1;
-    int actualRead = stream->readBytes(m_recvBuffer, contentSize);
+    //int actualRead = stream->readBytes(m_recvBuffer, contentSize);
 
-    if (actualRead != contentSize)
+    size_t totalRead = 0;
+    while(totalRead < contentSize && loopCount < 100)
     {
-        m_console->printError("fwupdatedownload=failed; // actualread=" + String(actualRead) + ", contentSize=" + String(contentSize));
+        size_t toRead = (contentSize - totalRead < TEMP_BUFFER_SIZE) ? contentSize - totalRead : TEMP_BUFFER_SIZE;
+
+        size_t actualRead = stream->readBytes(m_tempBuffer, toRead);
+       
+       // m_console->println(String(F("[OtaServices__downloadContent] read partial; // actualread=")) + String(actualRead) + ", contentSize=" + String(contentSize) + ", " + String(loopCount) + " iterations.");
+       // delay(100);
+        memcpy(m_recvBuffer + totalRead, m_tempBuffer, actualRead);
+
+        totalRead += actualRead;
+        loopCount++;
+    }   
+     
+    if (totalRead != contentSize)
+    {
+        m_console->printError("fwupdatedownload=failed; // actualread=" + String(totalRead) + ", contentSize=" + String(contentSize));
         return -1;
     }
     else
     {
-        m_console->println(String(F("fwupdatedownload=complete; // read ")) + String(actualRead) + " bytes, " + String(millis() - start) + "ms, " + String(loopCount) + " iterations.");
+  //      m_console->println(String(F("fwupdatedownload=complete; // read ")) + String(totalRead) + " bytes, " + String(millis() - start) + "ms, " + String(loopCount) + " iterations.");
     }
-    return actualRead;
+    return totalRead;
 }
 
-int64_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, uint16_t blockSize)
+int64_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, size_t blockSize)
 {
+    long startMs = millis();
     url += "?start=" + String(start) + "&length=" + String(blockSize);
 
-    m_console->println(String(F("[OtaServices__applyBlock] url:")) + String(url));
+    m_console->println(String(F("[OtaServices__applyBlock] url->")) + String(url));
 
     uint8_t responseCode = -1;
     int retryCount = 0;
@@ -174,9 +190,15 @@ int64_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, 
     {        
         client->begin(url);
         responseCode = client->GET();
+
         if(responseCode == 200)
         {
-            m_console->println(String(F("[OtaServices__applyBlock] responseCode=")) + String(responseCode) + ";");
+            if(client->getSize() != blockSize)
+            {
+                m_console->printError(String(F("[OtaServices__applyBlock] size mismatch; // expected=")) + String(blockSize) + ", actual=" + String(client->getSize()));
+                return ERR_CONTENT_DOWNLOAD_MISMATCH;
+            }
+            
             bytesRead = downloadContent(client->getStreamPtr(), blockSize);
             if(bytesRead < 0)
             {
@@ -203,6 +225,8 @@ int64_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, 
         return ERR_UPDATER_FAILED_WRITE;
     }
 
+    m_console->println(String(F("[OtaServices__applyBlock] bytesWritten=")) + String(bytesWritten) + ", " + String(millis() - startMs) + "ms;" );
+
     return bytesWritten;
 }
 
@@ -224,15 +248,26 @@ bool OtaServices::downloadOverWiFi(String url)
 {
     m_console->enableBTOut(false);
     uint32_t freeHeep = ESP.getFreeHeap();
-    m_console->println(String(F("[OtaServices__downloadOverWiFi] free1=")) + String(freeHeep));
+    m_console->println(String(F("[OtaServices__downloadOverWiFi] before allocate for download=")) + String(freeHeep) + " Largest Block Size: " + String(heap_caps_get_largest_free_block (MALLOC_CAP_DEFAULT)));
+
+    size_t blockSize = heap_caps_get_largest_free_block (MALLOC_CAP_DEFAULT) * 0.8;
 
     if (m_recvBuffer == NULL)
-        m_recvBuffer = (byte *)malloc(BLOCK_SIZE);
+        m_recvBuffer = (byte *)malloc(blockSize);
+    
+    if (m_recvBuffer == NULL) {
+        m_console->printError(String(F("[OtaServices__downloadOverWiFi] Could Not Allocate receive buffer")) + String(freeHeep));
+        delay(1000);
+        m_hal->restart();
+    }
+
+    if(m_tempBuffer == NULL) 
+        m_tempBuffer = (byte *)malloc(TEMP_BUFFER_SIZE);
 
     HTTPClient http;
-
+ 
     freeHeep = ESP.getFreeHeap();
-    m_console->println(String(F("[OtaServices__downloadOverWiFi] free2=")) + String(freeHeep));
+    m_console->println("[OtaServices__downloadOverWiFi] after allocate, Block Size:" + String(blockSize) + " Temp Buffer: " + String(TEMP_BUFFER_SIZE) + " for download=" + String(freeHeep));
 
     uint64_t contentSize = getFileSize(&http, url + "/size");
     if(contentSize < 0) {        
@@ -246,7 +281,6 @@ bool OtaServices::downloadOverWiFi(String url)
     int downloaded = 0;
 
     uint16_t blockIndex = 0;
-    uint16_t blockSize = BLOCK_SIZE;
 
     char progressBar[110];
 
@@ -266,10 +300,9 @@ bool OtaServices::downloadOverWiFi(String url)
     {
         while (!hasCompleted)
         {
-            blockSize = BLOCK_SIZE;
             uint32_t start = blockIndex * blockSize;
-            int32_t blockEnd = ((int32_t)start + (int32_t)blockSize);
-            int32_t extras = blockEnd - (int32_t)contentSize;
+            uint32_t blockEnd = ((uint32_t)start + (uint32_t)blockSize);
+            int32_t extras = blockEnd - (uint32_t)contentSize;
 
             if (extras > 0)
             {

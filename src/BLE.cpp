@@ -255,30 +255,30 @@ void BLE::refreshCharacteristics(bool notifyOnly)
     uint64_t fullMAC = word(low,high);
 
     String sysConfigValue =
-        pSysConfig->DeviceId + "," +
-        pSysConfig->OrgId + "," +
-        pSysConfig->RepoId + "," +
-        pSysConfig->Id + "," +
-        pSysConfig->CustomerId + "," +
-        String(_deviceModelId) + "," +
-        String(pSysConfig->ConfigurationLevel) + "," +
-        pSysConfig->SrvrHostName + "," +      
-        pSysConfig->SrvrUID + "," +      
-        pSysConfig->SrvrPWD + "," +      
-        String(pSysConfig->Port) + "," +
-        pSysConfig->SrvrType + "," +
-        pSysConfig->DeviceAccessKey + "," +
-        (pSysConfig->Commissioned ? "1," : "0,") +
-        (pSysConfig->CellEnabled ? "1," : "0,") +
-        (pSysConfig->WiFiEnabled ? "1," : "0,") +
-        pSysConfig->WiFiSSID + "," +
-        pSysConfig->WiFiPWD + "," +
-        String(pSysConfig->PingRateSecond) + "," +
-        String(pSysConfig->SendUpdateRateMS) + "," +
-        (pSysConfig->GPSEnabled ? "1," : "0,") +
-        String(pSysConfig->GPSUpdateRateMS) + "," + 
-        String(pSysConfig->LoopUpdateRateMS) + "," + 
-        String((uint32_t)fullMAC);        
+        pSysConfig->DeviceId + "," +    // 0
+        pSysConfig->OrgId + "," +       // 1
+        pSysConfig->RepoId + "," +     // 2
+        pSysConfig->Id + "," +      // 3
+        pSysConfig->CustomerId + "," +    // 4 
+        String(_deviceModelId) + "," +     // 5
+        String(pSysConfig->ConfigurationLevel) + "," +  // 6
+        pSysConfig->SrvrHostName + "," +       // 7   
+        pSysConfig->SrvrUID + "," +       // 8
+        pSysConfig->SrvrPWD + "," +      // 9
+        String(pSysConfig->Port) + "," + // 10
+        pSysConfig->SrvrType + "," +  // 11
+        pSysConfig->DeviceAccessKey + "," + // 12
+        (pSysConfig->Commissioned ? "1," : "0,") + // 13
+        (pSysConfig->CellEnabled ? "1," : "0,") + // 14
+        (pSysConfig->WiFiEnabled ? "1," : "0,") + //15
+        pSysConfig->WiFiSSID + "," + //16
+        pSysConfig->WiFiPWD + "," + //17
+        String(pSysConfig->PingRateSecond) + "," + //18
+        String(pSysConfig->SendUpdateRateMS) + "," + //19
+        (pSysConfig->GPSEnabled ? "1," : "0,") + // 20
+        String(pSysConfig->GPSUpdateRateMS) + "," +  //21
+        String(pSysConfig->LoopUpdateRateMS) + "," +  //22
+        String((uint32_t)fullMAC);         //23
 
     pCharConfig->setValue(sysConfigValue.c_str());
 

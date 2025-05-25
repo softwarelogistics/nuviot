@@ -15,6 +15,7 @@ WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, Display *display,
 }
 #endif
 
+
 WiFiConnectionHelper::WiFiConnectionHelper(WiFiClient *client, LedManager *ledManager,
                                            NuvIoTState *state, Hal *hal, Console *console, SysConfig *sysConfig)
 {
@@ -276,8 +277,9 @@ String WiFiConnectionHelper::getMACAddress()
 
 void WiFiConnectionHelper::disconnect()
 {
-    m_client->stop();
     WiFi.disconnect(); 
+    m_wifiState = NuvIoTWiFi_NotConnected;
+    m_client->stop();
 }
 
 void WiFiConnectionHelper::post(String addr, uint16_t port, String path, String body){

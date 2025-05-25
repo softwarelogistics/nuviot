@@ -1,4 +1,4 @@
-#ifndef OBJECTS_H
+  #ifndef OBJECTS_H
 #define OBJECTS_H
 
 #include <Arduino.h>
@@ -501,7 +501,7 @@ void configureConsole(unsigned long baud = 115200, bool serialEnabled = true, bo
 #ifdef SERIAL_CONSOLE_ENABLED
   consoleSerial.begin(baud, SERIAL_8N1, configPins.ConsoleRx, configPins.ConsoleTx);
   console.enableSerialOut(serialEnabled);
-
+  console.println("console=initialized; // Baud Rate: " + String(baud) + ", RX: " + String(configPins.ConsoleRx) + ", TX: " + String(configPins.ConsoleTx));
   console.registerCallback(handleConsoleCommand);
 #else
   console.enableSerialOut(false);
@@ -769,8 +769,10 @@ void commonLoop(){
 
   if (state.OTAState == 100)
   {
-    if (wifiMgr.isConnected())
+    if (wifiMgr.isConnected()) {
+      wifiMQTT.disconnect();
       ota.downloadOverWiFi();
+    }
 #ifdef CELLEULAR_ENABLED
       ota.downloadWithModem();
 #endif
