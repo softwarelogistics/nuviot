@@ -45,6 +45,7 @@ public:
     String OrgId;
     String Id;
     String RepoId;
+    String DeviceTypeId;
     String CustomerId;
 
     String DeviceAccessKey;
@@ -86,6 +87,7 @@ public:
         doc["cellEnabled"] = CellEnabled;
         doc["configLevel"] = ConfigurationLevel;
         doc["orgId"] = OrgId;
+        doc["deviceTypeId"] = DeviceTypeId;
         doc["id"] = Id;
         doc["repoId"] = RepoId;
         doc["customerId"] = CustomerId;
@@ -210,6 +212,7 @@ public:
         OrgId = "";
         Id = "";
         RepoId = "";
+        DeviceTypeId = "";
         CustomerId = "";
     }
 
@@ -234,6 +237,7 @@ public:
             VerboseLogging = doc["verboseLogging"].as<bool>();
             DeviceId = doc["deviceId"].as<String>();
             WiFiSSID = doc["wifissid"].as<String>();
+            DeviceTypeId =  doc["deviceTypeId"].as<String>();
             WiFiPWD = doc["wifipwd"].as<String>();
             WiFiSSID2 = doc["wifissid2"].as<String>();
             WiFiPWD2 = doc["wifipwd2"].as<String>();
@@ -265,6 +269,7 @@ public:
             if(OrgId == "null") OrgId = "";
             if(RepoId == "null") RepoId = "";
             if(Id == "null") Id = "";
+            if(DeviceTypeId == "null") DeviceTypeId = "";
             if(CustomerId == "null") CustomerId = "";
 
             if (doc.containsKey("deviceAccessKey"))
@@ -296,6 +301,7 @@ public:
         m_pConsole->println("ORG  : " + OrgId);
         m_pConsole->println("REP  : " + RepoId);
         m_pConsole->println("ID   : " + Id);
+        m_pConsole->println("DTYID: " + DeviceTypeId);
         m_pConsole->println("CSTID: " + CustomerId);
         m_pConsole->println("PNGR : " + String(PingRateSecond));
         m_pConsole->println("SNDR : " + String(SendUpdateRateMS));

@@ -259,26 +259,27 @@ void BLE::refreshCharacteristics(bool notifyOnly)
         pSysConfig->OrgId + "," +       // 1
         pSysConfig->RepoId + "," +     // 2
         pSysConfig->Id + "," +      // 3
-        pSysConfig->CustomerId + "," +    // 4 
-        String(_deviceModelId) + "," +     // 5
-        String(pSysConfig->ConfigurationLevel) + "," +  // 6
-        pSysConfig->SrvrHostName + "," +       // 7   
-        pSysConfig->SrvrUID + "," +       // 8
-        pSysConfig->SrvrPWD + "," +      // 9
-        String(pSysConfig->Port) + "," + // 10
-        pSysConfig->SrvrType + "," +  // 11
-        pSysConfig->DeviceAccessKey + "," + // 12
-        (pSysConfig->Commissioned ? "1," : "0,") + // 13
-        (pSysConfig->CellEnabled ? "1," : "0,") + // 14
-        (pSysConfig->WiFiEnabled ? "1," : "0,") + //15
-        pSysConfig->WiFiSSID + "," + //16
-        pSysConfig->WiFiPWD + "," + //17
-        String(pSysConfig->PingRateSecond) + "," + //18
-        String(pSysConfig->SendUpdateRateMS) + "," + //19
-        (pSysConfig->GPSEnabled ? "1," : "0,") + // 20
-        String(pSysConfig->GPSUpdateRateMS) + "," +  //21
-        String(pSysConfig->LoopUpdateRateMS) + "," +  //22
-        String((uint32_t)fullMAC);         //23
+        pSysConfig->DeviceTypeId + "," +      // 4
+        pSysConfig->CustomerId + "," +    // 5
+        String(_deviceModelId) + "," +     // 6
+        String(pSysConfig->ConfigurationLevel) + "," +  // 7
+        pSysConfig->SrvrHostName + "," +       // 8
+        pSysConfig->SrvrUID + "," +       // 9
+        pSysConfig->SrvrPWD + "," +      // 10
+        String(pSysConfig->Port) + "," + // 11
+        pSysConfig->SrvrType + "," +  // 12
+        pSysConfig->DeviceAccessKey + "," + // 13
+        (pSysConfig->Commissioned ? "1," : "0,") + // 14
+        (pSysConfig->CellEnabled ? "1," : "0,") + // 15
+        (pSysConfig->WiFiEnabled ? "1," : "0,") + //16
+        pSysConfig->WiFiSSID + "," + //17
+        pSysConfig->WiFiPWD + "," + //18
+        String(pSysConfig->PingRateSecond) + "," + //19
+        String(pSysConfig->SendUpdateRateMS) + "," + //20
+        (pSysConfig->GPSEnabled ? "1," : "0,") + // 21
+        String(pSysConfig->GPSUpdateRateMS) + "," +  //22
+        String(pSysConfig->LoopUpdateRateMS) + "," +  //23
+        String((uint32_t)fullMAC);         //24
 
     pCharConfig->setValue(sysConfigValue.c_str());
 
@@ -446,6 +447,8 @@ void BLE::handleWriteCharacteristic(BLECharacteristic *characteristic, String va
         pSysConfig->Id = value;
       else if (key == "repoid")
         pSysConfig->RepoId = value;
+      else if (key == "devtypeid")
+        pSysConfig->DeviceTypeId = value;
       else if(key == "siteScan")
         m_flags |= NUVIOT_BLE_FLAGS_SITE_SCAN; // don't run site survey in BLE thread.
       else if(key == "reconnect")

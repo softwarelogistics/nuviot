@@ -385,6 +385,12 @@ void welcome(String firmwareSKU, String version)
   console.println("WiFi Enabled     : " + String(sysConfig.WiFiEnabled));
   console.println("Commissioned     : " + String(sysConfig.Commissioned));
   console.println("GPS Enabled      : " + String(sysConfig.GPSEnabled));
+  console.println("Org Id           : " + String(sysConfig.OrgId));
+  console.println("Repo Id          : " + String(sysConfig.RepoId));
+  console.println("Id               : " + String(sysConfig.Id));
+  console.println("Device Type      : " + String(sysConfig.DeviceTypeId));
+  console.println("Customer Id      : " + String(sysConfig.Id));
+  console.println("GPS Enabled      : " + String(sysConfig.GPSEnabled));
   
   if (sysConfig.SrvrType != NULL && sysConfig.SrvrType.length() > 0)
     console.println("Server Type     : " + String(sysConfig.SrvrType));

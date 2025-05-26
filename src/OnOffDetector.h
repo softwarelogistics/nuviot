@@ -28,7 +28,8 @@ private:
     MessagePayload *m_payload;
 
     void (*m_handler)(uint8_t, bool) = NULL;
-    
+
+    bool m_firstPass = true;
 
     void registerOnOffDetector(String name, uint8_t pin, bool invert, uint8_t idx)
     {
@@ -85,13 +86,21 @@ public:
             if (m_invert[idx])
                 state = !state;
 
+            // First time through, initialize the state.
+            if(m_firstPass)
+            {
+                m_pinStateChangeTime[idx] = millis();
+                m_pinStates[idx] = state;
+                m_payload->ioValues->setValue((m_channelIndex[idx] - 1),state);
+            }
+
             if(state != m_pinStates[idx])
             {
                 if(millis() - m_pinStateChangeTime[idx] > 250)
                 {
                     m_pinStateChangeTime[idx] = millis();
                     m_pinStates[idx] = state;
-                    m_payload->ioValues->setValue((m_channelIndex[idx] - 1), m_pinStates[idx]);
+                    m_payload->ioValues->setValue((m_channelIndex[idx] - 1), state);
                     if(m_handler != NULL)
                     {
                         m_handler(m_channelIndex[idx], m_pinStates[idx]);
@@ -100,6 +109,8 @@ public:
             }
 
         }
+
+        m_firstPass = false;
     }
 
     void setStateChangeHandler(void (*handler)(uint8_t, bool))
