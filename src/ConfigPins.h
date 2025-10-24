@@ -505,6 +505,24 @@ public:
             ADCChannel2 = 35;
             ADCChannel3 = 32;
         }
+        else if(boardType == 11) {
+            NumberRelays = 0;
+            //TODO this will be the pinouts for our RP2040 board.
+            ConsoleRx = CONSOLE_RX;
+            ConsoleTx = CONSOLE_TX;    
+        
+            GpioChannels = 4;
+            Gpio1 = 17;
+            Gpio2 = 5;
+            Gpio3 = 16;
+ 
+            
+            ADCProvider = NoADC;
+            HasDisplay = false;
+            HasRelays = false;
+            HasLeds = false;
+            HasI2C = false;
+        }
     }
 };
 
