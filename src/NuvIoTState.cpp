@@ -537,10 +537,10 @@ else
         uint32_t reg = esp_efuse_read_reg(EFUSE_BLK3, 0);
 #endif        
 
-        uint32_t reg = esp_efuse_read_reg(EFUSE_BLK4, 0);
-        char buffer[50];
-        sprintf(buffer, "SN=%08x\r\n", reg);
-        m_console->println(buffer);
+        // uint32_t reg = esp_efuse_read_reg(EFUSE_BLK4, 0);
+        // char buffer[50];
+        // sprintf(buffer, "SN=%08x\r\n", reg);
+        // m_console->println(buffer);
     }
     else if (msg.substring(0, 3) == "sys") {
         String setCommand = msg.substring(4);

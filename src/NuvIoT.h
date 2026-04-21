@@ -18,6 +18,11 @@
 #include "BLE.h"
 #include "Console.h"
 #include "Channel.h"
+
+#ifdef BATTERY_SUPPORT
+#include "BatterySupport.h"
+#endif
+
 #ifdef CELLULAR_ENABLED
 #include "MQTT_GPRS.h"
 #include "SIMModem.h"
@@ -167,6 +172,7 @@ IOConfig ioConfig(&console);
 SysConfig sysConfig(&console);
 ConfigPins configPins;
 
+
 Hal hal;
 
 #ifdef LCD_DISPLAY
@@ -187,6 +193,10 @@ MessagePayload *payload = new MessagePayload(&ioValues);
 WiFiClient wifiClient;
 
 
+#ifdef BATTERY_SUPPORT
+BatterySupport batterySupport(&console, &configPins, payload);
+#endif
+
 #ifdef CELLULAR_ENABLED
 GPSData *gps = NULL;
 Channel channel(&gprsPort, &console);
@@ -198,6 +208,8 @@ PulseCounter pulseCounter(&console, &configPins, payload);
 TemperatureProbes probes(&console, &configPins, payload);
 RelayManager relayManager(&console, &configPins);
 OnOffDetector onOffDetector(&console, &configPins, payload);
+
+
 
 #ifdef LCD_DISPLAY
   #ifdef CELLULAR_ENABLED 
@@ -782,6 +794,10 @@ void commonLoop(){
 #ifdef CELLEULAR_ENABLED
       ota.downloadWithModem();
 #endif
+
+#ifdef BATTERY_SUPPORT
+    batterySupport.loop();
+#endif    
   }
 
   communicationsTask(NULL);
