@@ -52,12 +52,16 @@ public:
  virtual size_t write(const uint8_t*,size_t)=0;
 };
 
+struct IPAddress {};
+
 class WiFiClient {
 protected:
  bool mockConnectResult = true;
 public:
  virtual ~WiFiClient(){}
  virtual int connect(const char *, uint16_t) { return mockConnectResult ? 1 : 0; }
+ virtual int connect(IPAddress, uint16_t) { return 0; }
+ virtual int connect(IPAddress ip, uint16_t port, int32_t) { return connect(ip, port); }
  virtual int connect(const char *host, uint16_t port, int32_t) { return connect(host, port); }
  virtual void stop() {}
  virtual void setMockConnectResult(bool value) { mockConnectResult = value; }

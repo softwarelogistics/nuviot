@@ -13,7 +13,7 @@
 #include <HTTPClient.h>
 #include "NuvIoTState.h"
 
-class WiFiClientSecure;
+class WiFiHttpsClient;
 
 typedef enum
 {
@@ -49,10 +49,10 @@ private:
     Console *m_console;
     NuvIoTState *m_state;
 
-    int64_t getFileSize(HTTPClient *client, WiFiClientSecure *secureClient, String url);
-    int64_t fetchBlock(HTTPClient *client, WiFiClientSecure *secureClient, const String &url, uint32_t start, uint8_t *buffer, size_t length);
-    void markCompleted(HTTPClient *client, WiFiClientSecure *secureClient, String url, bool success);
-    bool downloadOverWiFi(String url, WiFiClientSecure *secureClient);
+    int64_t getFileSize(HTTPClient *client, WiFiHttpsClient *secureClient, String url);
+    int64_t fetchBlock(HTTPClient *client, WiFiHttpsClient *secureClient, const String &url, uint32_t start, uint8_t *buffer, size_t length);
+    void markCompleted(HTTPClient *client, WiFiHttpsClient *secureClient, String url, bool success);
+    bool downloadOverWiFi(String url, WiFiHttpsClient *secureClient);
 
 public:
 #ifdef LCD_DISPLAY

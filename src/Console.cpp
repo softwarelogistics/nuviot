@@ -1,4 +1,5 @@
 #include "Console.h"
+#include <string.h>
 
 Console::Console(Stream *stream)
 {
@@ -22,42 +23,39 @@ void Console::printByte(byte ch)
     }
 }
 
-void Console::loop(){
-    if(!m_serialEnabled) 
+void Console::loop()
+{
+    if (!m_serialEnabled)
         return;
 
-    int bytesToRead = m_stream->available();
-    if (bytesToRead)
+    const int bytesToRead = m_stream->available();
+    for (int idx = 0; idx < bytesToRead; ++idx)
     {
-        for (int idx = 0; idx < bytesToRead; ++idx)
+        const int ch = m_stream->read();
+        if (ch < 0 || ch == '\r')
+            continue;
+
+        if (ch == '\n')
         {
-            int ch = m_stream->read();
-        
-            if (ch == '\n')
+            String cmd = String(m_consoleInBuffer);
+            if (m_echoInput)
             {
-                String cmd = String(m_consoleInBuffer);
                 println(cmd);
                 newline();
-
-                if (m_callback != NULL)
-                {
-                    m_callback(cmd);
-                }
-
-                for (int idx = 0; idx < CONSOLE_IN_BUFFER_LEN; ++idx)
-                {
-                    m_consoleInBuffer[idx] = 0;
-                    m_consoleInBufferIdx = 0;
-                }
             }
-            else
-            {
-                m_consoleInBuffer[m_consoleInBufferIdx++] = ch;
-            }
+
+            if (m_callback != NULL)
+                m_callback(cmd);
+
+            memset(m_consoleInBuffer, 0, sizeof(m_consoleInBuffer));
+            m_consoleInBufferIdx = 0;
+        }
+        else if (m_consoleInBufferIdx < CONSOLE_IN_BUFFER_LEN - 1)
+        {
+            m_consoleInBuffer[m_consoleInBufferIdx++] = static_cast<char>(ch);
         }
     }
 }
-
 void Console::printByte(String prefix, byte byte, String suffix)
 {
     if (m_verboseLogging)
@@ -77,6 +75,11 @@ void Console::enableBTOut(bool enabled)
 void Console::enableSerialOut(bool enabled)
 {
     m_serialEnabled = enabled;
+}
+
+void Console::setEchoInput(bool enabled)
+{
+    m_echoInput = enabled;
 }
 
 void Console::setVerboseLogging(bool verbose)

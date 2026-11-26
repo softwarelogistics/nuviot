@@ -11,6 +11,7 @@ class Console
 private:    
     bool m_btEnabled = true;
     bool m_serialEnabled = true;
+    bool m_echoInput = true;
     int m_consoleInBufferIdx = 0;
     char m_consoleInBuffer[CONSOLE_IN_BUFFER_LEN];
     char m_consoleOutBuffer[CONSOLE_OUT_BUFFER];
@@ -45,6 +46,7 @@ public:
 
     void enableBTOut(bool enabled);
     void enableSerialOut(bool enabled);
+    void setEchoInput(bool enabled);
     void registerCallback(void (*callback)(String topic)) {
         m_callback = callback;
     }
