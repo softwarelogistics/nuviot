@@ -4,7 +4,7 @@ set -eu
 CXX=g++
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 fixture="$root/tests/wifi_ota_mock"
-if grep -q "setInsecure" "$root/src/OtaServices.cpp"; then
+if grep -q "setInsecure" "$root/src/OtaServices.cpp" "$root/src/WiFiHttpsClient.cpp"; then
     echo "unsafe TLS API found" >&2
     exit 1
 fi
@@ -22,7 +22,7 @@ done
 for flags in '' '-DLCD_DISPLAY=1' '-DCELLULAR_ENABLED=1' '-DLCD_DISPLAY=1 -DCELLULAR_ENABLED=1'; do
     printf 'flags=%s\n' "$flags"
     # Intentional word splitting: flags are fixed literals above.
-    "$CXX" -DARDUINO_ARCH_ESP32=1 -DCONFIG_MBEDTLS_CERTIFICATE_BUNDLE=1 -std=c++11 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer $flags -I"$fixture" -I"$tmp/stubs" -I"$tmp/src" "$tmp/src/WiFiHttpsClient.cpp" "$tmp/src/OtaServices.cpp" "$fixture/test.cpp" -o "$tmp/http-test"
+    "$CXX" -DARDUINO_ARCH_ESP32=1 -DCONFIG_MBEDTLS_CERTIFICATE_BUNDLE=1 -std=c++11 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer $flags -I"$fixture" -I"$tmp/stubs" -I"$tmp/src" "$tmp/src/WiFiHttpsClient.cpp" "$tmp/src/OtaServices.cpp" "$fixture/test_support.cpp" "$fixture/test.cpp" -o "$tmp/http-test"
     "$tmp/http-test"
     "$CXX" -std=c++11 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer $flags -I"$fixture" -I"$tmp/stubs" -I"$tmp/src" "$tmp/src/WiFiHttpsClient.cpp" "$tmp/src/OtaServices.cpp" "$fixture/test_support.cpp" "$fixture/tls_test.cpp" -o "$tmp/https-test"
     "$tmp/https-test"
