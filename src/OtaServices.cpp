@@ -87,20 +87,26 @@ OtaServices::~OtaServices()
 bool OtaServices::downloadWithModem(String url)
 {
 #ifdef LCD_DISPLAY
-    m_display->clearBuffer();
-    m_display->drawStr("Updating Firmware");
-    m_display->sendBuffer();
+    if (m_display)
+    {
+        m_display->clearBuffer();
+        m_display->drawStr("Updating Firmware");
+        m_display->sendBuffer();
+    }
 #endif
 
-    return m_modem->beginDownload(url);
+    return m_modem && url.length() != 0 && m_modem->beginDownload(url);
 }
 
 bool OtaServices::downloadWithModem()
 {
-#if LCD_DISPLAY
-    m_display->clearBuffer();
-    m_display->drawStr("Updating Firmware");
-    m_display->sendBuffer();
+#ifdef LCD_DISPLAY
+    if (m_display)
+    {
+        m_display->clearBuffer();
+        m_display->drawStr("Updating Firmware");
+        m_display->sendBuffer();
+    }
 #endif
 
     if (m_url == NULL || m_url.length() == 0)
@@ -112,7 +118,7 @@ bool OtaServices::downloadWithModem()
 
     m_state->OTAState = 101;
 
-    return m_modem->beginDownload(m_url);
+    return m_modem && m_modem->beginDownload(m_url);
 }
 #endif
 
