@@ -17,6 +17,7 @@ public:
     static bool synchronizeClock(Hal *hal, Console *console, unsigned long timeoutMs = 15000);
 
     int connect(const char *host, uint16_t port) override;
+    int connect(IPAddress ip, uint16_t port) override;
 };
 
 #endif
