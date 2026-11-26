@@ -384,7 +384,6 @@ int64_t SIMModem::configureSecureForDownload(String url, size_t maximum, bool re
 
         const int first = line.indexOf(',');
         const int second = first < 0 ? -1 : line.indexOf(',', first + 1);
-        uint32_t methodLength = 0;
         if (first < 0 || second < 0 || line.substring(8, first) != "\"GET\"" ||
             !OtaTransfer::parseDecimal(line.substring(first + 1, second).c_str(), 999, status) ||
             !OtaTransfer::parseDecimal(line.substring(second + 1).c_str(), INT32_MAX, length))
