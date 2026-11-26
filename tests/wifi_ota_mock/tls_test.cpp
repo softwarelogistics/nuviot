@@ -90,6 +90,14 @@ int main()
 
     reset();size("4096");block(0,4096);terminal(true);runHttps(true,1,1,1,0);++count;
 
+    reset();
+    {
+        WiFiHttpsClient secureClient;
+        assert(secureClient.connect(IPAddress(), 443) == 0);
+        assert(secureBegins == 0 && plainBegins == 0);
+    }
+    ++count;
+
     reset();fakeNow=0;ntpSyncOk=true;size("4096");block(0,4096);terminal(true);runHttps(true,1,1,1,0);assert(ntpCalls==1);++count;
 
     reset();tlsTrustOk=false;size("4096");terminal(false);runHttps(false,0,0,0,0);++count;

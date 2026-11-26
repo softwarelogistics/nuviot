@@ -247,7 +247,7 @@ bool WiFiConnectionHelper::connect(bool isReconnect){
         return true;
     }
 
-    m_console->println("wifi=connecting; // ssid=" + m_sysConfig->WiFiSSID + ", pwd=" + m_sysConfig->WiFiPWD.c_str());
+    m_console->println("wifi=connecting; // ssid=" + m_sysConfig->WiFiSSID + "; password hidden.");
     wl_status_t beginResult = WiFi.begin(m_sysConfig->WiFiSSID.c_str(), m_sysConfig->WiFiPWD.c_str());
     
     m_ledManager->setErrFlashRate(6);
