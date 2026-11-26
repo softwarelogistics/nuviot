@@ -247,6 +247,9 @@ void secureBinaryTransfer()
     assert(hasCommand(channel, "AT+SHREAD=0,"));
     assert(hasCommand(channel, "AT+SHREAD=2048,"));
     assert(hasCommand(channel, "AT+SHREAD=4096,"));
+    assert(hasCommand(channel, "AT+SHREQ=\"https://dfu-dev.nuviot.com/api/firmware/download/test-request/size\",1"));
+    for (const auto &message : console.messages)
+        assert(message.find("test-request") == std::string::npos);
     assert(!hasCommand(channel, "AT+HTTPINIT"));
     assert(!hasCommand(channel, "AT+HTTPACTION"));
     assert(hal.feeds > 0);
