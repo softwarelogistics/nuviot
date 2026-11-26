@@ -1,7 +1,7 @@
 #!/bin/sh
 # Host-only adapter verification. Not an ESP32 SDK or hardware compilation.
 set -eu
-CXX=\${CXX:-g++}
+CXX=g++
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 fixture="$root/tests/wifi_ota_mock"
 tmp=$(mktemp -d)
