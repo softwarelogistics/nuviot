@@ -102,7 +102,7 @@ bool WiFiHttpsClient::initializeCertificateBundle(Console *console)
             console->println(String(F("[HTTPS] initializing Arduino CA index from ESP-IDF bundle: ")) +
                 String(certificateBundleCount) + F(" certificates"));
 
-        setCACertBundle(x509_crt_imported_bundle_bin_start);
+        this->setCACertBundle(x509_crt_imported_bundle_bin_start);
         certificateBundleInitialized = true;
     }
 
