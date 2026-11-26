@@ -13,6 +13,8 @@
 #endif
 
 static const char CellularOtaTrustAnchorPem[] = NUVIOT_CELLULAR_OTA_TRUST_ANCHOR_PEM;
-static const char CellularOtaTrustAnchorFile[] = "nuviot-dfu-root.cer";
+// Bump this filename when the approved root trust anchor changes. This avoids
+// retaining trailing bytes from an older, differently-sized CA file.
+static const char CellularOtaTrustAnchorFile[] = "nuviot-dfu-root-v1.cer";
 
 #endif
