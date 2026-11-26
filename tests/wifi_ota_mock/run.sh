@@ -16,6 +16,9 @@ for h in Hal.h Display.h SIMModem.h NuvIoTState.h HTTPClient.h Update.h esp_spi_
     mkdir -p "$tmp/stubs/$(dirname "$h")"
     printf '#include "mock.h"\n' > "$tmp/stubs/$h"
 done
+"$CXX" -std=c++11 -Wall -Wextra -Werror -pedantic -fsanitize=address,undefined -fno-omit-frame-pointer "$root/tests/ota_transfer_test.cpp" -o "$tmp/transfer-test"
+"$tmp/transfer-test"
+
 for flags in '' '-DLCD_DISPLAY=1' '-DCELLULAR_ENABLED=1' '-DLCD_DISPLAY=1 -DCELLULAR_ENABLED=1'; do
     printf 'flags=%s\n' "$flags"
     # Intentional word splitting: flags are fixed literals above.
