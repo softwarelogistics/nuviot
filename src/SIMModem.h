@@ -57,6 +57,7 @@ public:
     String getNetwork();
     String getIPAddress();
     String getDeviceModel();
+    String getDeviceRevision();
 
     int getSignalQuality();    
     bool setBearer();
@@ -98,6 +99,10 @@ private:
     String m_network;
     String m_ipAddress;
     bool m_isHttpSessionActive = false;
+    bool m_isSecureHttpSession = false;
+    bool m_isCellularOtaCaReady = false;
+    String m_secureOrigin;
+    String m_secureHost;
     int m_rssi;
 
     GPSData *m_gpsData;
@@ -110,7 +115,14 @@ private:
     String parseIPAddress();
     
     int64_t downloadContent(uint32_t contentSize, unsigned char *buffer);
-    int64_t configureForDownload(String url, size_t maximum, bool readBody = true, bool exactLength = false);    
+    int64_t configureForDownload(String url, size_t maximum, bool readBody = true, bool exactLength = false);
+    bool parseSecureUrl(String url, String &origin, String &host, String &path);
+    bool installCellularOtaTrustAnchor();
+    bool isCellularModemClockValid();
+    bool synchronizeCellularModemClock();
+    bool configureSecureHttpContext(String url);
+    int64_t configureSecureForDownload(String url, size_t maximum, bool readBody, bool exactLength);
+    int64_t readSecureHttpContent(uint32_t contentSize, unsigned char *buffer);
     bool setLTE();
     bool selectNetwork();
     bool setAPN();
