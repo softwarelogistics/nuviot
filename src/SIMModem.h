@@ -109,8 +109,8 @@ private:
     String sendCommand(String cmd, String expectedReply, unsigned long delayMS, long timeout, boolean returnAny);    bool setNBIoTMode();
     String parseIPAddress();
     
-    uint32_t downloadContent(uint32_t contentSize, unsigned char * buffer);
-    uint32_t configureForDownload(String url);    
+    int64_t downloadContent(uint32_t contentSize, unsigned char *buffer);
+    int64_t configureForDownload(String url, size_t maximum, bool readBody = true, bool exactLength = false);    
     bool setLTE();
     bool selectNetwork();
     bool setAPN();
@@ -124,7 +124,7 @@ private:
 
     bool setupHttpContext(String tag, String url);
     String readHttpResponse(String tag);
-    void closeHttpContext(String tag);    
+    bool closeHttpContext(String tag);    
     String httpGetSetError(String url, String errMsg);
     
   

@@ -652,7 +652,6 @@ void NuvIoTClient::messagePublished(String topic, unsigned char *payload, size_t
                 {
                     String url = "http://firmware.nuviot.com:14236/api/firmware/download/" + parts[4];
                     m_console->println("Request Download.");
-                    m_console->println(url);
                     m_ota->start(url);
                 }
             }
