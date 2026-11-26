@@ -6,9 +6,42 @@
 #include <esp_ota_ops.h>
 #include <esp_image_format.h>
 
-#define BLOCK_SIZE RCV_BUFFER_SIZE
+#include "OtaTransfer.h"
+#include <stdlib.h>
+#include <string.h>
+
+namespace
+{
+    const size_t WifiBlockSize = 4096;
+    const size_t SizeBodyCapacity = 32;
+
+    // HTTPClient handles both Content-Length and chunked size responses. This
+    // sink never allocates or accepts bytes outside the supplied buffer.
+    class BoundedBody : public Stream
+    {
+        uint8_t *buffer;
+        size_t capacity;
+        size_t count = 0;
+    public:
+        BoundedBody(uint8_t *data, size_t limit) : buffer(data), capacity(limit) {}
+        size_t size() const { return count; }
+        int available() override { return 0; }
+        int read() override { return -1; }
+        int peek() override { return -1; }
+        void flush() override {}
+        size_t write(uint8_t value) override { return write(&value, 1); }
+        size_t write(const uint8_t *data, size_t length) override
+        {
+            if (length > capacity - count) return 0;
+            memcpy(buffer + count, data, length);
+            count += length;
+            return length;
+        }
+    };
+}
 
 #ifdef LCD_DISPLAY
+#ifdef CELLULAR_ENABLED
 OtaServices::OtaServices(Display *display, Console *console, NuvIoTState *state, SIMModem *modem, Hal *hal)
 {
     m_display = display;
@@ -17,6 +50,7 @@ OtaServices::OtaServices(Display *display, Console *console, NuvIoTState *state,
     m_console = console;
     m_state = state;
 }
+#endif
 
 OtaServices::OtaServices(Display *display, Console *console, NuvIoTState *state, Hal *hal)
 {
@@ -98,136 +132,53 @@ bool OtaServices::start(String url)
     return downloadOverWiFi(url);   
 }
 
-#define ERR_UPDATER_BEGIN_RETURNED_FALSE -0x1
-#define ERR_UPDATER_NOT_FINISHED -0x2
-#define ERR_UPDATER_END_RETURNED_FALSE -0x3
-#define ERR_DOWNLOAD_HTTP_NOT_CONNECTED -0x4
-#define ERR_DOWNLOAD_HTTP_COULD_NOT_DOWNLOAD -0x5
-#define ERR_DOWNLOAD_NON_HTTP_SUCCESS_CODE -0x6
-#define ERR_CONTENT_DOWNLOAD_MISMATCH -0x7
-#define ERR_UPDATER_FAILED_WRITE -0x8
-#define ERR_DOWNLOAD_SIZE -0x9
-
 void OtaServices::markCompleted(HTTPClient *client, String url, bool success)
 {
-    client->begin(url + (success ? "/success" : "/failed"));
-    int responseCode = client->GET();
-    m_console->println(String(F("[OtaServices__markCompleted] http.GET()=")) + String(responseCode) + "; url=" + url);
+    m_hal->feedHWWatchdog();
+    int status = -1;
+    if (client->begin(url + (success ? "/success" : "/failed")))
+        status = client->GET();
     client->end();
+    m_console->println(String(F("[OTA] terminal HTTP status=")) + String(status));
 }
 
 int64_t OtaServices::getFileSize(HTTPClient *client, String url)
 {
-    client->begin(url);
-    int responseCode = client->GET();
-
-    uint8_t retryCount = 0;
-    boolean done = false;
-
-    m_console->println(String(F("[OtaServices__GetFileSize] http.GET()=")) + String(responseCode) + "; url=" + url);
-
-    if (responseCode == 200)
+    uint8_t body[SizeBodyCapacity + 1] = {};
+    BoundedBody sink(body, SizeBodyCapacity);
+    int result = -1;
+    int declared = -1;
+    if (client->begin(url) && client->GET() == 200)
     {
-        String sizeStr = client->getString();
-        m_console->println(String(F("[OtaServices__GetFileSize] getstring")) + sizeStr + ";");
-        client->end();
-
-        uint32_t contentSize = atol(sizeStr.substring(sizeStr.lastIndexOf(",") + 1).c_str());
-        m_console->println(String(F("[OtaServices__GetFileSize] contentSize=")) + String(contentSize) + ";");
-        return contentSize;
+        declared = client->getSize();
+        if (declared == -1 || (declared > 0 && declared <= static_cast<int>(SizeBodyCapacity)))
+            result = client->writeToStream(&sink);
     }
-    else
-    {
-        client->end();
-        return ERR_DOWNLOAD_NON_HTTP_SUCCESS_CODE;
-    }
-}
-
-int64_t OtaServices::downloadContent(Stream *stream, size_t contentSize){
-    long start = millis();
-
-    int loopCount = 1;
-    //int actualRead = stream->readBytes(m_recvBuffer, contentSize);
-
-    size_t totalRead = 0;
-    while(totalRead < contentSize && loopCount < 100)
-    {
-        size_t toRead = (contentSize - totalRead < TEMP_BUFFER_SIZE) ? contentSize - totalRead : TEMP_BUFFER_SIZE;
-
-        size_t actualRead = stream->readBytes(m_tempBuffer, toRead);
-       
-       // m_console->println(String(F("[OtaServices__downloadContent] read partial; // actualread=")) + String(actualRead) + ", contentSize=" + String(contentSize) + ", " + String(loopCount) + " iterations.");
-       // delay(100);
-        memcpy(m_recvBuffer + totalRead, m_tempBuffer, actualRead);
-
-        totalRead += actualRead;
-        loopCount++;
-    }   
-     
-    if (totalRead != contentSize)
-    {
-        m_console->printError("fwupdatedownload=failed; // actualread=" + String(totalRead) + ", contentSize=" + String(contentSize));
+    client->end();
+    uint32_t size = 0;
+    if (result <= 0 || (declared >= 0 && result != declared) ||
+        static_cast<size_t>(result) != sink.size() ||
+        memchr(body, 0, sink.size()) ||
+        !OtaTransfer::parseDecimal(reinterpret_cast<const char *>(body), INT32_MAX, size) || !size)
         return -1;
-    }
-    else
-    {
-  //      m_console->println(String(F("fwupdatedownload=complete; // read ")) + String(totalRead) + " bytes, " + String(millis() - start) + "ms, " + String(loopCount) + " iterations.");
-    }
-    return totalRead;
+    return size;
 }
 
-int64_t OtaServices::applyBlock(HTTPClient *client, String url, uint32_t start, size_t blockSize)
+int64_t OtaServices::fetchBlock(HTTPClient *client, const String &url, uint32_t start, uint8_t *buffer, size_t length)
 {
-    long startMs = millis();
-    url += "?start=" + String(start) + "&length=" + String(blockSize);
-
-    m_console->println(String(F("[OtaServices__applyBlock] url->")) + String(url));
-
-    uint8_t responseCode = -1;
-    int retryCount = 0;
-    uint32_t bytesRead;
-    while(responseCode != 200 && retryCount++ < 5)
-    {        
-        client->begin(url);
-        responseCode = client->GET();
-
-        if(responseCode == 200)
-        {
-            if(client->getSize() != blockSize)
-            {
-                m_console->printError(String(F("[OtaServices__applyBlock] size mismatch; // expected=")) + String(blockSize) + ", actual=" + String(client->getSize()));
-                return ERR_CONTENT_DOWNLOAD_MISMATCH;
-            }
-            
-            bytesRead = downloadContent(client->getStreamPtr(), blockSize);
-            if(bytesRead < 0)
-            {
-                responseCode = 0;
-            }
-        }
-        else 
-        {
-            m_console->println(String(F("[OtaServices__applyBlock] responseCode=")) + String(responseCode) + "; status=warning,retryCount: " + String(retryCount));
-        }
-        client->end();
-    }
-
-    if(responseCode != 200)
+    const String query = url + "?start=" + String(start) + "&length=" + String(length);
+    BoundedBody sink(buffer, length);
+    int result = -1;
+    if (client->begin(query))
     {
-        m_console->println("[OtaServices__applyBlock] - too many retries");
-        return ERR_DOWNLOAD_HTTP_COULD_NOT_DOWNLOAD;
+        const int status = client->GET();
+        if (status == 200 && client->getSize() == static_cast<int>(length))
+            result = client->writeToStream(&sink);
     }
-
-    uint32_t bytesWritten = Update.write(m_recvBuffer, bytesRead);
-    if (bytesWritten != bytesRead)
-    {
-        m_console->println("[OtaServices__applyBlock]  - size mismatch, failed bytesRead=" + String(bytesRead) + ", written=" + String(bytesWritten));
-        return ERR_UPDATER_FAILED_WRITE;
-    }
-
-    m_console->println(String(F("[OtaServices__applyBlock] bytesWritten=")) + String(bytesWritten) + ", " + String(millis() - startMs) + "ms;" );
-
-    return bytesWritten;
+    client->end();
+    if (result < 0 || static_cast<size_t>(result) != length || sink.size() != length)
+        return -1;
+    return result;
 }
 
 bool OtaServices::downloadOverWiFi()
@@ -246,148 +197,66 @@ bool OtaServices::downloadOverWiFi()
 
 bool OtaServices::downloadOverWiFi(String url)
 {
+    if (!url.length()) return false;
     m_console->enableBTOut(false);
-    uint32_t freeHeep = ESP.getFreeHeap();
-    m_console->println(String(F("[OtaServices__downloadOverWiFi] before allocate for download=")) + String(freeHeep) + " Largest Block Size: " + String(heap_caps_get_largest_free_block (MALLOC_CAP_DEFAULT)));
-
-    size_t blockSize = heap_caps_get_largest_free_block (MALLOC_CAP_DEFAULT) * 0.8;
-
-    if (m_recvBuffer == NULL)
-        m_recvBuffer = (byte *)malloc(blockSize);
-    
-    if (m_recvBuffer == NULL) {
-        m_console->printError(String(F("[OtaServices__downloadOverWiFi] Could Not Allocate receive buffer")) + String(freeHeep));
-        delay(1000);
-        m_hal->restart();
-    }
-
-    if(m_tempBuffer == NULL) 
-        m_tempBuffer = (byte *)malloc(TEMP_BUFFER_SIZE);
+    m_hal->enableHWWatchdog(120);
+    m_hal->feedHWWatchdog();
 
     HTTPClient http;
- 
-    freeHeep = ESP.getFreeHeap();
-    m_console->println("[OtaServices__downloadOverWiFi] after allocate, Block Size:" + String(blockSize) + " Temp Buffer: " + String(TEMP_BUFFER_SIZE) + " for download=" + String(freeHeep));
+    http.setReuse(false);
+    http.setConnectTimeout(5000);
+    http.setTimeout(5000);
+    bool success = false;
+    bool begun = false;
+    const char *failure = "invalid firmware size or partition";
+    uint8_t *buffer = NULL;
 
-    uint64_t contentSize = getFileSize(&http, url + "/size");
-    if(contentSize < 0) {        
-        m_console->printError(String(F("[OtaServices__downloadOverWifi] Could not download size")));
-        markCompleted(&http, url, false);
-        m_hal->restart();
-        return ERR_DOWNLOAD_SIZE;
+#ifdef LCD_DISPLAY
+    if (m_display)
+    {
+        m_display->clearBuffer();
+        m_display->drawStr("Updating Firmware");
+        m_display->sendBuffer();
+    }
+#endif
+
+    const int64_t size = getFileSize(&http, url + "/size");
+    const esp_partition_t *partition = esp_ota_get_next_update_partition(NULL);
+    if (size > 0 && partition && static_cast<uint64_t>(size) <= partition->size)
+    {
+        failure = "receive allocation failed";
+        buffer = static_cast<uint8_t *>(malloc(WifiBlockSize));
+        if (buffer)
+        {
+            failure = "Update.begin failed";
+            begun = Update.begin(static_cast<uint32_t>(size), U_FLASH);
+            if (begun)
+            {
+                const auto result = OtaTransfer::transfer(static_cast<uint32_t>(size), buffer, WifiBlockSize,
+                    [&](uint32_t offset, uint8_t *data, size_t length) {
+                        return fetchBlock(&http, url, offset, data, length);
+                    },
+                    [](uint8_t *data, size_t length) { return Update.write(data, length); },
+                    [&]() { m_hal->feedHWWatchdog(); });
+                m_hal->feedHWWatchdog();
+                failure = result == OtaTransfer::ReadFailed ? "chunk download failed" :
+                    result == OtaTransfer::WriteFailed ? "flash write failed" : "flash finalization failed";
+                success = result == OtaTransfer::Complete && Update.isFinished() && Update.end();
+            }
+        }
     }
 
-    m_console->println(String(F("[OtaServices__downloadOverWifi] start; // url=")) + url);
-    int downloaded = 0;
-
-    uint16_t blockIndex = 0;
-
-    char progressBar[110];
-
-#if LCD_DISPLAY
-    m_display->clearBuffer();
-    m_display->drawStr(("Updating Firmware"));
-    m_display->sendBuffer();
+    if (!success && begun) Update.abort();
+    free(buffer);
+    if (success) m_console->println("[OTA] flash complete");
+    else m_console->printError(String("[OTA] ") + failure);
+#ifdef LCD_DISPLAY
+    if (m_display) m_display->drawStr(success ? "Success flashing" : "Flashing failed", "Restarting");
 #endif
-    m_console->println(String(F("[OtaServices__downloadOverWifi] download-size=")) + String((uint32_t)contentSize) + ";");
+    markCompleted(&http, url, success);
     m_hal->feedHWWatchdog();
-    m_hal->enableHWWatchdog(2 * 60);
-
-    bool hasCompleted = false;
-    uint8_t lastError = 0;
-
-    if (Update.begin((uint32_t)contentSize, U_FLASH))
-    {
-        while (!hasCompleted)
-        {
-            uint32_t start = blockIndex * blockSize;
-            uint32_t blockEnd = ((uint32_t)start + (uint32_t)blockSize);
-            int32_t extras = blockEnd - (uint32_t)contentSize;
-
-            if (extras > 0)
-            {
-                uint32_t remainder = blockSize - extras;
-                blockSize = remainder;
-                hasCompleted = true;
-            }
-
-            int32_t result = applyBlock(&http, url, start, blockSize);
-            m_hal->feedHWWatchdog();
-
-            if (result < 0)
-            {
-                // Error Condition
-                hasCompleted = true;
-                lastError = (uint8_t)result;
-                markCompleted(&http, url, false);
-            }
-            else
-            {
-                blockIndex++;
-                downloaded += result;
-            }
-        }
-
-        if (!Update.isFinished())
-        {
-            Update.end();
-            lastError = ERR_UPDATER_NOT_FINISHED;
-            m_console->printError(String(F("[OtaServices__downloadOverWifi] Update.isFinished=returned-false; // url=")) + url);
-            markCompleted(&http, url, false);
-        }
-    }
-    else
-    {
-        m_console->printError(String(F("[OtaServices__downloadOverWifi] Update.begin=returned-false; // url=")) + url);
-#if LCD_DISPLAY
-        m_display->drawStr(("Flashing init ... failed!"));
-#endif
-        lastError = ERR_UPDATER_BEGIN_RETURNED_FALSE;
-        markCompleted(&http, url, false);
-    }
-
-    m_console->println(String(F("[OtaServices__downloadOverWifi] download=complete;")));
-
-    if (downloaded == contentSize)
-    {
-        if (Update.end())
-        {
-#ifdef MQTT_VERBOSE
-            m_console->println("Success flashing, pausing and then restarting.");
-#endif
-#if LCD_DISPLAY
-            m_display->drawStr("Success flashing", "Restarting");
-#endif
-            delay(2000);
-            m_console->println("[OtaServices__downloadOverWifi] success-flashing=restarting;");
-            markCompleted(&http, url, true);
-        }
-        else
-        {
-            lastError = ERR_UPDATER_END_RETURNED_FALSE;
-            m_console->printError(String(F("Could not flash file ")) + url);
-            m_console->printError(String(F("[OtaServices__downloadOverWifi] failure-flashing; // Update.end() returned false")));
-
-#if LCD_DISPLAY
-            m_display->drawStr(("Flashing Failed"), ("MD5 Error"));
-#endif
-            delay(2000);
-            markCompleted(&http, url, false);
-        }
-    }
-    else
-    {
-
-        m_console->printError(String(F("[OtaServices__downloadOverWifi] downloadsizemismatch; // downloaded=")) + String(downloaded) + String(F(" total:")) + String((uint32_t)contentSize));
-
-#if LCD_DISPLAY
-        m_display->drawStr(("Flashing Failed"), ("Download Error"));
-#endif
-        lastError = ERR_CONTENT_DOWNLOAD_MISMATCH;
-        markCompleted(&http, url, false);
-    }
-
+    delay(2000);
+    // Preserve legacy reboot on either outcome (restores communications/BT).
     m_hal->restart();
-
-    return lastError;
+    return success;
 }
