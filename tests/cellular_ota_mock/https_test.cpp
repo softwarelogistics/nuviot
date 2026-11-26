@@ -87,11 +87,11 @@ struct Channel
                 String("+CCLK: \"00/01/01,00:00:00+00\"");
         if (cmd.startsWith("AT+CGMM")) return "SIMCOM_SIM7000G";
         if (cmd.startsWith("AT+CGMR")) return "R1351";
-        if (cmd == "AT+CFSWFILE=3,\"nuviot-dfu-root.cer\",0,7,1000") return "DOWNLOAD";
+        if (cmd == "AT+CFSWFILE=3,\"nuviot-dfu-root-v1.cer\",0,7,1000") return "DOWNLOAD";
         if (cmd == "AT+SHCONN") return secureConnectOk ? String("OK") : String("ERROR");
         if (cmd == "AT+SHDISC") return "OK";
         if (cmd == "AT+HTTPTERM") return "OK";
-        if (cmd == "AT+CFSDFILE=3,\"nuviot-dfu-root.cer\"") return "ERROR";
+        if (cmd == "AT+CFSDFILE=3,\"nuviot-dfu-root-v1.cer\"") return "ERROR";
         return "OK";
     }
 
@@ -242,7 +242,7 @@ void secureBinaryTransfer()
     assert(hasCommand(channel, "AT+CSSLCFG=\"sslversion\",1,3"));
     assert(hasCommand(channel, "AT+CSSLCFG=\"ignorertctime\",1,0"));
     assert(hasCommand(channel, "AT+CSSLCFG=\"sni\",1,\"dfu-dev.nuviot.com\""));
-    assert(hasCommand(channel, "AT+SHSSL=1,\"nuviot-dfu-root.cer\""));
+    assert(hasCommand(channel, "AT+SHSSL=1,\"nuviot-dfu-root-v1.cer\""));
     assert(hasCommand(channel, "AT+SHCONF=\"URL\",\"https://dfu-dev.nuviot.com\""));
     assert(hasCommand(channel, "AT+SHREAD=0,"));
     assert(hasCommand(channel, "AT+SHREAD=2048,"));
