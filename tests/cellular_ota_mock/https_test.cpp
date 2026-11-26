@@ -91,7 +91,7 @@ struct Channel
         if (cmd == "AT+SHCONN") return secureConnectOk ? String("OK") : String("ERROR");
         if (cmd == "AT+SHDISC") return "OK";
         if (cmd == "AT+HTTPTERM") return "OK";
-        if (cmd == "AT+CFSDFILE=\"nuviot-dfu-root.cer\"") return "ERROR";
+        if (cmd == "AT+CFSDFILE=3,\"nuviot-dfu-root.cer\"") return "ERROR";
         return "OK";
     }
 
