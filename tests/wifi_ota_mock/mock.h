@@ -36,6 +36,7 @@ extern std::string lastTlsHost;
 extern uint16_t lastTlsPort;
 extern bool lastTlsUsedBundle;
 extern int secureClientConstructions;
+extern int bundleSetCalls;
 extern int handshakeTimeoutSeconds;
 extern int redirectsDisabledCalls;
 
@@ -74,6 +75,7 @@ protected:
 public:
  WiFiClientSecure() { ++secureClientConstructions; }
  void setHandshakeTimeout(unsigned long seconds) { handshakeTimeoutSeconds = static_cast<int>(seconds); }
+ void setCACertBundle(const uint8_t *bundle) { assert(bundle != nullptr); _use_ca_bundle = true; ++bundleSetCalls; }
  int setTimeout(uint32_t) { return 1; }
  int connect(const char *host, uint16_t port) override {
    lastTlsHost = host ? host : "";
