@@ -97,7 +97,7 @@ bool SIMModem::exitDataMode()
 
 bool SIMModem::parseSecureUrl(String url, String &origin, String &host, String &path)
 {
-    if (!url.startsWith("https://"))
+    if (!url.startsWith("https://") || url.length() > 512)
         return false;
 
     const int authorityStart = 8;
@@ -358,7 +358,10 @@ int64_t SIMModem::configureSecureForDownload(String url, size_t maximum, bool re
     if (!parseSecureUrl(url, origin, host, path) || !configureSecureHttpContext(url))
         return -1;
 
-    const String command = String("AT+SHREQ=\"") + path + "\",1";
+    // SIMCom requires the absolute URL here, even though SHCONF has already
+    // established the HTTPS origin. Keep this command off console logging:
+    // the path contains the request-ID capability.
+    const String command = String("AT+SHREQ=\"") + url + "\",1";
     m_channel->transmit(command + "\r\n");
 
     bool acknowledged = false;
