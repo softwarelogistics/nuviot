@@ -586,6 +586,14 @@ bool SIMModem::closeHttpContext(String tag)
 
 bool SIMModem::setupHttpContext(String tag, String url)
 {
+    // The legacy HTTP* helper is deliberately HTTP-only. HTTPS OTA uses the
+    // certificate-validated SH* path and must never reach this adapter.
+    if (!url.startsWith("http://"))
+    {
+        m_console->printError("http" + tag + "=unsupported_scheme;");
+        return false;
+    }
+
     m_console->println("http" + tag + "=start; // URL: " + url);
 
     int retryCount = 0;
