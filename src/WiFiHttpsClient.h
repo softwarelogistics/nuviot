@@ -14,6 +14,8 @@ public:
     WiFiHttpsClient();
 
     static bool isDeviceClockValid();
+    static uint16_t getEmbeddedBundleCertificateCount();
+    static bool initializeCertificateBundle(Console *console);
     static bool synchronizeClock(Hal *hal, Console *console, unsigned long timeoutMs = 15000);
 
     int connect(const char *host, uint16_t port);
