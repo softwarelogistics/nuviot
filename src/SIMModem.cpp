@@ -974,6 +974,11 @@ bool SIMModem::beginDownload(String url)
 
 void SIMModem::hardwareReset()
 {
+    m_isHttpSessionActive = false;
+    m_isSecureHttpSession = false;
+    m_isCellularOtaCaReady = false;
+    m_secureOrigin = "";
+    m_secureHost = "";
     m_console->println("modem=starthardwareset; // Start Hardware Reset.");
 
     if (isModemOnline())
@@ -1331,6 +1336,11 @@ bool SIMModem::setLTE()
 
 bool SIMModem::resetModem()
 {
+    m_isHttpSessionActive = false;
+    m_isSecureHttpSession = false;
+    m_isCellularOtaCaReady = false;
+    m_secureOrigin = "";
+    m_secureHost = "";
     String response = sendCommand("AT+CFUN=1,1", S_OK, 0, 15000, false);
     if (response == S_NOSIM)
     {
