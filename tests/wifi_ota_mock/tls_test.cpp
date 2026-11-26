@@ -1,5 +1,6 @@
 #include "mock.h"
 #include "OtaServices.h"
+#include "WiFiHttpsClient.h"
 #include <iostream>
 
 std::deque<Response> replies;
@@ -139,5 +140,5 @@ int main()
     }
     ++count;
 
-    std::cout<<count<<" HTTPS adapter scenarios passed\n";
+    assert(bundleSetCalls == 1);\n    std::cout<<count<<" HTTPS adapter scenarios passed\n";
 }
