@@ -247,7 +247,7 @@ bool OtaServices::downloadOverWiFi(String url, WiFiHttpsClient *secureClient)
     http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
     bool success = false;
     bool begun = false;
-    const bool clockReady = !secureClient || WiFiHttpsClient::synchronizeClock(m_hal, m_console);
+    const bool clockReady = !secureClient || secureClient->synchronizeClock(m_hal, m_console);
     const char *failure = clockReady ? "invalid firmware size or partition" : "device clock unavailable";
     uint8_t *buffer = NULL;
 
