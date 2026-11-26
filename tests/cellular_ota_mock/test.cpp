@@ -48,6 +48,7 @@ struct Channel{
 struct SIMModem{Channel *m_channel;Hal *m_hal;Console *m_console;Display *m_display;bool m_isHttpSessionActive=false,m_isSecureHttpSession=false,m_isCellularOtaCaReady=false;String m_secureOrigin,m_secureHost;uint8_t rx[DOWNLOAD_BUFFER_SIZE],temp[2048];uint8_t *m_rxBuffer=rx,*m_tempBuffer=temp;bool bearer=true;
  SIMModem(Channel *c,Hal *h,Console *o,Display *d):m_channel(c),m_hal(h),m_console(o),m_display(d){}
  void alloc(){}void DisconnectMQTT(){}void disconnectServer(){}bool isServiceConnected(){return bearer;}bool setBearer(){return bearer;}String sendCommand(String c){return m_channel->command(c);}String getDeviceModel(){return "SIM7000G";}String getDeviceRevision(){return "R1351";}
+ bool parseSecureUrl(String,String&,String&,String&);bool installCellularOtaTrustAnchor();bool isCellularModemClockValid();bool synchronizeCellularModemClock();bool configureSecureHttpContext(String);int64_t configureSecureForDownload(String,size_t,bool,bool);int64_t readSecureHttpContent(uint32_t,unsigned char*);
  int64_t configureForDownload(String,size_t,bool=true,bool=false);bool closeHttpContext(String);int64_t downloadContent(uint32_t,unsigned char*);bool httpGetNoContent(String);bool beginDownload(String);
 };
 #include "modem_excerpt.cpp"
