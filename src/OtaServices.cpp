@@ -1,5 +1,6 @@
 #include "OtaServices.h"
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 
 #include <Update.h>
 #include <esp_spi_flash.h>
@@ -9,11 +10,131 @@
 #include "OtaTransfer.h"
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <mbedtls/x509_crt.h>
+
+#if defined(ARDUINO_ARCH_ESP32) && (!defined(CONFIG_MBEDTLS_CERTIFICATE_BUNDLE) || !CONFIG_MBEDTLS_CERTIFICATE_BUNDLE)
+#error "Wi-Fi HTTPS OTA requires the ESP-IDF trusted certificate bundle"
+#endif
 
 namespace
 {
     const size_t WifiBlockSize = 4096;
     const size_t SizeBodyCapacity = 32;
+    const time_t EarliestValidDeviceTime = static_cast<time_t>(1704067200); // 2024-01-01 UTC
+    const unsigned long ClockSyncTimeoutMs = 15000;
+
+    bool isValidDeviceClock(time_t value)
+    {
+        return value >= EarliestValidDeviceTime;
+    }
+
+    int compareCertificateTime(const mbedtls_x509_time &certificateTime, const tm &currentTime)
+    {
+        const int certificateValues[] = {
+            certificateTime.year, certificateTime.mon, certificateTime.day,
+            certificateTime.hour, certificateTime.min, certificateTime.sec
+        };
+        const int currentValues[] = {
+            currentTime.tm_year + 1900, currentTime.tm_mon + 1, currentTime.tm_mday,
+            currentTime.tm_hour, currentTime.tm_min, currentTime.tm_sec
+        };
+        for (size_t i = 0; i < sizeof(certificateValues) / sizeof(certificateValues[0]); ++i)
+        {
+            if (certificateValues[i] < currentValues[i]) return -1;
+            if (certificateValues[i] > currentValues[i]) return 1;
+        }
+        return 0;
+    }
+
+    bool isSaneCertificateTime(const mbedtls_x509_time &value)
+    {
+        return value.year >= 1970 && value.mon >= 1 && value.mon <= 12 &&
+            value.day >= 1 && value.day <= 31 && value.hour >= 0 && value.hour <= 23 &&
+            value.min >= 0 && value.min <= 59 && value.sec >= 0 && value.sec <= 60;
+    }
+
+    // ESP-IDF 4.4 can be built without MBEDTLS_HAVE_TIME_DATE. Check every
+    // certificate supplied by the peer explicitly so validity is still enforced.
+    bool isPeerCertificateTimeValid(const mbedtls_x509_crt *certificate)
+    {
+        if (!certificate) return false;
+        const time_t now = time(NULL);
+        if (!isValidDeviceClock(now)) return false;
+        tm currentTime;
+        if (!gmtime_r(&now, &currentTime)) return false;
+
+        for (const mbedtls_x509_crt *item = certificate; item; item = item->next)
+        {
+            if (!isSaneCertificateTime(item->valid_from) || !isSaneCertificateTime(item->valid_to) ||
+                compareCertificateTime(item->valid_from, currentTime) > 0 ||
+                compareCertificateTime(item->valid_to, currentTime) < 0)
+                return false;
+        }
+        return true;
+    }
+
+    bool synchronizeDeviceClock(Hal *hal, Console *console)
+    {
+        if (isValidDeviceClock(time(NULL))) return true;
+
+        console->println(F("[OTA] device clock unset; synchronizing for HTTPS"));
+        configTime(0, 0, "pool.ntp.org", "time.cloudflare.com", "time.google.com");
+        const unsigned long started = millis();
+        while (millis() - started < ClockSyncTimeoutMs)
+        {
+            if (isValidDeviceClock(time(NULL)))
+            {
+                console->println(F("[OTA] device clock synchronized"));
+                return true;
+            }
+            if (hal) hal->feedHWWatchdog();
+            delay(100);
+        }
+
+        console->printError(F("[OTA] valid device clock unavailable; refusing HTTPS"));
+        return false;
+    }
+
+    class OtaSecureClient : public WiFiClientSecure
+    {
+    public:
+        OtaSecureClient()
+        {
+            // Arduino-ESP32 2.0.6 routes this flag through ESP-IDF's embedded
+            // Mozilla-derived root CA bundle. No CA-less or insecure mode is used.
+            _use_ca_bundle = true;
+            setHandshakeTimeout(10);
+        }
+
+        int connect(const char *host, uint16_t port) override
+        {
+            if (!isValidDeviceClock(time(NULL))) return 0;
+            const int result = WiFiClientSecure::connect(host, port);
+            if (result <= 0) return result;
+            if (!isPeerCertificateTimeValid(getPeerCertificate()))
+            {
+                stop();
+                return 0;
+            }
+            return result;
+        }
+    };
+
+    bool beginRequest(HTTPClient *client, WiFiClientSecure *secureClient, const String &url)
+    {
+        if (url.startsWith("https://"))
+        {
+            if (!secureClient || !isValidDeviceClock(time(NULL))) return false;
+            return client->begin(*secureClient, url);
+        }
+        if (url.startsWith("http://"))
+        {
+            if (secureClient) return false;
+            return client->begin(url);
+        }
+        return false;
+    }
 
     // HTTPClient handles both Content-Length and chunked size responses. This
     // sink never allocates or accepts bytes outside the supplied buffer.
@@ -138,23 +259,23 @@ bool OtaServices::start(String url)
     return downloadOverWiFi(url);   
 }
 
-void OtaServices::markCompleted(HTTPClient *client, String url, bool success)
+void OtaServices::markCompleted(HTTPClient *client, WiFiClientSecure *secureClient, String url, bool success)
 {
     m_hal->feedHWWatchdog();
     int status = -1;
-    if (client->begin(url + (success ? "/success" : "/failed")))
+    if (beginRequest(client, secureClient, url + (success ? "/success" : "/failed")))
         status = client->GET();
     client->end();
     m_console->println(String(F("[OTA] terminal HTTP status=")) + String(status));
 }
 
-int64_t OtaServices::getFileSize(HTTPClient *client, String url)
+int64_t OtaServices::getFileSize(HTTPClient *client, WiFiClientSecure *secureClient, String url)
 {
     uint8_t body[SizeBodyCapacity + 1] = {};
     BoundedBody sink(body, SizeBodyCapacity);
     int result = -1;
     int declared = -1;
-    if (client->begin(url) && client->GET() == 200)
+    if (beginRequest(client, secureClient, url) && client->GET() == 200)
     {
         declared = client->getSize();
         if (declared == -1 || (declared > 0 && declared <= static_cast<int>(SizeBodyCapacity)))
@@ -170,12 +291,12 @@ int64_t OtaServices::getFileSize(HTTPClient *client, String url)
     return size;
 }
 
-int64_t OtaServices::fetchBlock(HTTPClient *client, const String &url, uint32_t start, uint8_t *buffer, size_t length)
+int64_t OtaServices::fetchBlock(HTTPClient *client, WiFiClientSecure *secureClient, const String &url, uint32_t start, uint8_t *buffer, size_t length)
 {
     const String query = url + "?start=" + String(start) + "&length=" + String(length);
     BoundedBody sink(buffer, length);
     int result = -1;
-    if (client->begin(query))
+    if (beginRequest(client, secureClient, query))
     {
         const int status = client->GET();
         if (status == 200 && client->getSize() == static_cast<int>(length))
@@ -204,6 +325,20 @@ bool OtaServices::downloadOverWiFi()
 bool OtaServices::downloadOverWiFi(String url)
 {
     if (!url.length()) return false;
+    if (url.startsWith("https://"))
+    {
+        OtaSecureClient secureClient;
+        return downloadOverWiFi(url, &secureClient);
+    }
+    if (url.startsWith("http://")) return downloadOverWiFi(url, NULL);
+
+    m_console->printError(F("[OTA] unsupported firmware URL scheme"));
+    return false;
+}
+
+bool OtaServices::downloadOverWiFi(String url, WiFiClientSecure *secureClient)
+{
+    if (!url.length()) return false;
     m_console->enableBTOut(false);
     m_hal->enableHWWatchdog(120);
     m_hal->feedHWWatchdog();
@@ -212,9 +347,11 @@ bool OtaServices::downloadOverWiFi(String url)
     http.setReuse(false);
     http.setConnectTimeout(5000);
     http.setTimeout(5000);
+    http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
     bool success = false;
     bool begun = false;
-    const char *failure = "invalid firmware size or partition";
+    const bool clockReady = !secureClient || synchronizeDeviceClock(m_hal, m_console);
+    const char *failure = clockReady ? "invalid firmware size or partition" : "device clock unavailable";
     uint8_t *buffer = NULL;
 
 #ifdef LCD_DISPLAY
@@ -226,7 +363,7 @@ bool OtaServices::downloadOverWiFi(String url)
     }
 #endif
 
-    const int64_t size = getFileSize(&http, url + "/size");
+    const int64_t size = clockReady ? getFileSize(&http, secureClient, url + "/size") : -1;
     const esp_partition_t *partition = esp_ota_get_next_update_partition(NULL);
     if (size > 0 && partition && static_cast<uint64_t>(size) <= partition->size)
     {
@@ -240,7 +377,7 @@ bool OtaServices::downloadOverWiFi(String url)
             {
                 const auto result = OtaTransfer::transfer(static_cast<uint32_t>(size), buffer, WifiBlockSize,
                     [&](uint32_t offset, uint8_t *data, size_t length) {
-                        return fetchBlock(&http, url, offset, data, length);
+                        return fetchBlock(&http, secureClient, url, offset, data, length);
                     },
                     [](uint8_t *data, size_t length) { return Update.write(data, length); },
                     [&]() { m_hal->feedHWWatchdog(); });
@@ -259,7 +396,7 @@ bool OtaServices::downloadOverWiFi(String url)
 #ifdef LCD_DISPLAY
     if (m_display) m_display->drawStr(success ? "Success flashing" : "Flashing failed", "Restarting");
 #endif
-    markCompleted(&http, url, success);
+    markCompleted(&http, secureClient, url, success);
     m_hal->feedHWWatchdog();
     delay(2000);
     // Preserve legacy reboot on either outcome (restores communications/BT).
