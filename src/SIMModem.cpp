@@ -316,7 +316,7 @@ bool SIMModem::configureSecureHttpContext(String url)
     if (m_isHttpSessionActive)
         return m_isSecureHttpSession && origin == m_secureOrigin && host == m_secureHost;
 
-    if (!synchronizeCellularModemClock() || !installCellularOtaTrustAnchor())
+    if (!installCellularOtaTrustAnchor() || !synchronizeCellularModemClock())
         return false;
 
     if (sendCommand("AT+CSSLCFG=\"sslversion\",1,3") != S_OK ||
