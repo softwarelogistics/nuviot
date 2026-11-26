@@ -1,4 +1,5 @@
 #include "Console.h"
+#include <string.h>
 
 Console::Console(Stream *stream)
 {
