@@ -38,6 +38,7 @@
 
 #include "CANBus.h"
 #include "WiFiConnectionHelper.h"
+#include "WiFiHttpsClient.h"
 
 #include "Telemetry.h"
 #include "RelayManager.h"
