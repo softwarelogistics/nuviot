@@ -870,12 +870,6 @@ bool SIMModem::beginDownload(String url)
         return false;
     }
 
-    if (m_isHttpSessionActive && !closeHttpContext("previous"))
-    {
-        m_console->printError("[OTA] previous modem HTTP session could not be closed");
-        return false;
-    }
-
     if (url.startsWith("https://"))
     {
         String origin, host, path;
