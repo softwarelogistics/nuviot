@@ -1,8 +1,16 @@
 #include "BatterySupport.h"
 
+constexpr int BATTERY_PIN = 0;      // battery voltage divider
+
+constexpr int MAIN_POWER_PIN = 5;   // USB/5V source detect
+
+constexpr int BATTERY_STAT = 10;  
+
 
 void BatterySupport::setup() {
-
+  pinMode(MAIN_POWER_PIN, INPUT);
+  pinMode(BATTERY_STAT, INPUT);
+  pinMode(BATTERY_PIN, INPUT);
 }
 
 void BatterySupport::loop() {
@@ -17,17 +25,27 @@ bool BatterySupport::hasBatterySupport() {
 
 
 bool BatterySupport::isUsbPresent() {
-    return true; /* we need a way to determine if this has a batter*/
+  return digitalRead(MAIN_POWER_PIN) == HIGH;
 }
 
 
 bool BatterySupport::isBatteryCharging() {
-    return true; /* we need a way to determine if this has a batter*/
+   return digitalRead(BATTERY_STAT) == LOW;
 }
 
 
 float BatterySupport::readBatteryVoltage() {
-    return 0.0; /* we need a way to determine if this has a batter*/
+  uint32_t sumMv = 0;
+  const int samples = 16;
+
+  for (int i = 0; i < samples; i++) {
+    sumMv += analogReadMilliVolts(BATTERY_PIN);
+    delay(2);
+  }
+ 
+  float voltageAtPin = (sumMv / (float)samples) / 1000.0f;
+
+  return voltageAtPin * 2.0f; // 100k/100k divider
 }
 
 
