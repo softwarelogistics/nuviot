@@ -1,6 +1,7 @@
 #include "SIMModem.h"
 #include "Utils.h"
 #include "OtaTransfer.h"
+#include "CellularOtaTrust.h"
 #include <string.h>
 #include <Update.h>
 #include <esp_spi_flash.h>
@@ -94,8 +95,380 @@ bool SIMModem::exitDataMode()
     return result;
 }
 
+bool SIMModem::parseSecureUrl(String url, String &origin, String &host, String &path)
+{
+    if (!url.startsWith("https://"))
+        return false;
+
+    const int authorityStart = 8;
+    int authorityEnd = url.length();
+    const int pathStart = url.indexOf('/', authorityStart);
+    const int queryStart = url.indexOf('?', authorityStart);
+    const int fragmentStart = url.indexOf('#', authorityStart);
+    if (fragmentStart >= 0)
+        return false;
+    if (pathStart >= 0 && pathStart < authorityEnd)
+        authorityEnd = pathStart;
+    if (queryStart >= 0 && queryStart < authorityEnd)
+        authorityEnd = queryStart;
+
+    const String authority = url.substring(authorityStart, authorityEnd);
+    if (!authority.length() || authority.indexOf('@') >= 0 || authority.indexOf('"') >= 0)
+        return false;
+
+    const int portSeparator = authority.indexOf(':');
+    host = portSeparator >= 0 ? authority.substring(0, portSeparator) : authority;
+    if (!host.length() || host.length() > 63 || host.charAt(0) == '.' || host.charAt(host.length() - 1) == '.')
+        return false;
+
+    for (size_t i = 0; i < host.length(); ++i)
+    {
+        const char ch = host.charAt(i);
+        const bool valid = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
+            (ch >= '0' && ch <= '9') || ch == '-' || ch == '.';
+        if (!valid || (ch == '-' && (i == 0 || host.charAt(i - 1) == '.' || i == host.length() - 1)))
+            return false;
+    }
+
+    if (portSeparator >= 0)
+    {
+        if (authority.indexOf(':', portSeparator + 1) >= 0)
+            return false;
+        uint32_t port = 0;
+        if (!OtaTransfer::parseDecimal(authority.substring(portSeparator + 1).c_str(), 65535, port) || !port)
+            return false;
+    }
+
+    origin = String("https://") + authority;
+    if (origin.length() > 64)
+        return false;
+
+    if (pathStart >= 0)
+        path = url.substring(pathStart);
+    else if (queryStart >= 0)
+        path = String("/") + url.substring(queryStart);
+    else
+        path = "/";
+
+    if (!path.length() || path.length() > 512 || path.indexOf('"') >= 0 ||
+        path.indexOf('\r') >= 0 || path.indexOf('\n') >= 0 || path.indexOf('#') >= 0)
+        return false;
+
+    return true;
+}
+
+bool SIMModem::isCellularModemClockValid()
+{
+    const String response = sendCommand("AT+CCLK?", "", 0, 5000, true);
+    const int firstQuote = response.indexOf('"');
+    const int lastQuote = response.indexOf('"', firstQuote + 1);
+    if (firstQuote < 0 || lastQuote <= firstQuote)
+        return false;
+
+    const String value = response.substring(firstQuote + 1, lastQuote);
+    if (value.length() < 17 || value.charAt(2) != '/' || value.charAt(5) != '/' ||
+        value.charAt(8) != ',' || value.charAt(11) != ':' || value.charAt(14) != ':')
+        return false;
+
+    uint32_t year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+    if (!OtaTransfer::parseDecimal(value.substring(0, 2).c_str(), 99, year) ||
+        !OtaTransfer::parseDecimal(value.substring(3, 5).c_str(), 12, month) ||
+        !OtaTransfer::parseDecimal(value.substring(6, 8).c_str(), 31, day) ||
+        !OtaTransfer::parseDecimal(value.substring(9, 11).c_str(), 23, hour) ||
+        !OtaTransfer::parseDecimal(value.substring(12, 14).c_str(), 59, minute) ||
+        !OtaTransfer::parseDecimal(value.substring(15, 17).c_str(), 60, second))
+        return false;
+
+    return year >= 24 && month > 0 && day > 0;
+}
+
+bool SIMModem::synchronizeCellularModemClock()
+{
+    if (isCellularModemClockValid())
+    {
+        m_console->println("[OTA HTTPS] modem clock ready");
+        return true;
+    }
+
+    m_console->println("[OTA HTTPS] modem clock unset; synchronizing with NTP");
+    if (sendCommand("AT+CNTPCID=1", S_OK, 0, 5000, false) != S_OK ||
+        sendCommand("AT+CNTP=\"pool.ntp.org\",0,1,0", S_OK, 0, 5000, false) != S_OK)
+    {
+        m_console->printError("[OTA HTTPS] NTP configuration failed");
+        return false;
+    }
+
+    m_channel->transmit("AT+CNTP\r\n");
+    bool acknowledged = false;
+    bool synchronized = false;
+    for (int attempt = 0; attempt < 10 && !(acknowledged && synchronized); ++attempt)
+    {
+        m_hal->feedHWWatchdog();
+        String line = m_channel->readStringUntil('\n', 5000);
+        line.trim();
+        if (line == S_OK)
+        {
+            acknowledged = true;
+            continue;
+        }
+        if (line == S_ERROR || line.startsWith("+CME ERROR:"))
+        {
+            m_console->printError("[OTA HTTPS] NTP synchronization failed");
+            return false;
+        }
+        if (line.startsWith("+CNTP:"))
+        {
+            String result = line.substring(6);
+            result.trim();
+            const int comma = result.indexOf(',');
+            if (comma >= 0)
+                result = result.substring(0, comma);
+            uint32_t code = 0;
+            if (!OtaTransfer::parseDecimal(result.c_str(), 999, code) || code != 1)
+            {
+                m_console->printError("[OTA HTTPS] NTP service did not provide time");
+                return false;
+            }
+            synchronized = true;
+        }
+    }
+
+    if (!acknowledged || !synchronized || !isCellularModemClockValid())
+    {
+        m_console->printError("[OTA HTTPS] valid modem clock unavailable; refusing TLS");
+        return false;
+    }
+
+    m_console->println("[OTA HTTPS] modem clock synchronized");
+    return true;
+}
+
+bool SIMModem::installCellularOtaTrustAnchor()
+{
+    const size_t certificateLength = strlen(CellularOtaTrustAnchorPem);
+    if (!certificateLength)
+    {
+        m_console->printError("[OTA HTTPS] trusted CA is not configured; refusing TLS");
+        return false;
+    }
+    if (certificateLength > 8192)
+    {
+        m_console->printError("[OTA HTTPS] trusted CA exceeds modem file limit");
+        return false;
+    }
+    if (m_isCellularOtaCaReady)
+        return true;
+
+    if (sendCommand("AT+CFSINIT") != S_OK)
+    {
+        m_console->printError("[OTA HTTPS] modem certificate storage unavailable");
+        return false;
+    }
+
+    // Replace only our own fixed trust-anchor file. No customer or modem
+    // credentials are read, changed, or logged here.
+    sendCommand(String("AT+CFSDFILE=\"") + CellularOtaTrustAnchorFile + "\"");
+    const String writeCommand = String("AT+CFSWFILE=3,\"") + CellularOtaTrustAnchorFile +
+        "\",0," + String(static_cast<unsigned long>(certificateLength)) + ",1000";
+    bool stored = sendCommand(writeCommand, "DOWNLOAD", 0, 10000, false) == S_OK;
+    if (stored)
+    {
+        m_channel->transmit(reinterpret_cast<byte *>(const_cast<char *>(CellularOtaTrustAnchorPem)), certificateLength);
+        stored = false;
+        for (int attempt = 0; attempt < 6; ++attempt)
+        {
+            m_hal->feedHWWatchdog();
+            String line = m_channel->readStringUntil('\n', 10000);
+            line.trim();
+            if (line == S_OK)
+            {
+                stored = true;
+                break;
+            }
+            if (line == S_ERROR || line.startsWith("+CME ERROR:"))
+                break;
+        }
+    }
+
+    const bool fileSystemClosed = sendCommand("AT+CFSTERM") == S_OK;
+    if (!stored || !fileSystemClosed)
+    {
+        m_console->printError("[OTA HTTPS] modem CA provisioning failed");
+        return false;
+    }
+
+    if (sendCommand(String("AT+CSSLCFG=\"convert\",2,\"") + CellularOtaTrustAnchorFile + "\"") != S_OK)
+    {
+        m_console->printError("[OTA HTTPS] modem rejected trusted CA");
+        return false;
+    }
+
+    m_isCellularOtaCaReady = true;
+    m_console->println("[OTA HTTPS] Software Logistics trust anchor provisioned");
+    return true;
+}
+
+bool SIMModem::configureSecureHttpContext(String url)
+{
+    String origin, host, path;
+    if (!parseSecureUrl(url, origin, host, path))
+    {
+        m_console->printError("[OTA HTTPS] invalid HTTPS URL");
+        return false;
+    }
+
+    if (m_isHttpSessionActive)
+        return m_isSecureHttpSession && origin == m_secureOrigin && host == m_secureHost;
+
+    if (!synchronizeCellularModemClock() || !installCellularOtaTrustAnchor())
+        return false;
+
+    if (sendCommand("AT+CSSLCFG=\"sslversion\",1,3") != S_OK ||
+        sendCommand("AT+CSSLCFG=\"ignorertctime\",1,0") != S_OK ||
+        sendCommand(String("AT+CSSLCFG=\"sni\",1,\"") + host + "\"") != S_OK ||
+        sendCommand(String("AT+SHSSL=1,\"") + CellularOtaTrustAnchorFile + "\"") != S_OK ||
+        sendCommand(String("AT+SHCONF=\"URL\",\"") + origin + "\"") != S_OK ||
+        sendCommand("AT+SHCONF=\"BODYLEN\",1024") != S_OK ||
+        sendCommand("AT+SHCONF=\"HEADERLEN\",350") != S_OK)
+    {
+        m_console->printError("[OTA HTTPS] modem TLS configuration failed");
+        return false;
+    }
+
+    if (sendCommand("AT+SHCONN", S_OK, 0, 60000, false) != S_OK)
+    {
+        // SIMCom reports certificate/hostname/time failures through the TLS
+        // connection result. Never retry the same request over HTTP.
+        sendCommand("AT+SHDISC");
+        m_console->printError("[OTA HTTPS] TLS connection rejected (CA, hostname or clock)");
+        return false;
+    }
+
+    m_isHttpSessionActive = true;
+    m_isSecureHttpSession = true;
+    m_secureOrigin = origin;
+    m_secureHost = host;
+    m_console->println(String("[OTA HTTPS] TLS connected; host=") + host);
+    return true;
+}
+
+int64_t SIMModem::configureSecureForDownload(String url, size_t maximum, bool readBody, bool exactLength)
+{
+    String origin, host, path;
+    if (!parseSecureUrl(url, origin, host, path) || !configureSecureHttpContext(url))
+        return -1;
+
+    const String command = String("AT+SHREQ=\"") + path + "\",1";
+    m_channel->transmit(command + "\r\n");
+
+    bool acknowledged = false;
+    bool received = false;
+    uint32_t status = 0;
+    uint32_t length = 0;
+    for (int attempt = 0; attempt < 14 && !(acknowledged && received); ++attempt)
+    {
+        m_hal->feedHWWatchdog();
+        String line = m_channel->readStringUntil('\n', 5000);
+        line.trim();
+        if (line == command)
+            continue;
+        if (line == S_OK)
+        {
+            acknowledged = true;
+            continue;
+        }
+        if (line == S_ERROR || line.startsWith("+CME ERROR:"))
+            return -1;
+        if (!line.startsWith("+SHREQ:"))
+            continue;
+
+        const int first = line.indexOf(',');
+        const int second = first < 0 ? -1 : line.indexOf(',', first + 1);
+        uint32_t methodLength = 0;
+        if (first < 0 || second < 0 || line.substring(8, first) != "\"GET\"" ||
+            !OtaTransfer::parseDecimal(line.substring(first + 1, second).c_str(), 999, status) ||
+            !OtaTransfer::parseDecimal(line.substring(second + 1).c_str(), INT32_MAX, length))
+            return -1;
+        received = true;
+    }
+
+    if (!acknowledged || !received)
+        return -1;
+    if ((readBody && status != 200) || (!readBody && (status < 200 || status >= 300)))
+    {
+        m_console->printWarning(String("[OTA HTTPS] HTTP status rejected: ") + String(status));
+        return -1;
+    }
+    if (!readBody)
+        return length;
+    if (!length || length > maximum || (exactLength && length != maximum))
+        return -1;
+
+    return length;
+}
+
+int64_t SIMModem::readSecureHttpContent(uint32_t contentSize, unsigned char *buffer)
+{
+    if (!buffer || !contentSize || contentSize > DOWNLOAD_BUFFER_SIZE)
+        return -1;
+
+    uint32_t offset = 0;
+    while (offset < contentSize)
+    {
+        size_t length = contentSize - offset;
+        if (length > 2048)
+            length = 2048;
+
+        const String command = String("AT+SHREAD=") + String(offset) + "," + String(static_cast<unsigned long>(length));
+        m_channel->transmit(command + "\r\n");
+
+        bool acknowledged = false;
+        bool received = false;
+        for (int attempt = 0; attempt < 8 && !(acknowledged && received); ++attempt)
+        {
+            m_hal->feedHWWatchdog();
+            String line = m_channel->readStringUntil('\n', 5000);
+            line.trim();
+            if (line == command)
+                continue;
+            if (line == S_OK)
+            {
+                acknowledged = true;
+                continue;
+            }
+            if (line == S_ERROR || line.startsWith("+CME ERROR:"))
+                return -1;
+            if (!line.startsWith("+SHREAD:"))
+                continue;
+
+            uint32_t actual = 0;
+            if (!acknowledged ||
+                !OtaTransfer::parseDecimal(line.substring(8).c_str(), 2048, actual) ||
+                actual != length)
+                return -1;
+            received = true;
+        }
+
+        if (!acknowledged || !received)
+            return -1;
+
+        const size_t actual = m_channel->readBytes(buffer + offset, length);
+        // SHREAD data is binary. Never resume from a partial or uncertain read.
+        if (actual != length)
+            return -1;
+        offset += static_cast<uint32_t>(actual);
+    }
+
+    return offset;
+}
+
 int64_t SIMModem::configureForDownload(String url, size_t maximum, bool readBody, bool exactLength)
 {
+    if (url.startsWith("https://"))
+        return configureSecureForDownload(url, maximum, readBody, exactLength);
+    if (!url.startsWith("http://") || m_isSecureHttpSession)
+        return -1;
+
     if (!m_isHttpSessionActive)
     {
         for (int attempt = 0; attempt < 5 && !m_isHttpSessionActive; ++attempt)
@@ -163,6 +536,35 @@ int64_t SIMModem::configureForDownload(String url, size_t maximum, bool readBody
 
 bool SIMModem::closeHttpContext(String tag)
 {
+    if (m_isSecureHttpSession)
+    {
+        int retryCount = 0;
+        bool done = false;
+        while (retryCount++ < 5 && !done)
+        {
+            const String response = sendCommand("AT+SHDISC");
+            if (response != S_OK)
+            {
+                m_console->printWarning("[OTA HTTPS] modem HTTPS disconnect failed");
+                delay(500);
+                m_channel->clearBuffers();
+            }
+            else
+            {
+                done = true;
+            }
+        }
+
+        m_isHttpSessionActive = !done;
+        if (done)
+        {
+            m_isSecureHttpSession = false;
+            m_secureOrigin = "";
+            m_secureHost = "";
+        }
+        return done;
+    }
+
     int retryCount = 0;
     bool done = false;
     while (retryCount++ < 5 && done == false)
@@ -359,6 +761,9 @@ String SIMModem::httpPost(String url, String payload)
 
 int64_t SIMModem::downloadContent(uint32_t contentSize, unsigned char *buffer)
 {
+    if (m_isSecureHttpSession)
+        return readSecureHttpContent(contentSize, buffer);
+
     if (!buffer || !contentSize || contentSize > DOWNLOAD_BUFFER_SIZE) return -1;
     uint32_t offset = 0;
     while (offset < contentSize)
@@ -453,7 +858,30 @@ bool SIMModem::DisconnectMQTT()
 
 bool SIMModem::beginDownload(String url)
 {
-    if (!url.length()) return false;
+    if (!url.length() || (!url.startsWith("http://") && !url.startsWith("https://")))
+    {
+        m_console->printError("[OTA] unsupported firmware URL scheme");
+        return false;
+    }
+
+    if (m_isHttpSessionActive && !closeHttpContext("previous"))
+    {
+        m_console->printError("[OTA] previous modem HTTP session could not be closed");
+        return false;
+    }
+
+    if (url.startsWith("https://"))
+    {
+        String origin, host, path;
+        if (!parseSecureUrl(url, origin, host, path))
+        {
+            m_console->printError("[OTA HTTPS] invalid HTTPS URL");
+            return false;
+        }
+        m_console->println(String("[OTA HTTPS] modem=") + getDeviceModel() +
+            " revision=" + getDeviceRevision() + " host=" + host);
+    }
+
     alloc();
     bool success = false;
     bool begun = false;
@@ -478,8 +906,10 @@ bool SIMModem::beginDownload(String url)
     }
     if (bearerReady)
     {
-        failure = "invalid_firmware_size";
+        failure = url.startsWith("https://") ? "https_size_request_failed" : "invalid_firmware_size";
         const int64_t bodySize = configureForDownload(url + "/size", 32);
+        if (bodySize > 0)
+            failure = "invalid_firmware_size";
         uint32_t total = 0;
         bool sizeValid = false;
         if (bodySize > 0 && downloadContent(static_cast<uint32_t>(bodySize), m_rxBuffer) == bodySize)
@@ -602,6 +1032,11 @@ void SIMModem::hardwareReset()
 String SIMModem::getDeviceModel()
 {
     return sendCommand("AT+CGMM", "", 0, 1250, true);
+}
+
+String SIMModem::getDeviceRevision()
+{
+    return sendCommand("AT+CGMR", "", 0, 1250, true);
 }
 
 bool SIMModem::hardwarePowerOn()
