@@ -184,13 +184,9 @@ bool SIMModem::isCellularModemClockValid()
 
 bool SIMModem::synchronizeCellularModemClock()
 {
-    if (isCellularModemClockValid())
-    {
-        m_console->println("[OTA HTTPS] modem clock ready");
-        return true;
-    }
-
-    m_console->println("[OTA HTTPS] modem clock unset; synchronizing with NTP");
+    // Do not trust an old-but-plausible RTC value. Synchronize for each new
+    // HTTPS session so certificate validity is evaluated against current time.
+    m_console->println("[OTA HTTPS] synchronizing modem clock with NTP");
     if (sendCommand("AT+CNTPCID=1", S_OK, 0, 5000, false) != S_OK ||
         sendCommand("AT+CNTP=\"pool.ntp.org\",0,1,0", S_OK, 0, 5000, false) != S_OK)
     {
