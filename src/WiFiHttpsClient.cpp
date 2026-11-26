@@ -106,6 +106,13 @@ bool WiFiHttpsClient::synchronizeClock(Hal *hal, Console *console, unsigned long
     return false;
 }
 
+int WiFiHttpsClient::connect(IPAddress, uint16_t)
+{
+    // An IP literal cannot prove the requested DNS hostname. Require host-based
+    // connections so mbedTLS can validate the certificate's hostname.
+    return 0;
+}
+
 int WiFiHttpsClient::connect(const char *host, uint16_t port)
 {
     if (!isDeviceClockValid())
@@ -123,3 +130,4 @@ int WiFiHttpsClient::connect(const char *host, uint16_t port)
 
     return result;
 }
+
