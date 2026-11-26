@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 #include "OtaTransfer.h"
+#include "CellularOtaTrust.h"
+typedef uint8_t byte;
 #define S_OK "OK"
 #define S_ERROR "ERROR"
 #define U_FLASH 0
@@ -20,6 +22,7 @@ struct String {
     bool operator==(const String &v)const{return s==v.s;} bool operator!=(const String &v)const{return s!=v.s;}
     void trim(){auto a=s.find_first_not_of(" \r\n\t");s=a==std::string::npos?"":s.substr(a,s.find_last_not_of(" \r\n\t")-a+1);}
     bool startsWith(const char *p)const{return s.find(p)==0;}
+    char charAt(size_t i)const{return i<s.size()?s[i]:0;}
     int indexOf(char c,int a=0)const{auto i=s.find(c,a);return i==std::string::npos?-1:static_cast<int>(i);}
     String substring(int a,int b=-1)const{return s.substr(a,b<0?std::string::npos:static_cast<size_t>(b-a));}
 };
@@ -38,12 +41,13 @@ struct Channel{
  void clearBuffers(){lines.clear();offset=0;}
  String command(String cmd){if(cmd.startsWith("AT+HTTPPARA=\"URL\",\"")){request=cmd.s.substr(19,cmd.s.size()-20);}if(cmd=="AT+HTTPTERM"){++terms;return termOk?"OK":"ERROR";}return "OK";}
  void transmit(String cmd){if(cmd=="AT+HTTPACTION=0\r\n"){assert(!plan.empty());current=plan.front();plan.pop_front();assert(request==url+current.path);++actions;offset=0;String action=current.action.empty()?String("+HTTPACTION: 0,200,"+std::to_string(current.body.size())):String(current.action);if(current.early)lines.push_back(action);if(current.ack)lines.push_back("OK");if(!current.early)lines.push_back(action);}else{assert(cmd=="AT+HTTPREAD\r\n");++reads;lines.push_back(current.header.empty()?String("+HTTPREAD: "+std::to_string(current.body.size())):String(current.header));}}
+ void transmit(byte*,size_t){}
  String readStringUntil(char,int){if(lines.empty())return "";String r=lines.front();lines.pop_front();return r;}
  size_t readBytes(uint8_t *b,size_t n){assert(n<=2048);if(n>current.body.size()-offset)return size_t(-1);memcpy(b,current.body.data()+offset,n);offset+=n;if(offset==current.body.size())lines.push_back(current.trailer);return n;}
 };
-struct SIMModem{Channel *m_channel;Hal *m_hal;Console *m_console;Display *m_display;bool m_isHttpSessionActive=false;uint8_t rx[DOWNLOAD_BUFFER_SIZE],temp[2048];uint8_t *m_rxBuffer=rx,*m_tempBuffer=temp;bool bearer=true;
+struct SIMModem{Channel *m_channel;Hal *m_hal;Console *m_console;Display *m_display;bool m_isHttpSessionActive=false,m_isSecureHttpSession=false,m_isCellularOtaCaReady=false;String m_secureOrigin,m_secureHost;uint8_t rx[DOWNLOAD_BUFFER_SIZE],temp[2048];uint8_t *m_rxBuffer=rx,*m_tempBuffer=temp;bool bearer=true;
  SIMModem(Channel *c,Hal *h,Console *o,Display *d):m_channel(c),m_hal(h),m_console(o),m_display(d){}
- void alloc(){}void DisconnectMQTT(){}void disconnectServer(){}bool isServiceConnected(){return bearer;}bool setBearer(){return bearer;}String sendCommand(String c){return m_channel->command(c);}
+ void alloc(){}void DisconnectMQTT(){}void disconnectServer(){}bool isServiceConnected(){return bearer;}bool setBearer(){return bearer;}String sendCommand(String c){return m_channel->command(c);}String getDeviceModel(){return "SIM7000G";}String getDeviceRevision(){return "R1351";}
  int64_t configureForDownload(String,size_t,bool=true,bool=false);bool closeHttpContext(String);int64_t downloadContent(uint32_t,unsigned char*);bool httpGetNoContent(String);bool beginDownload(String);
 };
 #include "modem_excerpt.cpp"
