@@ -4,7 +4,12 @@
 #include "Hal.h"
 
 #include <time.h>
+#include <stdint.h>
 #include <mbedtls/x509_crt.h>
+
+// ESP-IDF 4.4.4 embeds the generated full root bundle in libmbedtls.
+// Reuse that exact bundle to initialize Arduino-ESP32 2.0.6's separate index.
+extern "C" const uint8_t x509_crt_imported_bundle_bin_start[] asm("_binary_x509_crt_bundle_start");
 
 #if defined(ARDUINO_ARCH_ESP32) && (!defined(CONFIG_MBEDTLS_CERTIFICATE_BUNDLE) || !CONFIG_MBEDTLS_CERTIFICATE_BUNDLE)
 #error "Wi-Fi HTTPS requires the ESP-IDF trusted certificate bundle"
@@ -65,8 +70,16 @@ namespace
 
 WiFiHttpsClient::WiFiHttpsClient()
 {
-    // Arduino-ESP32 2.0.6 passes this flag to ESP-IDF's embedded full root CA bundle.
-    _use_ca_bundle = true;
+    // Arduino-ESP32 2.0.6 maintains a separate certificate index. Merely setting
+    // _use_ca_bundle asks it to attach an empty index. Initialize it from the
+    // full root bundle already generated and linked by the ESP-IDF build.
+    static bool bundleInitialized = false;
+    if (!bundleInitialized)
+    {
+        setCACertBundle(x509_crt_imported_bundle_bin_start);
+        bundleInitialized = true;
+    }
+
     setHandshakeTimeout(10);
 }
 
