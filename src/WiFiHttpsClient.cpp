@@ -108,8 +108,13 @@ bool WiFiHttpsClient::synchronizeClock(Hal *hal, Console *console, unsigned long
 
 int WiFiHttpsClient::connect(IPAddress, uint16_t)
 {
-    // An IP literal cannot prove the requested DNS hostname. Require host-based
-    // connections so mbedTLS can validate the certificate's hostname.
+    return 0;
+}
+
+int WiFiHttpsClient::connect(IPAddress, uint16_t, int32_t)
+{
+    // HTTPClient uses the three-argument virtual overload. Reject IP literals
+    // because they do not provide a DNS hostname to validate against the cert.
     return 0;
 }
 
@@ -131,3 +136,22 @@ int WiFiHttpsClient::connect(const char *host, uint16_t port)
     return result;
 }
 
+int WiFiHttpsClient::connect(const char *host, uint16_t port, int32_t timeout)
+{
+    if (!isDeviceClockValid())
+        return 0;
+
+    // This is the overload HTTPClient calls. Base implementation performs
+    // CA-chain and hostname validation; then enforce validity dates ourselves.
+    const int result = WiFiClientSecure::connect(host, port, timeout);
+    if (result <= 0)
+        return result;
+
+    if (!isPeerCertificateTimeValid(getPeerCertificate()))
+    {
+        stop();
+        return 0;
+    }
+
+    return result;
+}
