@@ -124,7 +124,7 @@ private:
 
     bool setupHttpContext(String tag, String url);
     String readHttpResponse(String tag);
-    void closeHttpContext(String tag);    
+    bool closeHttpContext(String tag);    
     String httpGetSetError(String url, String errMsg);
     
   

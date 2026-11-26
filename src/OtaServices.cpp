@@ -87,9 +87,12 @@ OtaServices::~OtaServices()
 bool OtaServices::downloadWithModem(String url)
 {
 #ifdef LCD_DISPLAY
-    m_display->clearBuffer();
-    m_display->drawStr("Updating Firmware");
-    m_display->sendBuffer();
+    if (m_display)
+    {
+        m_display->clearBuffer();
+        m_display->drawStr("Updating Firmware");
+        m_display->sendBuffer();
+    }
 #endif
 
     return m_modem && url.length() != 0 && m_modem->beginDownload(url);
@@ -97,10 +100,13 @@ bool OtaServices::downloadWithModem(String url)
 
 bool OtaServices::downloadWithModem()
 {
-#if LCD_DISPLAY
-    m_display->clearBuffer();
-    m_display->drawStr("Updating Firmware");
-    m_display->sendBuffer();
+#ifdef LCD_DISPLAY
+    if (m_display)
+    {
+        m_display->clearBuffer();
+        m_display->drawStr("Updating Firmware");
+        m_display->sendBuffer();
+    }
 #endif
 
     if (m_url == NULL || m_url.length() == 0)
@@ -147,15 +153,17 @@ int64_t OtaServices::getFileSize(HTTPClient *client, String url)
     uint8_t body[SizeBodyCapacity + 1] = {};
     BoundedBody sink(body, SizeBodyCapacity);
     int result = -1;
+    int declared = -1;
     if (client->begin(url) && client->GET() == 200)
     {
-        const int declared = client->getSize();
+        declared = client->getSize();
         if (declared == -1 || (declared > 0 && declared <= static_cast<int>(SizeBodyCapacity)))
             result = client->writeToStream(&sink);
     }
     client->end();
     uint32_t size = 0;
-    if (result <= 0 || static_cast<size_t>(result) != sink.size() ||
+    if (result <= 0 || (declared >= 0 && result != declared) ||
+        static_cast<size_t>(result) != sink.size() ||
         memchr(body, 0, sink.size()) ||
         !OtaTransfer::parseDecimal(reinterpret_cast<const char *>(body), INT32_MAX, size) || !size)
         return -1;
@@ -201,25 +209,32 @@ bool OtaServices::downloadOverWiFi(String url)
     m_hal->feedHWWatchdog();
 
     HTTPClient http;
+    http.setReuse(false);
     http.setConnectTimeout(5000);
     http.setTimeout(5000);
     bool success = false;
     bool begun = false;
+    const char *failure = "invalid firmware size or partition";
     uint8_t *buffer = NULL;
 
 #ifdef LCD_DISPLAY
-    m_display->clearBuffer();
-    m_display->drawStr("Updating Firmware");
-    m_display->sendBuffer();
+    if (m_display)
+    {
+        m_display->clearBuffer();
+        m_display->drawStr("Updating Firmware");
+        m_display->sendBuffer();
+    }
 #endif
 
     const int64_t size = getFileSize(&http, url + "/size");
     const esp_partition_t *partition = esp_ota_get_next_update_partition(NULL);
     if (size > 0 && partition && static_cast<uint64_t>(size) <= partition->size)
     {
+        failure = "receive allocation failed";
         buffer = static_cast<uint8_t *>(malloc(WifiBlockSize));
         if (buffer)
         {
+            failure = "Update.begin failed";
             begun = Update.begin(static_cast<uint32_t>(size), U_FLASH);
             if (begun)
             {
@@ -230,6 +245,8 @@ bool OtaServices::downloadOverWiFi(String url)
                     [](uint8_t *data, size_t length) { return Update.write(data, length); },
                     [&]() { m_hal->feedHWWatchdog(); });
                 m_hal->feedHWWatchdog();
+                failure = result == OtaTransfer::ReadFailed ? "chunk download failed" :
+                    result == OtaTransfer::WriteFailed ? "flash write failed" : "flash finalization failed";
                 success = result == OtaTransfer::Complete && Update.isFinished() && Update.end();
             }
         }
@@ -237,9 +254,10 @@ bool OtaServices::downloadOverWiFi(String url)
 
     if (!success && begun) Update.abort();
     free(buffer);
-    m_console->println(success ? "[OTA] flash complete" : "[OTA] flash failed");
+    if (success) m_console->println("[OTA] flash complete");
+    else m_console->printError(String("[OTA] ") + failure);
 #ifdef LCD_DISPLAY
-    m_display->drawStr(success ? "Success flashing" : "Flashing failed", "Restarting");
+    if (m_display) m_display->drawStr(success ? "Success flashing" : "Flashing failed", "Restarting");
 #endif
     markCompleted(&http, url, success);
     m_hal->feedHWWatchdog();

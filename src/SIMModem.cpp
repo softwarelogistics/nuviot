@@ -155,7 +155,7 @@ int64_t SIMModem::configureForDownload(String url, size_t maximum, bool readBody
     return -1;
 }
 
-void SIMModem::closeHttpContext(String tag)
+bool SIMModem::closeHttpContext(String tag)
 {
     int retryCount = 0;
     bool done = false;
@@ -170,13 +170,12 @@ void SIMModem::closeHttpContext(String tag)
         }
         else
         {
-            String echoResponse = m_channel->readStringUntil('\n', 5000);
-            echoResponse.trim();
             done = true;
         }
     }
 
     m_isHttpSessionActive = false;
+    return done;
 }
 
 bool SIMModem::setupHttpContext(String tag, String url)
@@ -380,8 +379,8 @@ int64_t SIMModem::downloadContent(uint32_t contentSize, unsigned char *buffer)
 bool SIMModem::httpGetNoContent(String url)
 {
     const int64_t length = configureForDownload(url, 0, false);
-    if (m_isHttpSessionActive) closeHttpContext("get");
-    return length >= 0;
+    const bool closed = !m_isHttpSessionActive || closeHttpContext("get");
+    return length >= 0 && closed;
 }
 
 String SIMModem::httpGetSetError(String url, String errorMsg)
@@ -453,6 +452,7 @@ bool SIMModem::beginDownload(String url)
     bool success = false;
     bool begun = false;
     bool bearerReady = false;
+    const char *failure = "modem_unavailable";
     m_hal->enableHWWatchdog(120);
     m_hal->feedHWWatchdog();
 
@@ -472,6 +472,7 @@ bool SIMModem::beginDownload(String url)
     }
     if (bearerReady)
     {
+        failure = "invalid_firmware_size";
         const int64_t bodySize = configureForDownload(url + "/size", 32);
         uint32_t total = 0;
         bool sizeValid = false;
@@ -481,10 +482,11 @@ bool SIMModem::beginDownload(String url)
             sizeValid = !memchr(m_rxBuffer, 0, bodySize) &&
                 OtaTransfer::parseDecimal(reinterpret_cast<const char *>(m_rxBuffer), INT32_MAX, total) && total != 0;
         }
-        if (m_isHttpSessionActive) closeHttpContext("size");
+        if (!sizeValid && m_isHttpSessionActive) closeHttpContext("size");
         const esp_partition_t *partition = esp_ota_get_next_update_partition(NULL);
         if (sizeValid && partition && total <= partition->size)
         {
+            failure = "update_begin_failed";
             begun = Update.begin(total, U_FLASH);
             if (begun)
             {
@@ -496,27 +498,32 @@ bool SIMModem::beginDownload(String url)
                         int64_t actual = -1;
                         if (declared == static_cast<int64_t>(length))
                             actual = downloadContent(static_cast<uint32_t>(length), buffer);
-                        if (m_isHttpSessionActive) closeHttpContext("block");
+                        if (actual != static_cast<int64_t>(length) && m_isHttpSessionActive)
+                            closeHttpContext("block");
                         return actual;
                     },
                     [](uint8_t *buffer, size_t length) { return Update.write(buffer, length); },
                     [&]() { m_hal->feedHWWatchdog(); });
                 m_hal->feedHWWatchdog();
+                failure = result == OtaTransfer::ReadFailed ? "chunk_download_failed" :
+                    result == OtaTransfer::WriteFailed ? "flash_write_failed" : "flash_finalize_failed";
                 success = result == OtaTransfer::Complete && Update.isFinished() && Update.end();
             }
         }
     }
     if (!success && begun) Update.abort();
-    if (m_isHttpSessionActive) closeHttpContext("ota");
+    const bool contextClosed = !m_isHttpSessionActive || closeHttpContext("ota");
     m_hal->feedHWWatchdog();
-    if (bearerReady)
+    if (bearerReady && contextClosed)
     {
-        const bool reported = httpGetNoContent(url + (success ? "/success" : "/failed?err=ota_failed"));
+        const String terminal = success ? String("/success") : String("/failed?err=") + failure;
+        const bool reported = httpGetNoContent(url + terminal);
         if (!reported) m_console->printWarning("fwupdate=terminal_report_failed;");
     }
     else
         m_console->printWarning("fwupdate=terminal_report_unavailable;");
-    m_console->println(success ? "fwupdate=success;" : "fwupdate=failed;");
+    if (success) m_console->println("fwupdate=success;");
+    else m_console->printError(String("fwupdate=failed; // ") + failure);
 #ifdef LCD_DISPLAY
     m_display->drawStr(success ? "Success flashing" : "Flashing failed", "Restarting");
 #endif

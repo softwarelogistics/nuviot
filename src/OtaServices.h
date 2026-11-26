@@ -36,7 +36,7 @@ class OtaServices
 private:
     String m_url;
 #ifdef LCD_DISPLAY
-    Display *m_display;
+    Display *m_display = NULL;
 #endif
 
     Hal *m_hal;

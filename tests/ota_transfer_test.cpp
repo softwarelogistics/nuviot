@@ -28,7 +28,9 @@ int main()
     }
     int reads = 0, writes = 0, feeds = 0;
     auto fetch = [&](uint32_t, uint8_t *, size_t n) -> int64_t {
-        ++reads; return reads == 1 ? -1 : reads == 2 ? n - 1 : n;
+        ++reads;
+        if (reads == 1) return -1;
+        return static_cast<int64_t>(reads == 2 ? n - 1 : n);
     };
     auto write = [&](uint8_t *, size_t n) { ++writes; return n; };
     auto feed = [&] { ++feeds; };
