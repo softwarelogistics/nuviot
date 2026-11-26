@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "BluetoothServer.h"
+#include "NuvIoTVersion.h"
 #ifdef LCD_DISPLAY  
 #include "Display.h"
 #endif
@@ -176,7 +177,7 @@ public:
     String getFirmwareSKU();
     String getDeviceModelKey();
 
-    String getLibraryVersion() { return "5.2"; }
+    String getLibraryVersion() { return NUVIOT_LIBRARY_VERSION; }
 
     WiFiConnectionStates getWiFiState() { return m_isWiFiConnectionState; }
     void setWiFiState(WiFiConnectionStates state) { m_isWiFiConnectionState = state; }
