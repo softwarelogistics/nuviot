@@ -267,7 +267,7 @@ bool SIMModem::installCellularOtaTrustAnchor()
 
     // Replace only our own fixed trust-anchor file. No customer or modem
     // credentials are read, changed, or logged here.
-    sendCommand(String("AT+CFSDFILE=\"") + CellularOtaTrustAnchorFile + "\"");
+    sendCommand(String("AT+CFSDFILE=3,\"") + CellularOtaTrustAnchorFile + "\"");
     const String writeCommand = String("AT+CFSWFILE=3,\"") + CellularOtaTrustAnchorFile +
         "\",0," + String(static_cast<unsigned long>(certificateLength)) + ",1000";
     bool stored = sendCommand(writeCommand, "DOWNLOAD", 0, 10000, false) == S_OK;
