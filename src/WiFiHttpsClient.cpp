@@ -18,6 +18,9 @@ extern "C" const uint8_t x509_crt_imported_bundle_bin_start[] asm("_binary_x509_
 namespace
 {
     const time_t EarliestValidDeviceTime = static_cast<time_t>(1704067200); // 2024-01-01 UTC
+    bool certificateBundleInitialized = false;
+    bool certificateBundleReported = false;
+    uint16_t certificateBundleCount = 0;
 
     int compareCertificateTime(const mbedtls_x509_time &certificateTime, const tm &currentTime)
     {
@@ -70,17 +73,47 @@ namespace
 
 WiFiHttpsClient::WiFiHttpsClient()
 {
-    // Arduino-ESP32 2.0.6 maintains a separate certificate index. Merely setting
-    // _use_ca_bundle asks it to attach an empty index. Initialize it from the
-    // full root bundle already generated and linked by the ESP-IDF build.
-    static bool bundleInitialized = false;
-    if (!bundleInitialized)
+    // Initialize Arduino-ESP32's separate bundle index from the full ESP-IDF
+    // root bundle. The explicit diagnostic is emitted by synchronizeClock().
+    initializeCertificateBundle(NULL);
+    setHandshakeTimeout(10);
+}
+
+uint16_t WiFiHttpsClient::getEmbeddedBundleCertificateCount()
+{
+    return static_cast<uint16_t>(
+        (static_cast<uint16_t>(x509_crt_imported_bundle_bin_start[0]) << 8) |
+        static_cast<uint16_t>(x509_crt_imported_bundle_bin_start[1]));
+}
+
+bool WiFiHttpsClient::initializeCertificateBundle(Console *console)
+{
+    if (!certificateBundleInitialized)
     {
+        certificateBundleCount = getEmbeddedBundleCertificateCount();
+        if (certificateBundleCount == 0)
+        {
+            if (console)
+                console->printError(F("[HTTPS] ESP-IDF embedded CA bundle is empty"));
+            return false;
+        }
+
+        if (console)
+            console->println(String(F("[HTTPS] initializing Arduino CA index from ESP-IDF bundle: ")) +
+                String(certificateBundleCount) + F(" certificates"));
+
         setCACertBundle(x509_crt_imported_bundle_bin_start);
-        bundleInitialized = true;
+        certificateBundleInitialized = true;
     }
 
-    setHandshakeTimeout(10);
+    if (console && !certificateBundleReported)
+    {
+        console->println(String(F("[HTTPS] NuvIoT supplied ")) +
+            String(certificateBundleCount) + F(" root certificates to Arduino TLS"));
+        certificateBundleReported = true;
+    }
+
+    return certificateBundleInitialized;
 }
 
 bool WiFiHttpsClient::isDeviceClockValid()
@@ -90,6 +123,9 @@ bool WiFiHttpsClient::isDeviceClockValid()
 
 bool WiFiHttpsClient::synchronizeClock(Hal *hal, Console *console, unsigned long timeoutMs)
 {
+    if (!initializeCertificateBundle(console))
+        return false;
+
     if (isDeviceClockValid())
         return true;
 
