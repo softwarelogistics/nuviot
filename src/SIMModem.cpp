@@ -197,7 +197,7 @@ bool SIMModem::synchronizeCellularModemClock()
     m_channel->transmit("AT+CNTP\r\n");
     bool acknowledged = false;
     bool synchronized = false;
-    for (int attempt = 0; attempt < 10 && !(acknowledged && synchronized); ++attempt)
+    for (int attempt = 0; attempt < 12 && !(acknowledged && synchronized); ++attempt)
     {
         m_hal->feedHWWatchdog();
         String line = m_channel->readStringUntil('\n', 5000);
