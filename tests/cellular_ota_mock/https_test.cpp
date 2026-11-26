@@ -134,6 +134,7 @@ struct Channel
     void transmit(byte *data, size_t length)
     {
         certificateBytes.append(reinterpret_cast<const char *>(data), length);
+        lines.push_back("OK");
     }
 
     String readStringUntil(char, int)
