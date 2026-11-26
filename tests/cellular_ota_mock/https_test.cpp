@@ -8,6 +8,8 @@
 #include "OtaTransfer.h"
 
 #define NUVIOT_CELLULAR_OTA_TRUST_ANCHOR_PEM "TEST_CA"
+#include "CellularOtaTrust.h"
+typedef uint8_t byte;
 #define S_OK "OK"
 #define S_ERROR "ERROR"
 #define DOWNLOAD_BUFFER_SIZE 16384l
