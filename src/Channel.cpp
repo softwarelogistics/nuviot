@@ -64,7 +64,7 @@ void Channel::clearBuffers()
         {
             m_stream->readBytes(m_rxBuffer, bytes_to_read);
             
-            m_console->printByteArray("remaining bytes=",m_rxBuffer, bufflen);
+            m_console->printByteArray("remaining bytes=",m_rxBuffer, bytes_to_read);
             bufflen -= bytes_to_read;
             if (bufflen > 0)
                 bytes_to_read = bufflen > RX_BUFFER_SIZE ? RX_BUFFER_SIZE : bufflen;
