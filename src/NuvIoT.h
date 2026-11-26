@@ -26,7 +26,7 @@
 #ifdef CELLULAR_ENABLED
 #include "MQTT_GPRS.h"
 #include "SIMModem.h"
-#include "Rest.h"
+//#include "Rest.h"
 #endif
 
 #include "NuvIoTClient.h"
@@ -238,7 +238,7 @@ NuvIoTMQTT wifiMQTT(&wifiMgr, &console, &wifiClient, &ota, &hal, &state, &sysCon
 #endif
 
 #ifdef CELLULAR_ENABLED
-Rest rest(&client, &modem, &wifiMgr, &sysConfig, &console);
+//Rest rest(&client, &modem, &wifiMgr, &sysConfig, &console);
 #endif
 
 // drivers
