@@ -247,6 +247,8 @@ void secureBinaryTransfer()
     assert(hasCommand(channel, "AT+SHREAD=0,"));
     assert(hasCommand(channel, "AT+SHREAD=2048,"));
     assert(hasCommand(channel, "AT+SHREAD=4096,"));
+    assert(hasCommand(channel, "AT+CNTP\\r\\n"));
+    assert(hasCommand(channel, "AT+CCLK?"));
     assert(hasCommand(channel, "AT+SHREQ=\"https://dfu-dev.nuviot.com/api/firmware/download/test-request/size\",1"));
     for (const auto &message : console.messages)
         assert(message.find("test-request") == std::string::npos);
@@ -297,6 +299,20 @@ void rejectsInvalidClock()
     assert(!hasCommand(channel, "AT+HTTPINIT"));
 }
 
+void requiresFreshNtpEvenWithPlausibleRtc()
+{
+    Channel channel;
+    Hal hal;
+    Console console;
+    SIMModem modem(&channel, &hal, &console);
+    channel.clockValid = true;
+    channel.ntpCode = 62;
+    assert(modem.configureForDownload("https://dfu-dev.nuviot.com/api/firmware/download/id/size", 32) == -1);
+    assert(hasCommand(channel, "AT+CNTP\\r\\n"));
+    assert(!hasCommand(channel, "AT+SHCONN"));
+    assert(!hasCommand(channel, "AT+HTTPINIT"));
+}
+
 void rejectsMalformedUrl()
 {
     Channel channel;
@@ -332,7 +348,8 @@ int main()
     rejectsUntrustedCertificate();
     rejectsHostnameMismatch();
     rejectsInvalidClock();
+    requiresFreshNtpEvenWithPlausibleRtc();
     rejectsMalformedUrl();
     rejectsHttpRedirect();
-    std::cout << "6 cellular HTTPS adapter scenarios passed\n";
+    std::cout << "7 cellular HTTPS adapter scenarios passed\n";
 }
