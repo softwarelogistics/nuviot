@@ -121,6 +121,9 @@ namespace
         }
     };
 
+    // Never use HTTPClient::begin(url) for HTTPS: Arduino-ESP32 2.0.6
+    // creates a CA-less TLS transport on that path. HTTPS always receives
+    // the explicitly configured secure client; HTTP is never a fallback.
     bool beginRequest(HTTPClient *client, WiFiClientSecure *secureClient, const String &url)
     {
         if (url.startsWith("https://"))
